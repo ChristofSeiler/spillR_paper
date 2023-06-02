@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+spillr_paper.pdf
+spillr_paper.log
+spillr_paper_cache/
+spillr_paper_files/
