@@ -9,7 +9,7 @@ output:
     toc: false
 bibliography: spillr_paper.bib
 abstract: |
-  In mass cytometry, channel interference can cause spillover and overcount abundances. @catalyst introduced an experimental and computational procedure to estimate and compensate for spillover. Their R package `CATALYST` implements this using non-negative least squares. They assume spillover can be approximated by a spillover matrix that encodes proportions. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in R package `spillR` using the EM algorithm and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates more in the low counts. This property is favorable when high quality bead experiments are available. Our R package `spillR` is available on GitHub: https://github.com/marcoguazzini/spillR.
+  In mass cytometry, channel interference can cause spillover and overcount abundances. @catalyst introduced an experimental and computational procedure to estimate and compensate for spillover. Their R package `CATALYST` implements this using non-negative least squares. They assume spillover can be approximated by a spillover matrix that encodes proportions. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in R package `spillR` using the EM algorithm and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates more in the low counts. This property is favorable when high quality bead experiments are available.
 ---
 
 ```{r setup, include=FALSE}
@@ -659,5 +659,19 @@ Relating the Wasserstein distance to a biological meaningful quantity is challen
 Comparisons between methods on real data are also challenging. Unfortunately, we do not have the ground truth. Overall, our method compensate more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes linearity up to 5,000 of the spillover. `spillR` does not require linearity of the spillover but instead, assumes that the distribution on the beads experiment carries over to the real cells experiment. To summarize, we recommend to use `spillR` if high quality bead experiments are available.
 
 We estimate bead and real distribution using their empirical distributions from the bead experiment. From histogram we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different denoising methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distribution. All methods were unstable. They worked on some markers, but failed badly on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
+
+# Reproducibility
+
+Our R package `spillR` is available on GitHub: 
+
+* https://github.com/marcoguazzini/spillR
+
+All the experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd` on GitHub: 
+
+* https://github.com/ChristofSeiler/spillR_paper
+
+# Acknowledgments
+
+We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg.
 
 # References {.allowframebreaks}
