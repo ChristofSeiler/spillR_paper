@@ -103,7 +103,7 @@ In Section \@ref(methods), we present our mixture model and link it to calculati
 
 ## Example
 
-```{r method-example, fig.height=3, fig.width=9, out.width="100%", fig.align="center", fig.cap="Panel corrected: Histogram of marker CD3 (Yb173Di) after spillover compensation. Panel uncorrected: histogram of maker CD3 (Yb173Di) before spillover compensation. Panel beads: Density plot of spillover markers. In all panels: The dashed curve represents the estimated spillover probability with our method spillR.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r method-example, fig.height=3, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panel: Histogram of marker CD3 (Yb173Di) after spillover compensation. Panel uncorrected: frequency polygons of maker CD3 (Yb173Di) before and after spillover compensation. Right panel: Density plot of spillover markers. The dashed curve represents the estimated spillover probability with our method spillR.", echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 
@@ -138,11 +138,11 @@ plot_grid(
   )
 ```
 
-Figure \@ref(fig:method-example) illustrates our two step procedure using an example datasets from the `CATALYST` package. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). We have bead experiments on all the spillover makers barcoded with 171 for Yb171Yb, and similarly for the others. The panel *corrected* displays the distribution of our target marker, Yb173Di, after applying our spillover correction. We observe a large number of zero counts around 1500 at the expense of a reduction of counts around three. 
+Figure \@ref(fig:method-example) illustrates our two step procedure using an example datasets from the `CATALYST` package. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). We have bead experiments on all the spillover makers. The panel on the left displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. We observe that our method removes some counts in the range between zero to four. Larger counts are not affected by the correction as both curve overlap. 
 
-The original *uncorrected* distribution is in the panel next to it. We observe less counts at zero and more counts around three. The dashed curve is our estimated spillover probability. We can see that around three the probability is around 0.8. Our correction step assigns around 80% of cells to spillover and sets them to zero, and keeps the other 20% at the current value. Counts below two have spillover probability of one, which means that our procedure sets all cells to zero. Counts above five have probability of zero, which means that our procedure keeps them at their current uncorrected value.
+The panel on the right depicts the marker distributions from the beads experiment. We see that for this marker the bead experiments are high-quality as the target marker Yb173Di is concentrated around six, similarly to the experiment with real cells. This suggest that the spillover markers can be transferred to the real experiments. Marker Yb172Di shows large spillover into Yb173Di, and suggests that much of the first mode of the distribution may be attributed to that marker. The other spillover markers act on the low counts, and make it justifiable to transfer all the low counts to zero.
 
-The panel on the very right depicts the marker distributions from the *beads* experiment. We see that for this marker the bead experiments are high-quality as the target marker Yb173Di is concentrated around six, similarly to the experiment with real cells. This suggest that the spillover markers can be transferred to the real experiments. Marker Yb172Di shows large spillover into Yb173Di, and much of the first mode of the distribution should be attributed to that marker. The other spillover markers act on the low counts, and make it justifiable to transfer all the low counts to zero.
+The dashed curve is our estimated spillover probability. We can see that at three on the horizontal axis the probability is around 0.8. Our correction step assigns around 80% of cells to spillover, and keeps the other 20% at the current value. Counts below two have spillover probability of one, which means that our procedure assigns all cells to spillover. Counts above five have probability of zero, which means that our procedure keeps them at their current uncorrected value.
 
 ## Definition of Spillover Probability and Assumptions
 
@@ -150,13 +150,13 @@ We observe a count $Y_i$ of marker $i$. If spillover is present, then $Y_i$ will
 $$
 P(Y_i = y) = \sum_{j = 1}^J \pi_{j \to i} \, P(Z_j = y).
 $$
-The probability of spillover of $i$ into itself is not actual spillover, but corresponds to the proportion of true signal in the observed count. The total of all the spillover probabilities equals to one, $\sum_j \pi_{j \to i} = 1$. Conceptually, we divide the probabilities into true signal probability, $\pi_{i \to i}$, and the probability of spillover, that is, the total probability of all but the $i$th probability, $\sum_{j \ne i} \pi_{i \to j}$. The total number of markers $J$ in mass cytometry panels is typically between 30 and 40 [@bendall2011single]. Typically, only a small subset of three to four markers spillover into the target marker [@catalyst].
+The probability of spillover of $i$ into itself is not actual spillover, but corresponds to the proportion of true signal in the observed count. The total of all the spillover probabilities equals to one, $\sum_j \pi_{j \to i} = 1$. Conceptually, we divide the probabilities into true signal probability, $\pi_{i \to i}$, and the probability of spillover, that is, the total probability of all but the $i$th probability, $\sum_{j \ne i} \pi_{i \to j}$. The total number of markers $J$ in mass cytometry panels is between 30 and 40 [@bendall2011single]. Typically, only a small subset of three to four markers spillover into the target marker [@catalyst].
 
-Experimentally, we only measure a sample from the distribution $Y_i$. The probabilities $\pi_{i \to j}$ and true distributions $P(Z_j = y)$ are not measured, and we need to estimate them from data. In many applications, the components of the mixture $P(Z_j = y)$ are members of a parametric family, for example, the negative binomial distribution. In spillover correction, we can take advantage of bead experiments to estimate mixture components nonparametrically. To make the estimation problem identifiable (Section \@ref(identifiability)), we make three assumptions:
+Experimentally, we only measure a sample from the distribution $Y_i$. The probabilities $\pi_{i \to j}$ and true distributions $P(Z_j = y)$ are not measured, and we need to estimate them from data. In many applications, the components of the mixture $P(Z_j = y)$ are members of a parametric family, for example, the negative binomial distribution. In spillover correction, we can take advantage of bead experiments to estimate mixture components nonparametrically. To make the estimation problem identifiable, we make three assumptions:
 
 * (A1) Spillover distributions are invariant from bead to real cell experiments.
 
-The distribution of $Z_j$ that spillover into the true marker $i$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions $Z_1,\dots,Z_{i-1},Z_{i+1},\dots,Z_J$---except the true marker $Z_i$---from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
+The distribution of $Z_j$ that spills over into the true marker $i$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions $Z_1,\dots,Z_{i-1},Z_{i+1},\dots,Z_J$---except the true marker $Z_i$---from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
 
 * (A2) Spillover counts and true counts are the only contributors to the total measured counts.
 
@@ -168,7 +168,7 @@ To parse this calculation, it is helpful to remind ourselves that in mixture mod
 
 * (A3) Spillover probability curves are logistic functions.
 
-The spillover probability is a function of $y$. Larger $y$ will not have any spillover and only have true signal. In contrast, smaller $y$ will have an increased probability of spillover. The reason for this is that spillover affects mostly low counts as it represent a proportion---much smaller than one---of other markers [@catalyst]. Other functions than the logistic function would meet these constraints. We chose the logistic function as it is the standard option for logistic regression.
+The spillover probability is a function of $y$. Larger $y$ will not have any spillover and only have true signal. In contrast, smaller $y$ will have an increased probability of spillover. One justification for this is that spillover affects mostly low counts as it represent a proportion---much smaller than one---of other markers [@catalyst]. Other functions than the logistic function would meet these constraints. We chose the logistic function as it is the standard option for logistic regression.
 
 ## Estimation of Spillover Probability
 
@@ -203,7 +203,7 @@ We fix all the other marker distributions at their initial estimates and only up
 
 ### Step 2: Logistic Regression
 
-This step is a denoising step. Until now, the procedure is fully nonparametric. We apply no regularization to smooth neighboring $y$'s. As a result, the spillover probability estimates will be noisy---flipping back and forth between zero and one---and we need to regularize them using our assumption (A3).
+This step is a denoising step. Until now, the procedure is fully nonparametric. We apply no regularization to $y$'s that are close to one another. As a result, the spillover probability estimates are noisy---flipping back and forth between zero and one---and we need to regularize them using our assumption (A3).
 
 The logistic regression model is,
 $$
@@ -213,7 +213,7 @@ with $y$ transformed using the inverse hyperbolic sine transformation with the c
 $$
 \hat{P}(\text{cell } k \text{ is spillover} \, | \, Y_i = y) = (1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)})^{-1}.
 $$
-We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and set the current cell to zero if the coin comes up heads, otherwise we keep the count.
+We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and declare the current cell a missing value if the coin comes up heads, otherwise we keep the count. We consider spillover as missing values instead of choosing any a specific value to avoid introducing bias. For example, setting all spillover values to zero would result in a zero-inflated distribution.
 
 <!-- 
 
@@ -229,7 +229,7 @@ We first evaluate our new method `spillR` on simulated datasets. We probe our me
 
 ## Simulated Data
 
-```{r simulated-experiments, fig.height = 5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE, fig.cap="Four different experiments. In all experiments, the vertical axis represents the Wassertein distance between true signal and compensated signal. The vertical axis are the experimental parameters. Panel (a): Experiment for assumption A1. Panel (b): Experiment for assumption 2. Panel (c): First experiment for assumption A3. Panel (d): Second experiment for assumption A3."}
+```{r simulated-experiments, fig.height = 5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE, fig.cap="Four experiments testing our three assumptions (A1), (A2), and (A3). In all experiments, the vertical axis represents the Wassertein distance between true signal and compensated signal."}
 # --------- global parameters ---------
 
 n_real <-10000
@@ -302,7 +302,7 @@ p_a1 <- expand.grid(
   mutate(w1 = compute_wasserstein(generate_data_a1, shift)) %>% 
   plot_results("shift") + 
   xlab("bead shift") + 
-  ggtitle("(a) A1 - Spillover Distribution Shift")
+  ggtitle("Invariant Spillover Distributions (A1)")
 
 # --------- panel (b) ---------
 
@@ -338,7 +338,7 @@ p_a2 <- expand.grid(
   mutate(w1 = compute_wasserstein(generate_data_a2, spill_hidden)) %>%
   plot_results("spill_hidden") + 
   xlab("P(hidden spillover marker)") +
-  ggtitle("(b) A2 - Unobserved Confounding")
+  ggtitle("No Hidden Confounding (A2)")
 
 # --------- panel (c) ---------
 
@@ -373,7 +373,7 @@ p_a3_bead <- expand.grid(
   mutate(w1 = compute_wasserstein(generate_data_a3_bead, second_mode)) %>%
   plot_results("second_mode") + 
   xlab("location of second mode") +
-  ggtitle("(c) A3 - Bimodal Beads")
+  ggtitle("Bimodal Beads (A3)")
 
 # --------- panel (d) ---------
 
@@ -405,7 +405,7 @@ p_a3_real <- expand.grid(
   mutate(w1 = compute_wasserstein(generate_data_a3_real, second_mode)) %>%
   plot_results("second_mode") + 
   xlab("location of second mode") +
-  ggtitle("(d) A3 - Bimodal Real Cells")
+  ggtitle("Bimodal Real Cells (A3)")
 
 # --------- combined plot ---------
 
@@ -414,13 +414,13 @@ plot_grid(p_a1, p_a2, p_a3_bead, p_a3_real, nrow = 2)
 
 We choose four different experiments to test how robust `spillR` is when one of our three assumptions are violated. The third and forth experiment probe both the robustness of our method with respect to assumption (A3). We explore a wide range of possible parameter settings. To visualize the massive amount of experiments, we measure distances between true and compensated distributions. Among the many possibilities to calculate the distance between two probability distribution, we choose the Wasserstein distance or earth mover's distance, as it has an intuitive interpretation and has been applied to single cell data [@schuhmacher2020transport].
 
-We have one pile of earth that we would like to move to another location. We know the source pile of earth distribution and we also know the distribution of the target pile. The task is to transport small chunks of dirt from the source pile to the target pile while traveling the least amount possible. The distances weighted by the weight of the dirt chunk is the earth mover's distance. In addition to this interpretation, there is an efficient R package `waddR` implementation on Bioconductor [@schefzik2021fast] based on the an R package `transport` on CRAN [@schuhmacher2020transport].
+We have one pile of earth that we would like to move to another location. We know the source pile of earth distribution and we also know the distribution of the target pile. The task is to transport small chunks of dirt from the source pile to the target pile while traveling the least amount possible. The distances weighted by the weight of the dirt chunk is the earth mover's distance. In addition to this interpretation, there is an efficient R package `waddR` implementation on Bioconductor [@schefzik2021fast] based on R package `transport` on CRAN [@schuhmacher2020transport].
 
-Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimental setup. The first row corresponds to our assumptions (A1) and (A2). The second row probes assumption (A3) with two different experiments. For all experiments, we model counts using the Poisson distribution with parameter $\lambda$. We use 10,000 real cells, 1,000 bead cells, $\lambda = 100$ for real cells, $\lambda = 70$ for beads, the mixing probability is $0.5$ for bimodal distribution, and the spillover probability is $0.1$. The generative model for beads are an independent copy of the true spillover. The other parameters and their statistical dependencies are specific to each experiment. We quantify uncertainty with gray vertical line representing the standard error computed over five replications of the same experiment.
+Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimental setup. The first row tests our assumptions (A1) and (A2). The second row tests assumption (A3) with two different experiments. For all experiments, we model counts using a Poisson distribution with parameter $\lambda$. We use 10,000 real cells, 1,000 bead cells, $\lambda = 100$ for real cells, $\lambda = 70$ for beads, the mixing probability is $0.5$ for bimodal distribution, and the spillover probability is $0.1$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment, and we define them in their respective subsections. We quantify uncertainty with gray vertical lines representing the standard error computed over five replications of the same experiment.
 
 ### Invariant Spillover Distributions (A1)
 
-```{r critical-points, fig.height = 10, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment. Panel (a): experiment for assumption (A1). Panel (b): Experiment for assumption (A2). Panel (c): First experiment for assumption (A3). Panel (d): Second experiment for assumption (A3)."}
+```{r critical-points, fig.height = 10, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment. First row tests assumption (A1). Second row tests assumption (A2). Third and fourth rows tests assumption (A3)."}
 # --------- helper functions ---------
 generate_critical <- function(fn, parameter) {
   
@@ -458,7 +458,7 @@ tb_a1 <- lapply(c(-60, -30, 0),
 p_a1 <- ggplot(tb_a1, aes(y, probability, color = type)) + 
   geom_line() +
   facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("A1 - Bead Shift")
+  ggtitle("Invariant Spillover Distributions (A1)")
 
 # --------- panel (b) ---------
 
@@ -468,7 +468,7 @@ tb_a2 <- lapply(c(0, 0.5, 0.6),
 p_a2 <- ggplot(tb_a2, aes(y, probability, color = type)) + 
   geom_line() +
   facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("A2 - P(hidden spillover marker)")
+  ggtitle("No Hidden Confounding (A2)")
 
 # --------- panel (c) ---------
 
@@ -478,7 +478,7 @@ tb_a3_bead <- lapply(c(70, 100, 130),
 p_a3_bead <- ggplot(tb_a3_bead, aes(y, probability, color = type)) + 
   geom_line() +
   facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("A3 - Bimodal Beads")
+  ggtitle("Bimodal Beads (A3)")
 
 # --------- panel (d) ---------
 
@@ -488,14 +488,14 @@ tb_a3_real <- lapply(c(50, 70, 130),
 p_a3_real <- ggplot(tb_a3_real, aes(y, probability, color = type)) + 
   geom_line() +
   facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("A3 - Bimodal Real Cells")
+  ggtitle("Bimodal Real Cells (A3)")
 
 # --------- combined plot ---------
 
 plot_grid(p_a1, p_a2, p_a3_bead, p_a3_real, ncol = 1)
 ```
 
-In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption (A1). The distances start around $8$ when $\tau$ is minimum. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -15$. Figure \@ref(fig:critical-points) represents the distributions at $\tau = -50$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
+In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption (A1). The distances start around $8$ when $\tau = -60$. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -10$. Figure \@ref(fig:critical-points) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
 
 The generative model for real cells $Y$ of this experiment is,
 $$
@@ -510,7 +510,7 @@ The generative model for beads is an independent copy of the unshifted $Z'$ at $
 
 ### No Hidden Confounding (A2)
 
-In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption (A2). One way to think about this that the hidden spillover is a form of hidden confounding. When $\tau = 0$, then assumption A1 is correct. The large $\tau$, the more is our assumption violated. Since our true spillover has probability of $0.1$, the maximum amount of spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero fur $\tau < 0.5$. After that, it start to increase quickly. Judging from the the Wasserstein distance, the range from $\tau = 0$ to $\tau = 0.5$ is at the same level. Figure \@ref(fig:critical-points) represents the two end points of this range, and the point $\tau = 0.6$ to illustrate the distribution outside of this range.
+In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption (A2). One way to think about this that the hidden spillover is a form of hidden confounding. If $\tau = 0$, then assumption (A2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it start to increase quickly. Figure \@ref(fig:critical-points) represents the two end points of the range where distances are stable, and the point $\tau = 0.6$ illustrates the distribution outside of this range.
 
 The generative model for real cells $Y$ of this experiment is,
 $$
@@ -522,10 +522,11 @@ Z_h & \sim \text{Poisson}(70)                              & \qquad \text{(hidde
 Y   & = I(S=1) Z + I(S = 2) Z' + I(S = 3) Z_h              & \qquad \text{(observed real cells)}.
 \end{aligned}
 $$
+The generative model for beads is an independent copy of $Z'$.
 
 ### Bimodal Beads (A3)
 
-In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments)), we model spillover with a bimodal distribution. The parameter $\tau$ is the location of the second mode. When $\tau = 0$, the assumption (A3) is correct. The larger $\tau$, the more is our assumption violated. The distances are close to zero for $\tau$ close to $100$. Around $\tau = 100$ and higher, the distances get unstable with large standard errors.
+In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments)), we model spillover with a bimodal distribution. The parameter $\tau$ is the location of the second mode. If $\tau = 70$, then our assumption (A3) is correct. values different from $\tau$ violate our assumption. The distances up to $\tau < 70$ are stable. Starting around $\tau = 100$, the distances get unstable with large standard errors. Figure \@ref(fig:critical-points) represents points from the stable and unstable range.
 
 The generative model for real cells $Y$ of this experiment is,
 $$
@@ -539,10 +540,11 @@ Z   & \sim \text{Poisson}(100)         & \qquad \text{(true signal)} \\
 Y   & = (1-S) Z + S Z'                 & \qquad \text{(observed real cells)}.
 \end{aligned}
 $$
+The generative model for beads is an independent copy of $Z'$.
 
 ### Bimodal Real Cells (A3)
 
-In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. Here we again explore the robustness of our method against a violation of the third assumption (A3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode.
+In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. Here we again explore the robustness of our method against a violation of the third assumption (A3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode. Figure \@ref(fig:critical-points) represents points two points in the tail with smaller distances and the global maximum.
 
 The generative model for real cells $Y$ of this experiment is,
 $$
@@ -556,6 +558,7 @@ Z   & = (1-M) Z_1 + M Z_2        & \qquad \text{(true signal)} \\
 Y   & = (1-S) Z + S Z'           & \qquad \text{(observed real cells)}.
 \end{aligned}
 $$
+The generative model for beads is an independent copy of $Z'$.
 
 ## Real Data
 
@@ -654,11 +657,11 @@ plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2)
 
 # Discussion
 
-Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. The experiment for (A1) shows the performance of our method on different settings that are also present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di. In that case, assumption (A1) does not hold. For some markers CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment. In that case, assumption (A1) holds. As expected our method performs worse when the true signal overlaps with the spillover. The experiment for (A2) shows that our methods is robust to hidden spillover. Hidden spillover should not be a major issue as we can add all channels. The increase in computational cost is relatively minor as our methods scales linearly in the number of spillover markers. Both experiments that test for bimodal distribution (A3) and (A4) show potential instabilities of our method. For (A3), we observe results with large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. The probability of spillover increases and our method tends to overcompensate. For (A4), we observe large standard errors when the second mode of the true signal is close to the bead mode.
+Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. The experiment for (A1) shows the performance of our method on different settings that are also present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di. In that case, assumption (A1) does not hold. For some markers CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment. In that case, assumption (A1) holds. As expected our method performs worse when the true signal overlaps with the spillover. The experiment for (A2) shows that our methods is robust to hidden spillover. Hidden spillover should not be a major issue as we can add all channels. The increase in computational cost is relatively minor as our methods scales linearly in the number of spillover markers. Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. The probability of spillover increases and our method tends to overcompensate. The bimodal real cells experiment displays large distances to the true signal when the second mode of the true signal is close to the bead mode.
 
-Comparisons between methods on real data are also challenging. Unfortunately, we do not have the ground truth. Overall, our method compensate more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes linearity up to 5,000 of the spillover. `spillR` does not require linearity of the spillover but instead, assumes that the distribution on the beads experiment carries over to the real cells experiment. To summarize, we recommend to use `spillR` if high quality bead experiments are available.
+Comparisons between methods on real data are also challenging. Unfortunately, we do not have the ground truth. Overall, our method compensate more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes linearity up to 5,000 of the spillover. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment. To summarize, we recommend to use `spillR` if high quality bead experiments are available.
 
-We estimate bead and real distribution using their empirical distributions from the bead experiment. From histogram we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different denoising methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distribution. All methods were unstable. They worked on some markers, but failed badly on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
+We estimate bead and real distributions using their empirical distributions from the bead experiment. From histograms, we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different denoising methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distributions. All methods were unstable. They worked on some markers, but failed on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
 
 # Reproducibility
 
