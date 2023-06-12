@@ -201,7 +201,7 @@ $$
 P^{(t+1)}(Z_{i \to i} = y) = y_i^{(t+1)}/N_i^{(t+1)}.
 $$
 
-We fix all the other marker distributions at their initial estimates and only update the target distribution throughout the procedure. This makes sense as we know the correct assignments for the other markers from the controlled bead experiments and by relying on assumption [(A1)](#assumption1). In other words, we estimate $P(Z_{j \to i})$ during the first iteration and keep it fixed afterwards. We keep updating $P(Z_{i \to i})$ at every iteration on the newly identified set of cells that belong to marker $j$. The E-step relies on our assumption [(A2)](#assumption2).
+We fix all the other marker distributions at their initial estimates and only update the target distribution throughout the procedure. This makes sense as we know the correct assignments for the other markers from the controlled bead experiments and by relying on assumption [(A1)](#assumption1). In other words, we estimate $P(Z_{j \to i} = y)$ during the first iteration and keep it fixed afterwards. We keep updating $P(Z_{i \to i} = y)$ at every iteration on the newly identified set of cells that belong to marker $j$. The E-step relies on our assumption [(A2)](#assumption2).
 
 ### Step 2: Logistic Regression
 
@@ -536,23 +536,25 @@ plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2)
 
 # Discussion
 
-Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. The experiment for [(A1)](#assumption1) shows the performance of our method on different settings that are also present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di (Figure \@ref(fig:method-example-Eu153Di) in Appendix \@ref(two-real-cases)). In that case, assumption [(A1)](#assumption1) does not hold. For some markers CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment (Figure \@ref(fig:method-example-Gd160Di) in Appendix \@ref(two-real-cases)). In that case, assumption [(A1)](#assumption1) holds. As expected our method performs worse when the true signal overlaps with the spillover. The experiment for [(A2)](#assumption2) shows that our methods is robust to hidden spillover. Hidden spillover should not be a major issue as we can add all channels. The increase in computational cost is relatively minor as our methods scales linearly in the number of spillover markers. Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. The probability of spillover increases and our method tends to overcompensate. The bimodal real cells experiment displays large distances to the true signal when the second mode of the true signal is close to the bead mode.
+Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. The experiment for [(A1)](#assumption1) shows the performance of our method on different settings that are also present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data (Figure \@ref(fig:method-example-cd68-cd45) in Appendix \@ref(two-real-cases)) for protein CD68 with the metal label Eu153Di. In that case, assumption [(A1)](#assumption1) does not hold. For some markers CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment. In that case, assumption [(A1)](#assumption1) holds. As expected our method performs worse when the true signal overlaps with the spillover. The experiment for [(A2)](#assumption2) shows that our methods is robust to hidden spillover. Hidden spillover should not be a major issue as we can add all channels. The increase in computational cost is relatively minor as our methods scales linearly in the number of spillover markers. Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. The probability of spillover increases and our method tends to overcompensate. The bimodal real cells experiment displays large distances to the true signal when the second mode of the true signal is close to the bead mode.
 
 Comparisons between methods on real data are also challenging. Unfortunately, there is no ground truth available. Overall, our method compensate more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes linearity up to 5,000 of the spillover. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
 
 We estimate bead and real distributions using their empirical distributions from the bead experiment. From histograms, we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different post-processing methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distributions. All methods were unstable. They worked on some markers, but failed on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
 
-Our method is split into two sequential steps. We can diagnose both steps and detect if they fail with our function `plotDiagnostics`. Methods based on non-negative least square are much harder to diagnose as they minimize a cost function that has no clear biological interpretation. Therefore, we recommend to use `spillR` if high quality bead experiments are available.
+The advantage of our methods is that we can inspect it by plotting the spillover probability curve using the function `plotDiagnostics`. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation. Therefore, we recommend to use `spillR` whenever high quality bead experiments are available.
 
 # Acknowledgments {-}
 
 We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg.
 
-# References
+# References {-}
 
 <div id="refs"></div>
 
 # (APPENDIX) Supplementary Material {-}
+
+\newpage
 
 # Generative Models
 
@@ -692,11 +694,13 @@ ggplot(tb_a3_real, aes(y, probability, color = type)) +
 
 Figure \@ref(fig:critical-points-a3-real) represents points two points in the tail with smaller distances and the global maximum.
 
+\newpage
+
 # Two Real Cases
 
 Dataset from original `CATALYST` paper [@catalyst].
 
-```{r method-example-Eu153Di, fig.height=6, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The dashed curve represents the estimated spillover probability with our method.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r method-example-cd68-cd45, fig.height=6, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The dashed curve represents the estimated spillover probability with our method.", echo=FALSE, warning=FALSE, message=FALSE}
 p_list <- plotDiagnostics(sce_spillr, "Eu153Di")
 p1 <- plot_grid(
     p_list[[1]] + xlab("CD68 (Eu153Di)"),
