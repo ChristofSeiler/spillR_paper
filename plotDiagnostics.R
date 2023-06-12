@@ -41,7 +41,7 @@ plotDiagnostics <- function(sce, ch) {
   )
   p_before_after <- before_after %>% 
     pivot_longer(-cell, names_to = "correction") %>% 
-    ggplot(aes(value, color = correction)) + 
+    ggplot(aes(value, color = correction, linetype = correction)) + 
     geom_freqpoly(alpha = 1.0, bins = 50) +
     xlab(paste0("tfm(", ch, ")"))
   
