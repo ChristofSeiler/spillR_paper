@@ -548,7 +548,7 @@ The advantage of our methods is that we can inspect it by plotting the spillover
 
 We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg.
 
-# References
+# References {-}
 
 <div id="refs"></div>
 
