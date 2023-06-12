@@ -542,7 +542,7 @@ Comparisons between methods on real data are also challenging. Unfortunately, th
 
 We estimate bead and real distributions using their empirical distributions from the bead experiment. From histograms, we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different post-processing methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distributions. All methods were unstable. They worked on some markers, but failed on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
 
-Our method is split into two sequential steps. We can diagnose both steps and detect if they fail with our function `plotDiagnostics`. Methods based on non-negative least square are much harder to diagnose as they minimize a cost function that has no clear biological interpretation. Therefore, we recommend to use `spillR` if high quality bead experiments are available.
+The advantage of our methods is that we can inspect it by plotting the spillover probability curve using the function `plotDiagnostics`. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation. Therefore, we recommend to use `spillR` whenever high quality bead experiments are available.
 
 # Acknowledgments {-}
 
@@ -553,6 +553,8 @@ We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a pr
 <div id="refs"></div>
 
 # (APPENDIX) Supplementary Material {-}
+
+\newpage
 
 # Generative Models
 
@@ -691,6 +693,8 @@ ggplot(tb_a3_real, aes(y, probability, color = type)) +
 ```
 
 Figure \@ref(fig:critical-points-a3-real) represents points two points in the tail with smaller distances and the global maximum.
+
+\newpage
 
 # Two Real Cases
 
