@@ -41,8 +41,11 @@ plotDiagnostics <- function(sce, ch) {
   )
   p_before_after <- before_after %>% 
     pivot_longer(-cell, names_to = "correction") %>% 
-    ggplot(aes(value, color = correction)) + 
+    mutate(correction = factor(correction, levels=c('before', 'after'))) %>%
+    ggplot(aes(value, color = correction, linetype = correction)) + 
     geom_freqpoly(alpha = 1.0, bins = 50) +
+    scale_color_manual(values = c('#00BFC4', '#F8766D')) +
+    scale_linetype_manual(values = c('solid', 'dashed')) +
     xlab(paste0("tfm(", ch, ")"))
   
   # diagnostic plot for spillover estimate
