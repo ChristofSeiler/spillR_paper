@@ -424,19 +424,19 @@ Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimen
 
 ### Invariant Spillover Distributions (A1)
 
-In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption (A1). The distances start around $8$ when $\tau = -60$. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -10$. Figure \@ref(fig:critical-points) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
+In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption (A1). The distances start around $8$ when $\tau = -60$. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -10$.
 
 ### No Hidden Confounding (A2)
 
-In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption (A2). One way to think about this that the hidden spillover is a form of hidden confounding. If $\tau = 0$, then assumption (A2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it start to increase quickly. Figure \@ref(fig:critical-points) represents the two end points of the range where distances are stable, and the point $\tau = 0.6$ illustrates the distribution outside of this range.
+In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption (A2). One way to think about this that the hidden spillover is a form of hidden confounding. If $\tau = 0$, then assumption (A2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it start to increase quickly.
 
 ### Bimodal Beads (A3)
 
-In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments)), we model spillover with a bimodal distribution. The parameter $\tau$ is the location of the second mode. If $\tau = 70$, then our assumption (A3) is correct. values different from $\tau$ violate our assumption. The distances up to $\tau < 70$ are stable. Starting around $\tau = 100$, the distances get unstable with large standard errors. Figure \@ref(fig:critical-points) represents points from the stable and unstable range.
+In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments)), we model spillover with a bimodal distribution. The parameter $\tau$ is the location of the second mode. If $\tau = 70$, then our assumption (A3) is correct. values different from $\tau$ violate our assumption. The distances up to $\tau < 70$ are stable. Starting around $\tau = 100$, the distances get unstable with large standard errors. 
 
 ### Bimodal Real Cells (A3)
 
-In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. Here we again explore the robustness of our method against a violation of the third assumption (A3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode. Figure \@ref(fig:critical-points) represents points two points in the tail with smaller distances and the global maximum.
+In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. Here we again explore the robustness of our method against a violation of the third assumption (A3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode.
 
 ## Real Data
 
@@ -545,11 +545,15 @@ We estimate bead and real distributions using their empirical distributions from
 
 We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg.
 
-\newpage
+# References
 
-# Supplementary Material {-}
+<div id="refs"></div>
 
-## Invariant Spillover Distributions (A1) {-}
+# (APPENDIX) Supplementary Material {-}
+
+# Generative Models of Simulated Datasets
+
+## Invariant Spillover Distributions (A1)
 
 The generative model for real cells $Y$ of this experiment is,
 $$
@@ -562,53 +566,7 @@ Y_\text{r} & = (1-S) Z + S Z'             & \qquad \text{(observed real cells)}.
 $$
 The generative model for beads is an independent copy of the unshifted $Z'$ at $\tau = 0$.
 
-## No Hidden Confounding (A2) {-}
-
-The generative model for real cells $Y$ of this experiment is,
-$$
-\begin{aligned}
-S   & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with hidden probability } \tau \text{)} \\
-Z   & \sim \text{Poisson}(100)                             & \qquad \text{(true signal)} \\
-Z'  & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
-Z_h & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)} \\
-Y   & = I(S=1) Z + I(S = 2) Z' + I(S = 3) Z_h              & \qquad \text{(observed real cells)}.
-\end{aligned}
-$$
-The generative model for beads is an independent copy of $Z'$.
-
-## Biomodal Beads (A3) {-}
-
-The generative model for real cells $Y$ of this experiment is,
-$$
-\begin{aligned}
-M   & \sim \text{Bernoulli}(0.5)       & \qquad \text{(pick mode)} \\
-Z_1 & \sim \text{Poisson}(70)          & \qquad \text{(first mode of spillover)} \\
-Z_2 & \sim \text{Poisson}(\tau)        & \qquad \text{(second mode with mean } \tau \text{ of spillover } \\
-Z'  & = (1-M) Z_1 + M Z_2              & \qquad \text{(spillover)} \\
-S   & \sim \text{Bernoulli}(0.1)       & \qquad \text{(pick spillover)} \\
-Z   & \sim \text{Poisson}(100)         & \qquad \text{(true signal)} \\
-Y   & = (1-S) Z + S Z'                 & \qquad \text{(observed real cells)}.
-\end{aligned}
-$$
-The generative model for beads is an independent copy of $Z'$.
-
-## Bimodal Real Cells (A3) {-}
-
-The generative model for real cells $Y$ of this experiment is,
-$$
-\begin{aligned}
-S   & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
-Z'  & \sim \text{Poisson}(70)    & \qquad \text{(spillover)} \\
-M   & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
-Z_1 & \sim \text{Poisson}(100)   & \qquad \text{(first mode of true signal)} \\
-Z_2 & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode with mean } \tau \text{ of true signal)} \\
-Z   & = (1-M) Z_1 + M Z_2        & \qquad \text{(true signal)} \\
-Y   & = (1-S) Z + S Z'           & \qquad \text{(observed real cells)}.
-\end{aligned}
-$$
-The generative model for beads is an independent copy of $Z'$.
-
-```{r critical-points, fig.height = 10, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment. First row tests assumption (A1). Second row tests assumption (A2). Third and fourth rows tests assumption (A3)."}
+```{r critical-points-a1, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
 # --------- helper functions ---------
 generate_critical <- function(fn, parameter) {
   
@@ -638,51 +596,95 @@ generate_critical <- function(fn, parameter) {
 
 }
 
-# --------- panel (a) ---------
-
 tb_a1 <- lapply(c(-60, -30, 0), 
                 function(i) generate_critical(generate_data_a1, i)
                 ) %>% bind_rows()
-p_a1 <- ggplot(tb_a1, aes(y, probability, color = type)) + 
+ggplot(tb_a1, aes(y, probability, color = type)) + 
   geom_line() +
   facet_wrap(~parameter, nrow = 1, scales = "free_x") +
   ggtitle("Invariant Spillover Distributions (A1)")
+```
 
-# --------- panel (b) ---------
+Figure \@ref(fig:critical-points-a1) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
 
+## No Hidden Confounding (A2)
+
+The generative model for real cells $Y$ of this experiment is,
+$$
+\begin{aligned}
+S   & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with hidden probability } \tau \text{)} \\
+Z   & \sim \text{Poisson}(100)                             & \qquad \text{(true signal)} \\
+Z'  & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
+Z_h & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)} \\
+Y   & = I(S=1) Z + I(S = 2) Z' + I(S = 3) Z_h              & \qquad \text{(observed real cells)}.
+\end{aligned}
+$$
+The generative model for beads is an independent copy of $Z'$.
+
+```{r critical-points-a2, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
 tb_a2 <- lapply(c(0, 0.5, 0.6), 
                 function(i) generate_critical(generate_data_a2, i)
                 ) %>% bind_rows()
-p_a2 <- ggplot(tb_a2, aes(y, probability, color = type)) + 
+ggplot(tb_a2, aes(y, probability, color = type)) + 
   geom_line() +
   facet_wrap(~parameter, nrow = 1, scales = "free_x") +
   ggtitle("No Hidden Confounding (A2)")
+```
 
-# --------- panel (c) ---------
+Figure \@ref(fig:critical-points-a2) represents the two end points of the range where distances are stable, and the point $\tau = 0.6$ illustrates the distribution outside of this range.
 
+## Biomodal Beads (A3)
+
+The generative model for real cells $Y$ of this experiment is,
+$$
+\begin{aligned}
+M   & \sim \text{Bernoulli}(0.5)       & \qquad \text{(pick mode)} \\
+Z_1 & \sim \text{Poisson}(70)          & \qquad \text{(first mode of spillover)} \\
+Z_2 & \sim \text{Poisson}(\tau)        & \qquad \text{(second mode with mean } \tau \text{ of spillover } \\
+Z'  & = (1-M) Z_1 + M Z_2              & \qquad \text{(spillover)} \\
+S   & \sim \text{Bernoulli}(0.1)       & \qquad \text{(pick spillover)} \\
+Z   & \sim \text{Poisson}(100)         & \qquad \text{(true signal)} \\
+Y   & = (1-S) Z + S Z'                 & \qquad \text{(observed real cells)}.
+\end{aligned}
+$$
+The generative model for beads is an independent copy of $Z'$.
+
+```{r critical-points-a3-bead, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
 tb_a3_bead <- lapply(c(70, 100, 130), 
                 function(i) generate_critical(generate_data_a3_bead, i)
                 ) %>% bind_rows()
-p_a3_bead <- ggplot(tb_a3_bead, aes(y, probability, color = type)) + 
+ggplot(tb_a3_bead, aes(y, probability, color = type)) + 
   geom_line() +
   facet_wrap(~parameter, nrow = 1, scales = "free_x") +
   ggtitle("Bimodal Beads (A3)")
+```
 
-# --------- panel (d) ---------
+Figure \@ref(fig:critical-points-a3-bead) represents points from the stable and unstable range.
 
+## Bimodal Real Cells (A3)
+
+The generative model for real cells $Y$ of this experiment is,
+$$
+\begin{aligned}
+S   & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
+Z'  & \sim \text{Poisson}(70)    & \qquad \text{(spillover)} \\
+M   & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
+Z_1 & \sim \text{Poisson}(100)   & \qquad \text{(first mode of true signal)} \\
+Z_2 & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode with mean } \tau \text{ of true signal)} \\
+Z   & = (1-M) Z_1 + M Z_2        & \qquad \text{(true signal)} \\
+Y   & = (1-S) Z + S Z'           & \qquad \text{(observed real cells)}.
+\end{aligned}
+$$
+The generative model for beads is an independent copy of $Z'$.
+
+```{r critical-points-a3-real, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
 tb_a3_real <- lapply(c(50, 70, 130), 
                 function(i) generate_critical(generate_data_a3_real, i)
                 ) %>% bind_rows()
-p_a3_real <- ggplot(tb_a3_real, aes(y, probability, color = type)) + 
+ggplot(tb_a3_real, aes(y, probability, color = type)) + 
   geom_line() +
   facet_wrap(~parameter, nrow = 1, scales = "free_x") +
   ggtitle("Bimodal Real Cells (A3)")
-
-# --------- combined plot ---------
-
-plot_grid(p_a1, p_a2, p_a3_bead, p_a3_real, ncol = 1)
 ```
 
-\newpage
-
-# References {.allowframebreaks}
+Figure \@ref(fig:critical-points-a3-real) represents points two points in the tail with smaller distances and the global maximum.
