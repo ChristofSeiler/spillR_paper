@@ -9,7 +9,7 @@ output:
     toc: false
 bibliography: spillr_paper.bib
 abstract: |
-  Channel interference in mass cytometry can cause spillover and may result in overcounting of protein markers. @catalyst introduced an experimental and computational procedure to estimate and compensate for spillover. Their R package `CATALYST` implements this using non-negative least squares. They assume spillover can be approximated by a spillover matrix that encodes proportions. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in R package `spillR` using an EM algorithm and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates low counts more heavily. This property is favorable when high quality bead experiments are available.
+  Channel interference in mass cytometry can cause spillover and may result in overcounting of protein markers. @catalyst introduced an experimental and computational procedure to estimate and compensate for spillover. Their R package `CATALYST` implements this using non-negative least squares. They assume spillover can be approximated by a spillover matrix that encodes proportions of true counts over total observed counts. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in an R package `spillR` using expectation-maximization and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates low counts regions accurately and avoids overcompensating high counts regions. Intuitively, this makes sense because we use only localized information from beads to estimate compensation. This is in contrast to least squares methods that use proportions estimated over a large signal range. Our R package `spillR` is available at https://github.com/marcoguazzini/spillR.
 ---
 
 ```{r setup, include=FALSE}
@@ -39,9 +39,10 @@ set.seed(23)
 
 # Introduction
 
-Mass cytometry makes it possible to count a large number of proteins simultaneously on individual cells [@bandura2009mass; @bendall2011single]. One advantage with respect to flow cytometry [@sp-c; @novo2013generalized] is the reduced risk of spillover, that is, measurements from one channel overlap with those of another. Reducing spillover by careful design of experiment is possible [@takahashi2017mass], but a purely experimental approach might not be sufficient or efficient [@lun2017influence]. Reducing spillover affects downstream analyses such as differential testing [@diffcyt; @seiler2021cytoglmm] or dimensionality reduction [@scater].
+Mass cytometry makes it possible to count a large number of proteins simultaneously on individual cells [@bandura2009mass; @bendall2011single]. One advantage over flow cytometry [@sp-c; @novo2013generalized] is the reduced risk of spillover, that is, measurements from one channel overlap less with those of another. Spillover affects downstream analyses such as differential testing [@diffcyt; @seiler2021cytoglmm] or dimensionality reduction [@scater]. Reducing spillover by careful design of experiment is possible [@takahashi2017mass], but a purely experimental approach may not be sufficient or efficient [@lun2017influence].
 
-@catalyst proposed a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single antibody. @miao2021ab attempted to solve spillover in a purely statistical manner by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous solutions rely on an estimate for the spillover matrix using non-negative matrix factorization. We avoid this step and directly describe the spillover channels and the channel with the true signal using a mixture of nonparametric distributions. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we trade in one assumption for another: we transfer the spillover distribution to the real experiment instead of using the spillover proportion encoded in the spillover matrix.
+@catalyst proposed a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single antibody.
+Then they calculate the number of antibodies with the target staining over the total number of antibodies in that experiment. We will refer to this ratio as the spillover proportion. @miao2021ab attempted to solve spillover in a purely statistical manner by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous solutions rely on an estimate for the spillover matrix using non-negative matrix factorization. We avoid this step and directly describe the spillover channels and the channel with the true signal using a mixture of nonparametric distributions. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we transfer the spillover distribution to the real experiment instead of using the spillover proportion encoded in the spillover matrix.
 
 ```{r intro-example, fig.height=3, fig.width=6, out.width="70%", fig.align="center", fig.cap="Two-dimensional histograms with the number of cells that fall into each hexagon. The blue shaded rectangle is an estimate of spillover from CD4 (Nd145Di) into CD36 (Nd144Di). Our method will remove counts that fall inside this rectangle.", echo=FALSE, warning=FALSE, message=FALSE}
 # constants
@@ -96,9 +97,9 @@ ggplot(combo, aes(x = tfm(Nd144Di), y = tfm(Nd145Di))) +
   ylab("CD4 (Nd145Di)")
 ```
 
-In order to illustrate the main idea of our work, we consider a simple example with only two markers (Figure \@ref(fig:intro-example)). The left panel depicts an experiment using beads stained only for CD36 (Nd144Di). In a perfect world without spillover, all the values of ND145Di would be concentrated at zero. But as we can see there are many bins that contain non-zero counts in the positive direction along the vertical axis. The blue shaded area provides a reasonable estimate for spillover. The right panel shows an experiment conducted with real cells. Here, we expect non-zero counts on both axis due to spillover in addition to the true biological counts. While the precise amount of spillover is unknown, we can estimate it using the bead experiment. One approach would be to simply carry over the blue shaded area to the real experiment. We formulate this approach using the language of finite mixtures. The blue shaded area plays the role of the spillover component and the non-shaded area is the component representing the true marker signal. Our statistical objective is to separate the true signal from the spillover in this mixture. 
+To illustrate the main idea of our work, we consider an example with only two markers (Figure \@ref(fig:intro-example)). The left panel depicts an experiment using beads stained only for CD36 (Nd144Di). Without any spillover, all the values of CD4 (ND145Di) would be concentrated at zero. Yet, there are many bins that contain positive CD4 (ND145Di) counts. The blue shaded area provides a reasonable estimate for spillover. The right panel shows an experiment conducted with real cells. Here, we expect non-zero counts on both axes due to spillover in addition to the true biological counts. While the precise amount of spillover is unknown, we can estimate it using the bead experiment. One approach could be to carry over the blue shaded area to the real experiment. We formulate this approach using the language of finite mixtures. The blue shaded area plays the role of the spillover component and the non-shaded area is the component representing the true marker signal. Our objective is to separate the true signal from the spillover in this mixture. 
 
-In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm and logistic regression, and implemented in our new R package `spillR`. In Section \@ref(results), we conduct experiments on simulated and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) relates our findings to `CATALYST` and gives recommendation when to use `spillR`.
+In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm and logistic regression, and implemented in our new R package `spillR` (https://github.com/marcoguazzini/spillR). In Section \@ref(results), we conduct experiments on simulated and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) relates our findings to `CATALYST` and gives recommendation when to use `spillR`.
 
 # Methods
 
@@ -226,7 +227,7 @@ We obtain the last equation by solving the logistic regression model for the spi
 
 # Results
 
-We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its breaking points. Then, we compare `spillR` to the method implemented in `CATALYST` based on non-negative least squares on real data from the `CATALYST` package on Bioconductor.
+We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its breaking points. Then, we compare `spillR` to the method implemented in `CATALYST` based on non-negative least squares on real data from the `CATALYST` package on Bioconductor. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd` on https://github.com/ChristofSeiler/spillR_paper.
 
 ## Simulated Data
 
@@ -498,68 +499,17 @@ plot_grid(p_a1, p_a2, p_a3_bead, p_a3_real, ncol = 1)
 
 In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption (A1). The distances start around $8$ when $\tau = -60$. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -10$. Figure \@ref(fig:critical-points) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
 
-The generative model for real cells $Y$ of this experiment is,
-$$
-\begin{aligned}
-S          & \sim \text{Bernoulli}(0.1)   & \qquad \text{(pick spillover)} \\
-Z          & \sim \text{Poisson}(100)     & \qquad \text{(true signal)} \\
-Z'         & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover with shift } \tau \text{)} \\
-Y_\text{r} & = (1-S) Z + S Z'             & \qquad \text{(observed real cells)}.
-\end{aligned}
-$$
-The generative model for beads is an independent copy of the unshifted $Z'$ at $\tau = 0$.
-
 ### No Hidden Confounding (A2)
 
 In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption (A2). One way to think about this that the hidden spillover is a form of hidden confounding. If $\tau = 0$, then assumption (A2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it start to increase quickly. Figure \@ref(fig:critical-points) represents the two end points of the range where distances are stable, and the point $\tau = 0.6$ illustrates the distribution outside of this range.
-
-The generative model for real cells $Y$ of this experiment is,
-$$
-\begin{aligned}
-S   & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with hidden probability } \tau \text{)} \\
-Z   & \sim \text{Poisson}(100)                             & \qquad \text{(true signal)} \\
-Z'  & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
-Z_h & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)} \\
-Y   & = I(S=1) Z + I(S = 2) Z' + I(S = 3) Z_h              & \qquad \text{(observed real cells)}.
-\end{aligned}
-$$
-The generative model for beads is an independent copy of $Z'$.
 
 ### Bimodal Beads (A3)
 
 In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments)), we model spillover with a bimodal distribution. The parameter $\tau$ is the location of the second mode. If $\tau = 70$, then our assumption (A3) is correct. values different from $\tau$ violate our assumption. The distances up to $\tau < 70$ are stable. Starting around $\tau = 100$, the distances get unstable with large standard errors. Figure \@ref(fig:critical-points) represents points from the stable and unstable range.
 
-The generative model for real cells $Y$ of this experiment is,
-$$
-\begin{aligned}
-M   & \sim \text{Bernoulli}(0.5)       & \qquad \text{(pick mode)} \\
-Z_1 & \sim \text{Poisson}(70)          & \qquad \text{(first mode of spillover)} \\
-Z_2 & \sim \text{Poisson}(\tau)        & \qquad \text{(second mode with mean } \tau \text{ of spillover } \\
-Z'  & = (1-M) Z_1 + M Z_2              & \qquad \text{(spillover)} \\
-S   & \sim \text{Bernoulli}(0.1)       & \qquad \text{(pick spillover)} \\
-Z   & \sim \text{Poisson}(100)         & \qquad \text{(true signal)} \\
-Y   & = (1-S) Z + S Z'                 & \qquad \text{(observed real cells)}.
-\end{aligned}
-$$
-The generative model for beads is an independent copy of $Z'$.
-
 ### Bimodal Real Cells (A3)
 
 In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. Here we again explore the robustness of our method against a violation of the third assumption (A3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode. Figure \@ref(fig:critical-points) represents points two points in the tail with smaller distances and the global maximum.
-
-The generative model for real cells $Y$ of this experiment is,
-$$
-\begin{aligned}
-S   & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
-Z'  & \sim \text{Poisson}(70)    & \qquad \text{(spillover)} \\
-M   & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
-Z_1 & \sim \text{Poisson}(100)   & \qquad \text{(first mode of true signal)} \\
-Z_2 & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode with mean } \tau \text{ of true signal)} \\
-Z   & = (1-M) Z_1 + M Z_2        & \qquad \text{(true signal)} \\
-Y   & = (1-S) Z + S Z'           & \qquad \text{(observed real cells)}.
-\end{aligned}
-$$
-The generative model for beads is an independent copy of $Z'$.
 
 ## Real Data
 
@@ -664,18 +614,69 @@ Comparisons between methods on real data are also challenging. Unfortunately, we
 
 We estimate bead and real distributions using their empirical distributions from the bead experiment. From histograms, we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different denoising methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distributions. All methods were unstable. They worked on some markers, but failed on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
 
-# Reproducibility
-
-Our R package `spillR` is available on GitHub: 
-
-* https://github.com/marcoguazzini/spillR
-
-All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd` on GitHub: 
-
-* https://github.com/ChristofSeiler/spillR_paper
-
-# Acknowledgments
+# Acknowledgments {-}
 
 We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg.
+
+# Supplementary Material {-}
+
+## Invariant Spillover Distributions (A1) {-}
+
+The generative model for real cells $Y$ of this experiment is,
+$$
+\begin{aligned}
+S          & \sim \text{Bernoulli}(0.1)   & \qquad \text{(pick spillover)} \\
+Z          & \sim \text{Poisson}(100)     & \qquad \text{(true signal)} \\
+Z'         & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover with shift } \tau \text{)} \\
+Y_\text{r} & = (1-S) Z + S Z'             & \qquad \text{(observed real cells)}.
+\end{aligned}
+$$
+The generative model for beads is an independent copy of the unshifted $Z'$ at $\tau = 0$.
+
+## No Hidden Confounding (A2) {-}
+
+The generative model for real cells $Y$ of this experiment is,
+$$
+\begin{aligned}
+S   & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with hidden probability } \tau \text{)} \\
+Z   & \sim \text{Poisson}(100)                             & \qquad \text{(true signal)} \\
+Z'  & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
+Z_h & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)} \\
+Y   & = I(S=1) Z + I(S = 2) Z' + I(S = 3) Z_h              & \qquad \text{(observed real cells)}.
+\end{aligned}
+$$
+The generative model for beads is an independent copy of $Z'$.
+
+## Biomodal Beads (A3) {-}
+
+The generative model for real cells $Y$ of this experiment is,
+$$
+\begin{aligned}
+M   & \sim \text{Bernoulli}(0.5)       & \qquad \text{(pick mode)} \\
+Z_1 & \sim \text{Poisson}(70)          & \qquad \text{(first mode of spillover)} \\
+Z_2 & \sim \text{Poisson}(\tau)        & \qquad \text{(second mode with mean } \tau \text{ of spillover } \\
+Z'  & = (1-M) Z_1 + M Z_2              & \qquad \text{(spillover)} \\
+S   & \sim \text{Bernoulli}(0.1)       & \qquad \text{(pick spillover)} \\
+Z   & \sim \text{Poisson}(100)         & \qquad \text{(true signal)} \\
+Y   & = (1-S) Z + S Z'                 & \qquad \text{(observed real cells)}.
+\end{aligned}
+$$
+The generative model for beads is an independent copy of $Z'$.
+
+## Bimodal Real Cells (A3) {-}
+
+The generative model for real cells $Y$ of this experiment is,
+$$
+\begin{aligned}
+S   & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
+Z'  & \sim \text{Poisson}(70)    & \qquad \text{(spillover)} \\
+M   & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
+Z_1 & \sim \text{Poisson}(100)   & \qquad \text{(first mode of true signal)} \\
+Z_2 & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode with mean } \tau \text{ of true signal)} \\
+Z   & = (1-M) Z_1 + M Z_2        & \qquad \text{(true signal)} \\
+Y   & = (1-S) Z + S Z'           & \qquad \text{(observed real cells)}.
+\end{aligned}
+$$
+The generative model for beads is an independent copy of $Z'$.
 
 # References {.allowframebreaks}
