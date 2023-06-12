@@ -29,11 +29,12 @@ library(magrittr)
 library(readr)
 library(tidyr)
 library(cowplot)
-library(waddR)
+library(transport)
 library(RColorBrewer)
 source("compensate.R")
 source("compCytof.R")
 source("plotDiagnostics.R")
+set.seed(23)
 ```
 
 # Introduction
@@ -251,7 +252,7 @@ compute_wasserstein <- function(ftn, parameter) {
   y_comp  <- comp$tb_compensate$corrected
   #y_comp[y_comp == 0] <- NA
   y_truth <- data$Z_target
-  wasserstein_metric(y_comp[!is.na(y_comp)], y_truth, p = 1)
+  transport::wasserstein1d(y_comp[!is.na(y_comp)], y_truth)
 }
 
 plot_results <- function(tb_experiment, group_var) {
