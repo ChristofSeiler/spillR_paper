@@ -9,7 +9,7 @@ output:
     toc: false
 bibliography: spillr_paper.bib
 abstract: |
-  Channel interference in mass cytometry can cause spillover and may result in overcounting of protein markers. @catalyst introduced an experimental and computational procedure to estimate and compensate for spillover. Their R package `CATALYST` implements this using non-negative least squares. They assume spillover can be approximated by a spillover matrix that encodes proportions of true counts over total observed counts. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in an R package `spillR` using expectation-maximization and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates low counts regions accurately and avoids overcompensating high counts regions. Intuitively, this makes sense because we use only localized information from beads to estimate compensation. This is in contrast to least squares methods that use proportions estimated over a large signal range. Our R package `spillR` is available at https://github.com/marcoguazzini/spillR.
+  Channel interference in mass cytometry can cause spillover and may result in overcounting of protein markers. @catalyst introduced an experimental and computational procedure to estimate and compensate for spillover. Their R package `CATALYST` implements this using non-negative least squares. They assume spillover can be approximated by a spillover matrix that encodes proportions of true counts over total observed counts. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in an R package `spillR` using expectation-maximization and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates low counts regions accurately and avoids overcompensating high counts regions. Intuitively, this makes sense because we use only localized information from beads to estimate compensation. This is in contrast to least squares methods that use proportions estimated over a large signal range.
 ---
 
 ```{r setup, include=FALSE}
@@ -227,7 +227,7 @@ We obtain the last equation by solving the logistic regression model for the spi
 
 # Results
 
-We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its breaking points. Then, we compare `spillR` to the method implemented in `CATALYST` based on non-negative least squares on real data from the `CATALYST` package on Bioconductor. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd` on https://github.com/ChristofSeiler/spillR_paper.
+We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its breaking points. Then, we compare `spillR` to the method implemented in `CATALYST` based on non-negative least squares on real data from the `CATALYST` package on Bioconductor. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd` (https://github.com/ChristofSeiler/spillR_paper).
 
 ## Simulated Data
 
@@ -422,81 +422,6 @@ Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimen
 
 ### Invariant Spillover Distributions (A1)
 
-```{r critical-points, fig.height = 10, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment. First row tests assumption (A1). Second row tests assumption (A2). Third and fourth rows tests assumption (A3)."}
-# --------- helper functions ---------
-generate_critical <- function(fn, parameter) {
-  
-  # generate data and run compensation algorithm
-  data <- fn(parameter)
-  comp <- compensate(data$df_real, 
-                     data$df_bead, 
-                     target_marker = "Y", 
-                     spillover_markers = "Z")
-  
-  # prepare data for plotting
-  tb_target <- tibble(y = data$Z_target) %>% 
-    count(y) %>% 
-    mutate(probability = n/max(n)) %>% 
-    mutate(type = "signal (Z)") %>% 
-    dplyr::select(-n)
-  tb_spill <- tibble(y = data$Z_spill) %>% 
-    count(y) %>% 
-    mutate(probability = n/max(n)) %>% 
-    mutate(type = "spillover (Z')") %>% 
-    dplyr::select(-n)
-  tb_prob <- comp$tb_spill_prob %>% 
-    dplyr::select(y = Y, probability = spill_prob_smooth) %>% 
-    mutate(type = "P(spillover)")
-  bind_rows(tb_target, tb_spill, tb_prob) %>% 
-    mutate(parameter = parameter)
-
-}
-
-# --------- panel (a) ---------
-
-tb_a1 <- lapply(c(-60, -30, 0), 
-                function(i) generate_critical(generate_data_a1, i)
-                ) %>% bind_rows()
-p_a1 <- ggplot(tb_a1, aes(y, probability, color = type)) + 
-  geom_line() +
-  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("Invariant Spillover Distributions (A1)")
-
-# --------- panel (b) ---------
-
-tb_a2 <- lapply(c(0, 0.5, 0.6), 
-                function(i) generate_critical(generate_data_a2, i)
-                ) %>% bind_rows()
-p_a2 <- ggplot(tb_a2, aes(y, probability, color = type)) + 
-  geom_line() +
-  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("No Hidden Confounding (A2)")
-
-# --------- panel (c) ---------
-
-tb_a3_bead <- lapply(c(70, 100, 130), 
-                function(i) generate_critical(generate_data_a3_bead, i)
-                ) %>% bind_rows()
-p_a3_bead <- ggplot(tb_a3_bead, aes(y, probability, color = type)) + 
-  geom_line() +
-  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("Bimodal Beads (A3)")
-
-# --------- panel (d) ---------
-
-tb_a3_real <- lapply(c(50, 70, 130), 
-                function(i) generate_critical(generate_data_a3_real, i)
-                ) %>% bind_rows()
-p_a3_real <- ggplot(tb_a3_real, aes(y, probability, color = type)) + 
-  geom_line() +
-  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("Bimodal Real Cells (A3)")
-
-# --------- combined plot ---------
-
-plot_grid(p_a1, p_a2, p_a3_bead, p_a3_real, ncol = 1)
-```
-
 In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption (A1). The distances start around $8$ when $\tau = -60$. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -10$. Figure \@ref(fig:critical-points) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
 
 ### No Hidden Confounding (A2)
@@ -618,6 +543,8 @@ We estimate bead and real distributions using their empirical distributions from
 
 We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg.
 
+\newpage
+
 # Supplementary Material {-}
 
 ## Invariant Spillover Distributions (A1) {-}
@@ -678,5 +605,82 @@ Y   & = (1-S) Z + S Z'           & \qquad \text{(observed real cells)}.
 \end{aligned}
 $$
 The generative model for beads is an independent copy of $Z'$.
+
+```{r critical-points, fig.height = 10, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment. First row tests assumption (A1). Second row tests assumption (A2). Third and fourth rows tests assumption (A3)."}
+# --------- helper functions ---------
+generate_critical <- function(fn, parameter) {
+  
+  # generate data and run compensation algorithm
+  data <- fn(parameter)
+  comp <- compensate(data$df_real, 
+                     data$df_bead, 
+                     target_marker = "Y", 
+                     spillover_markers = "Z")
+  
+  # prepare data for plotting
+  tb_target <- tibble(y = data$Z_target) %>% 
+    count(y) %>% 
+    mutate(probability = n/max(n)) %>% 
+    mutate(type = "signal (Z)") %>% 
+    dplyr::select(-n)
+  tb_spill <- tibble(y = data$Z_spill) %>% 
+    count(y) %>% 
+    mutate(probability = n/max(n)) %>% 
+    mutate(type = "spillover (Z')") %>% 
+    dplyr::select(-n)
+  tb_prob <- comp$tb_spill_prob %>% 
+    dplyr::select(y = Y, probability = spill_prob_smooth) %>% 
+    mutate(type = "P(spillover)")
+  bind_rows(tb_target, tb_spill, tb_prob) %>% 
+    mutate(parameter = parameter)
+
+}
+
+# --------- panel (a) ---------
+
+tb_a1 <- lapply(c(-60, -30, 0), 
+                function(i) generate_critical(generate_data_a1, i)
+                ) %>% bind_rows()
+p_a1 <- ggplot(tb_a1, aes(y, probability, color = type)) + 
+  geom_line() +
+  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
+  ggtitle("Invariant Spillover Distributions (A1)")
+
+# --------- panel (b) ---------
+
+tb_a2 <- lapply(c(0, 0.5, 0.6), 
+                function(i) generate_critical(generate_data_a2, i)
+                ) %>% bind_rows()
+p_a2 <- ggplot(tb_a2, aes(y, probability, color = type)) + 
+  geom_line() +
+  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
+  ggtitle("No Hidden Confounding (A2)")
+
+# --------- panel (c) ---------
+
+tb_a3_bead <- lapply(c(70, 100, 130), 
+                function(i) generate_critical(generate_data_a3_bead, i)
+                ) %>% bind_rows()
+p_a3_bead <- ggplot(tb_a3_bead, aes(y, probability, color = type)) + 
+  geom_line() +
+  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
+  ggtitle("Bimodal Beads (A3)")
+
+# --------- panel (d) ---------
+
+tb_a3_real <- lapply(c(50, 70, 130), 
+                function(i) generate_critical(generate_data_a3_real, i)
+                ) %>% bind_rows()
+p_a3_real <- ggplot(tb_a3_real, aes(y, probability, color = type)) + 
+  geom_line() +
+  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
+  ggtitle("Bimodal Real Cells (A3)")
+
+# --------- combined plot ---------
+
+plot_grid(p_a1, p_a2, p_a3_bead, p_a3_real, ncol = 1)
+```
+
+\newpage
 
 # References {.allowframebreaks}
