@@ -1,6 +1,6 @@
 ---
 title: "`spillR`: Spillover Compensation in Mass Cytometry Data"
-author: "Marco Guazzini$^{1}$, Alexander G Reisach$^{3}$, Sebastian Weichwald$^{4}$, and Christof Seiler$^{1,2}$"
+author: "Marco Guazzini$^{1}$, Alexander G. Reisach$^{3}$, Sebastian Weichwald$^{4}$, and Christof Seiler$^{1,2}$"
 date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n $^3$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^4$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n \\\n `r gsub(' 0', ' ', format(Sys.time(), '%B %d, %Y'))`"
 output:
   bookdown::pdf_document2: 
@@ -164,13 +164,13 @@ The distribution of $Z_{j \to i}$ that spills over into the true marker $i$ is t
 
 * <div id='assumption2'>(A2) Spillover counts and true counts are the only contributors to the total measured counts.</div>
 
-With this assumption, we can calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that a cell with count $y$ belongs to marker $j$,
+With this assumption, we can calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from marker $j$,
 $$
 P(\text{spillover} \, | \, Y_i = y) = \frac{\sum_{j \ne i} \pi_{j \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)} = 1 - \frac{\pi_{i \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)}.
 $$
 
 
-To parse this calculation, it is helpful to remind ourselves that in mixture models the probability $\pi_{j \to i}$ is the prior probability, $P(Z_{j \to i} = y)$ is the conditional probability of a marker count given the marker belongs to that component, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
+To parse this calculation, recall that in mixture models the probability $\pi_{j \to i}$ is the prior probability, $P(Z_{j \to i} = y)$ is the conditional probability of obtaining count $y$ given the mixture component is marker $j$ spilling over into marker $i$, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
 
 * <div id='assumption3'>(A3) Spillover probability curves are logistic functions.</div>
 
