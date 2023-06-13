@@ -174,7 +174,7 @@ To parse this calculation, it is helpful to remind ourselves that in mixture mod
 
 * <div id='assumption3'>(A3) Spillover probability curves are logistic functions.</div>
 
-The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Larger $y$ will not have any spillover and only have true signal. In contrast, smaller $y$ are more likely a result of another marker spilling over. Although it biologically plausible that spillover happens at higher counts, this assumption makes our statistical procedure more stable. We chose the logistic function as it is the standard option for logistic regression.
+The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Larger $y$ will not have any spillover and only have true signal. In contrast, smaller $y$ are more likely a result of another marker spilling over. Although it is biologically possible that spillover happens at higher counts, this assumption makes our statistical procedure more stable. We chose the logistic function as it is the standard option for logistic regression.
 
 ## Estimation of Spillover Probability
 
@@ -700,7 +700,7 @@ Figure \@ref(fig:critical-points-a3-real) represents points two points in the ta
 
 Dataset from original `CATALYST` paper [@catalyst].
 
-```{r method-example-cd68-cd45, fig.height=6, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The dashed curve represents the estimated spillover probability with our method.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r method-example-cd68-cd45, fig.height=6, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The black dashed curve in the plot on the right represents the spillover probability estimated by our method.", echo=FALSE, warning=FALSE, message=FALSE}
 p_list <- plotDiagnostics(sce_spillr, "Eu153Di")
 p1 <- plot_grid(
     p_list[[1]] + xlab("CD68 (Eu153Di)"),
