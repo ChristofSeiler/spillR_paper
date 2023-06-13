@@ -1,6 +1,6 @@
 ---
 title: "`spillR`: Spillover Compensation in Mass Cytometry Data"
-author: "Marco Guazzini$^{1}$, Alexander Reisach$^{3}$, Sebastian Weichwald$^{4}$, and Christof Seiler$^{1,2}$"
+author: "Marco Guazzini$^{1}$, Alexander G Reisach$^{3}$, Sebastian Weichwald$^{4}$, and Christof Seiler$^{1,2}$"
 date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n $^3$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^4$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n \\\n `r gsub(' 0', ' ', format(Sys.time(), '%B %d, %Y'))`"
 output:
   bookdown::pdf_document2: 
@@ -166,11 +166,11 @@ The distribution of $Z_{j \to i}$ that spills over into the true marker $i$ is t
 
 With this assumption, we can calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that a cell with count $y$ belongs to marker $j$,
 $$
-P(\text{cell is spillover} \, | \, Y_i = y) = \frac{\sum_{j \ne i} \pi_{j \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)} = 1 - \frac{\pi_{i \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)}.
+P(\text{spillover} \, | \, Y_i = y) = \frac{\sum_{j \ne i} \pi_{j \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)} = 1 - \frac{\pi_{i \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)}.
 $$
 
 
-To parse this calculation, it is helpful to remind ourselves that in mixture models the probability $\pi_{j \to i}$ is the prior probability, $P(Z_{j \to i} = y)$ is the conditional probability of a marker count given the cell belongs to that component, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
+To parse this calculation, it is helpful to remind ourselves that in mixture models the probability $\pi_{j \to i}$ is the prior probability, $P(Z_{j \to i} = y)$ is the conditional probability of a marker count given the marker belongs to that component, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
 
 * <div id='assumption3'>(A3) Spillover probability curves are logistic functions.</div>
 
@@ -188,15 +188,15 @@ P^{(t)}(Z_{j \to i} = y) = y_j^{(t)}/N_j^{(t)}.
 $$
 The data for spillover markers comes from the bead experiments. The data for the target marker comes from the experiment with real cells. We set the mixture probability vector to the discrete uniform, $\pi_{1 \to i}^{(t)}, \dots, \pi_{J \to i}^{(t)} = 1/J$. The superscript $t$ indicates that this is the $t$th iteration. For the next iteration $t + 1$, we update the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
 
-* E-step: We calculate the probability of a cell with count $y$ belonging to marker $j$ from the current estimate of the marker distributions and mixture probability vector:
+* E-step: We calculate the probability of a marker with count $y$ belonging to marker $j$ from the current estimate of the marker distributions and mixture probability vector:
 $$
-P(\text{cell belongs to marker } j \, | \, Y_j = y) = \frac{\pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y)}.
+P(\text{count belongs to marker } j \, | \, Y_j = y) = \frac{\pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y)}.
 $$
 * M-step: First, we update the mixture probability vector, 
 $$
-\pi_{j \to i}^{(t+1)} = \frac{1}{N_j^{(t)}} \sum_{k = 1}^{N_j^{(t)}} P(\text{cell belongs to marker } j \, | \, Y_j = y),
+\pi_{j \to i}^{(t+1)} = \frac{1}{N_j^{(t)}} \sum_{k = 1}^{N_j^{(t)}} P(\text{count belongs to marker } j \, | \, Y_j = y),
 $$
-then, we assign cells to the marker with the largest posterior probability, and re-estimate the distribution for the target marker, $Z_i$, with the newly assigned cells,
+then, we assign counts to the marker with the largest posterior probability, and re-estimate the distribution for the target marker, $Z_i$, with the newly assigned counts,
 $$
 P^{(t+1)}(Z_{i \to i} = y) = y_i^{(t+1)}/N_i^{(t+1)}.
 $$
@@ -209,13 +209,13 @@ This step is a post-processing step. Until now, the procedure is fully nonparame
 
 The logistic regression model is,
 $$
-\log\left(\frac{P(\text{cell is spillover} \, | \, Y_i = y)}{1-P(\text{cell is spillover} \, | \, Y_i = y)}\right) = \beta_0 + \beta_1 y,
+\log\left(\frac{P(\text{spillover} \, | \, Y_i = y)}{1-P(\text{spillover} \, | \, Y_i = y)}\right) = \beta_0 + \beta_1 y,
 $$
 with $y$ transformed using the inverse hyperbolic sine transformation with the cofactor set 5 [@bendall2011single] to stabilize the variance and account for heteroskedasticity. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability is the predicted probability for $Y_i = y$,
 $$
-\hat{P}(\text{cell is spillover} \, | \, Y_i = y) = (1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)})^{-1}.
+\hat{P}(\text{spillover} \, | \, Y_i = y) = (1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)})^{-1}.
 $$
-We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and declare the current cell as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover cells as cells that have no clear biological interpretation and remove them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions.
+We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and declare the current count as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover counts as counts that have no clear biological interpretation and remove them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions.
 
 <!-- 
 
