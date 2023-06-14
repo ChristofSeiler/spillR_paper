@@ -188,7 +188,7 @@ P^{(t)}(Z_{j \to i} = y) = y_j^{(t)}/N_j^{(t)}.
 $$
 The data for spillover markers comes from the bead experiments. The data for the target marker comes from the experiment with real cells. We set the mixture probability vector to the discrete uniform, $\pi_{1 \to i}^{(t)}, \dots, \pi_{J \to i}^{(t)} = 1/J$. The superscript $t$ indicates that this is the $t$th iteration. For the next iteration $t + 1$, we update the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
 
-* E-step: We calculate the probability of a marker with count $y$ belonging to marker $j$ from the current estimate of the marker distributions and mixture probability vector:
+* E-step: We calculate the probability of a count $Y_j = y$ actually belonging to marker $j$ from the current estimate of the marker distributions and mixture probability vector:
 $$
 P(\text{count belongs to marker } j \, | \, Y_j = y) = \frac{\pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y)}.
 $$
