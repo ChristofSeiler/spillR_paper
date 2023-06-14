@@ -192,7 +192,7 @@ The data for spillover markers comes from the bead experiments. The data for the
 
 * E-step: We calculate the probability of a count $Y_j = y$ actually belonging to marker $j$ from the current estimate of the marker distributions and mixture probability vector:
 $$
-P(\text{count belongs to marker } j \, | \, Y_j = y) = \frac{\pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y)}{\sum_{k = 1}^J \pi_{k \to i}^{(t)} \, P^{(t)}(Z_{k \to i} = y)}.
+P(\text{count belongs to marker } j \, | \, Y_i = y) = \frac{\pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y)}{\sum_{k = 1}^J \pi_{k \to i}^{(t)} \, P^{(t)}(Z_{k \to i} = y)}.
 $$
 * M-step: First, we update the mixture probability vector, 
 $$
