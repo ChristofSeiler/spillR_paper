@@ -187,8 +187,8 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   post_M <- PI * M
   post_M <- post_M/rowSums(post_M)
   spill_prob <- 1-post_M[,target_marker]
-  tb_spill_prob <- dplyr::select(tb_pmf, y) %>% mutate(spill_prob = spill_prob)
-  tb_spill_prob %<>% mutate(spill_prob = if_else(is.na(spill_prob), 0, spill_prob))
+  tb_spill_prob <- dplyr::select(tb_pmf, y) %>% 
+    mutate(spill_prob = if_else(is.na(spill_prob), 0, spill_prob))
   names(tb_spill_prob) <- c(target_marker, "spill_prob")
   
   # compensate
