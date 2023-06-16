@@ -168,7 +168,7 @@ The distribution of $Z_{j \to i}$ that spills over into the true marker $i$ is t
 
 With this assumption, we can calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from marker $j$,
 $$
-P(\text{spillover} \, | \, Y_i = y) = \frac{\sum_{j \ne i} \pi_{j \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)} = 1 - \frac{\pi_{i \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)}.
+P(\text{spillover} \, | \, Y_i = y) = \frac{\sum_{j \ne i} \pi_{j \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)} = 1 - \frac{\pi_{i \to i} \, P(Z_{i \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)}.
 $$
 
 
@@ -184,22 +184,22 @@ We propose a two step procedure for estimating spillover probability. In step 1,
 
 ### Step 1: EM Algorithm
 
-Our data are count matrices that contain cells on the rows and markers on the columns. We have two count matrices, a real cells matrix and a beads matrix. In general, the number of beads is much smaller than real cells. To simplify notation, but without loss of generality, we will assume that both matrices have the same dimension $K \times J$. We denote an element from this matrix as $y_{kj}$. The total number of proteins that have $y$ proteins on marker $j$ is,
+Our data are count matrices that contain cells on the rows and markers on the columns. We have two count matrices, a real cells matrix and a beads matrix. In general, the number of beads is much smaller than real cells. To simplify notation, but without loss of generality, we will assume that both matrices have the same dimension $K \times J$. We denote an element from this matrix as $y_{kj}$. We count the frequency of cells that have $y$ proteins on marker $j$,
 $$
-n_y = \sum_{k = 1}^K I(y_{kj} = y) \, y_{kj},
+y_{\cdot j} = \sum_{k = 1}^K I(y_{kj} = y),
 $$
-where $I(\cdot)$ is the indicator function. We calculate nonparametric estimates of the probability mass function, 
+where $I(\cdot)$ is the indicator function. We initialize, denoted by superscript $(0)$, the probability mass function using the nonparametric estimate,
 $$
-P(Z_{j \to i} = y) = \frac{n_y}{\sum_{j = 1}^J n_y},
+P^{(0)}(Z_{j \to i} = y) = \frac{y_{\cdot j}}{\sum_{j = 1}^J y_{\cdot j}},
 $$
 and set the mixture probability vector to the discrete uniform, 
 $$
-\pi_{1 \to i}, \dots, \pi_{J \to i} = 1/J.
+\pi_{1 \to i}^{(0)}, \dots, \pi_{J \to i}^{(0)} = 1/J.
 $$ 
 
-We update---going from current estimate $(t)$ to the next $(t+1)$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
+We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
 
-* E-step: We calculate the probability of a count $Y_i = y_{kj}$ spilling over from $j$ into $i$ from the current estimate, $(t)$, of the marker distributions and mixture probability vector:
+* E-step: We calculate the probability of a count $Y_i = y_{kj}$ spilling over from $j$ into $i$ from the current estimate $t$ of the marker distributions and mixture probability vector:
 $$
 P(j \text{ spills into } i \, | \, Y_i = y_{kj}) = \frac{\pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y_{kj})}{\sum_{j' = 1}^J \pi_{j' \to i}^{(t)} \, P^{(t)}(Z_{j' \to i} = y_{kj})}.
 $$
@@ -209,16 +209,18 @@ $$
 $$
 assign counts to the marker with the largest posterior probability, and re-estimate the distribution for the target marker, $Z_i$, with the newly assigned counts,
 $$
-P^{(t+1)}(Z_{i \to i} = y) = \frac{n_y^{(t+1)}}{\sum_{j = 1}^J n_y^{(t+1)}}.
+P^{(t+1)}(Z_{i \to i} = y) = \frac{y_{\cdot j}^{(t+1)}}{\sum_{j = 1}^J y_{\cdot j}^{(t+1)}}.
 $$
 
-We estimate $P(Z_{j \to i} = y)$ during the first iteration. We keep $P(Z_{j \to i} = y)$ fixed after initialization for bead distribution $j \ne i$ [(A1)](#assumption1). We keep updating $P(Z_{i \to i} = y)$ at every iteration on the newly identified set of cells that belong to marker $i$. The E-step relies on our assumption [(A2)](#assumption2).
-
-The final output of this step is the spillover probability curve with estimates at discrete points in the support of $Y_i$, $\hat{P}(\text{spillover} | Y_i = y)$.
+The M-step relies on our assumption [(A1)](#assumption1). The E-step relies on our assumption [(A2)](#assumption2). After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
+$$
+\hat{P}(\text{spillover} | Y_i = y) = 1 - \frac{\pi_{i \to i}^{(T)} \, P^{(T)}(Z_{i \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i}^{(T)} \, P^{(T)}(Z_{j \to i} = y)}.
+$$
+In experiments, setting $T = 10$ is enough to reach convergence.
 
 ### Step 2: Logistic Regression
 
-This step is a post-processing step of $\hat{P}(\text{spillover} | Y_i = y)$. Until now, the procedure is fully nonparametric. We apply no regularization to $y$'s that are close to one another. As a result, the spillover probability estimates are noisy and we need to regularize them using our assumption [(A3)](#assumption3).
+This step is a post-processing step of $\hat{P}(\text{spillover} | Y_i = y)$. Until now, the procedure is fully nonparametric. We apply no regularization to $y$'s that are close to one another. As a result, the spillover probability estimates are noisy and we regularize them using our assumption [(A3)](#assumption3).
 
 The logistic regression model is,
 $$
@@ -228,7 +230,7 @@ with $y$ transformed using the inverse hyperbolic sine transformation with the c
 $$
 \hat{P}^*(\text{spillover} \, | \, Y_i = y) = (1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)})^{-1}.
 $$
-We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and declare the current count as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover counts as counts that have no clear biological interpretation and remove them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions.
+The $\hat{P}^*(\text{spillover} \, | \, Y_i = y)$ is a smooth version of the noisy estimate from step 1, $\hat{P}(\text{spillover} | Y_i = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and declare the current count as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover counts as counts that have no clear biological interpretation and remove them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions.
 
 <!-- 
 
