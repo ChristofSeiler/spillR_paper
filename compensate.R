@@ -2,7 +2,6 @@
 #'
 #' @import magrittr
 #' @import dplyr
-#' @export
 #'
 #' @param tb_real Data frame or tibble with proteins counts of real experiment
 #' @param tb_bead Data frame or tibble with proteins counts of bead experiment
@@ -27,27 +26,11 @@
 #' spillR::compensate(tb_real, tb_bead, "A", "B")
 compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
-  # --------- mixture method ---------
-  
-  # option 1: fit polynomial poisson regression
-  # degree_bead <- 4
-  # degree_real <- 8
-  
-  # option 2: smoother
-  # degree_bead <- 11
-  # degree_real <- 51
-  
-  # option 3: local regression
-  # degree_bead <- 0.01
-  # degree_real <- 0.05
-  
-  # option 4: no smoothing
-  # no hyperparameters
-  
   tfm <- function(x) asinh(x/5)
   all_markers <- c(target_marker, spillover_markers)
-  y_min <- tb_real %>% pull(all_of(target_marker)) %>% min()
-  y_max <- tb_real %>% pull(all_of(target_marker)) %>% max()
+  y_target <- tb_real %>% pull(.data[[target_marker]])
+  y_min <- min(y_target)
+  y_max <- max(y_target)
   
   denoise <- function(y, y_min = min(y), y_max = max(y)) {
     
@@ -61,28 +44,9 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     # padding with zero outside of data support
     tb_pred %<>% mutate(n = ifelse(y > y_max_obsv | y < y_min_obsv, 0, n))
     
-    # option 1
-    # fit <- glm(n ~ poly(y, degree = degree, raw = TRUE),
-    #            data = tb_pred,
-    #            family = "poisson")
-    # tb_pred %<>% mutate(lambda = exp(predict(fit, newdata = tb_pred)))
-    
-    # option 2
-    # n_smooth <- runmed(tb_pred$n, k = degree)
-    # n_smooth[is.na(n_smooth)] <- 0
-    # tb_pred %<>% mutate(lambda = n_smooth)
-    
-    # option 3
-    # fit <- loess(n ~ y, data = tb_pred, span = degree)
-    # tb_pred %<>% mutate(lambda = predict(fit, newdata = tb_pred))
-    # tb_pred %<>% mutate(lambda = ifelse(lambda < 0, 0, lambda))
-    
-    # option 4
+    # nonparametric density estimate
     tb_pred$n[is.na(tb_pred$n)] <- 0
-    tb_pred %<>% mutate(lambda = n)
-    
-    # normalize
-    tb_pred %>% mutate(pmf = lambda/sum(tb_pred$lambda))
+    tb_pred %>% mutate(pmf = n/sum(tb_pred$n))
     
   }
   

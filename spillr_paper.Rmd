@@ -19,7 +19,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r load_packages, echo=FALSE, warning=FALSE, message=FALSE}
-library(spillR)
 library(CATALYST)
 library(CytoSpill)
 library(nnls)
