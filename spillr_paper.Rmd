@@ -151,11 +151,11 @@ The dashed curve is our estimated spillover probability. We can see that at thre
 
 ## Definition of Spillover Probability and Assumptions
 
-We observe a count $Y_i$ of marker $i$. If spillover is present, then $Y_i$ will count both the true marker $i$ and other markers $j$ spilling over into marker $i$. We model the observed $Y_i$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Z_{1 \to i}, \dots, Z_{J \to i}$, which each may spill into $Y_i$ with spillover probability $\pi_{j \to i}$, 
+We observe a count $Y_i$ of marker $i$. If spillover is present, then some observations of $Y_i$ will correspond to counts of the true marker $i$ and others to markers $j$ spilling over into marker $i$. We model the observed $Y_i$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Z_{1 \to i}, \dots, Z_{J \to i}$, which each may spill into $Y_i$ with spillover probability $\pi_{j \to i}$, 
 $$
 P(Y_i = y) = \sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y).
 $$
-The probability of spillover of $i$ into itself is not actual spillover, but corresponds to the proportion of true signal in the observed count. The total of all the spillover probabilities equals to one, $\sum_j \pi_{j \to i} = 1$. Conceptually, we divide the probabilities into true signal probability, $\pi_{i \to i}$, and the probability of spillover, that is, the total probability of all but the $i$th probability, $\sum_{j \ne i} \pi_{i \to j}$. The total number of markers $J$ in mass cytometry panels is between 30 and 40 [@bendall2011single]. Typically, only a small subset of three to four markers spill over into the target marker [@catalyst].
+The probability of spillover of $i$ into itself corresponds to the proportion of true signal in the observed counts. The total of all the spillover probabilities equals to one, $\sum_j \pi_{j \to i} = 1$. Conceptually, we divide the probabilities into true signal probability, $\pi_{i \to i}$, and the probability of spillover, that is, the total probability of all but the $i$th probability, $\sum_{j \ne i} \pi_{i \to j}$. The total number of markers $J$ in mass cytometry panels is between 30 and 40 [@bendall2011single]. Typically, only a small subset of three to four markers spill over into the target marker [@catalyst].
 
 Experimentally, we only measure a sample from the distribution $Y_i$. The probabilities $\pi_{j \to i}$ and true distributions $P(Z_{j \to i} = y)$ are unobserved, and we need to estimate them from data. In many applications, the mixture components, $P(Z_{1 \to i}), \dots, P(Z_{J \to i})$, are in a parametric family, for example, the negative binomial distribution. Here we propose to fit nonparametric mixture components. We make three assumptions that render the components and mixture probabilities identifiable:
 
@@ -163,21 +163,22 @@ Experimentally, we only measure a sample from the distribution $Y_i$. The probab
 
 The distribution of $Z_{j \to i}$ that spills over into the true marker $i$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Z_{1 \to i},\dots,Z_{i-1 \to i},Z_{i+1 \to i},\dots,Z_{J \to i}$---except the true marker $Z_{i \to i}$---from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
 
-* <div id='assumption2'>(A2) Spillover counts and true counts are the only contributors to the total measured counts.</div>
+* <div id='assumption2'>(A2) Observed counts $Y_i$ can only be due to any one of the $Z_j$.</div>
 
-With this assumption, we can calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from marker $j$,
+This assumption is already implied by the statement of the mixture model, and we can calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from marker $j$,
 $$
 P(\text{spillover} \, | \, Y_i = y) = \frac{\sum_{j \ne i} \pi_{j \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)} = 1 - \frac{\pi_{i \to i} \, P(Z_{i \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)}.
 $$
 
-
-To parse this calculation, recall that in mixture models the probability $\pi_{j \to i}$ is the prior probability, $P(Z_{j \to i} = y)$ is the conditional probability of obtaining count $y$ given the mixture component is marker $j$ spilling over into marker $i$, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
+To parse this calculation, recall that in mixture models the probability $\pi_{j \to i}$ is the prior probability, $P(Z_{j \to i} = y)$ is the conditional probability of obtaining count $y$ given the mixture component [TODO: add random variable] is marker $j$ spilling over into marker $i$, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
 
 * <div id='assumption3'>(A3) Spillover probability curves are logistic functions.</div>
 
 The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Larger $y$ will not have any spillover and only have true signal. In contrast, smaller $y$ are more likely a result of another marker spilling over. Although it is biologically possible that spillover happens at higher counts, this assumption makes our statistical procedure more stable. We chose the logistic function as it is the standard option for logistic regression.
 
 ## Estimation of Spillover Probability
+
+[TODO: clearly state what is done on beads, and what on real]
 
 We propose a two step procedure for estimating spillover probability. In step 1, we initialize all marker distributions $P(Z_{j \to i} = y)$ and the mixture probability vector $\pi_{j \to i}$. We update the mixture probability vector and the mixture component of the target marker $P(Z_{i \to i} = y)$ using the EM algorithm [@dempster1977maximum]. In step 2, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression and apply the correction.
 
@@ -186,8 +187,12 @@ We propose a two step procedure for estimating spillover probability. In step 1,
 Our data are count matrices that contain cells on the rows and markers on the columns. We have two count matrices, a real cells matrix and a beads matrix. In general, the number of beads is much smaller than real cells. To simplify notation, but without loss of generality, we will assume that both matrices have the same dimension $K \times J$. We denote an element from this matrix as $y_{kj}$. We count the frequency of cells that have $y$ proteins on marker $j$,
 $$
 y_{\cdot j} = \sum_{k = 1}^K I(y_{kj} = y),
-$$
-where $I(\cdot)$ is the indicator function. We initialize, denoted by superscript $(0)$, the probability mass function using the nonparametric estimate,
+$$ [TODO: merge into nonparametric estimate?]
+where $I(\cdot)$ is the indicator function. 
+
+First, we estimate the $P(Z_{j \to i} = y)$ on the beads experiment data. Second, we initialize $P^{(0)}(Z_{j \to i} = y)$ and $\pi^{(0)}$ using the real data. Third, we iterate the following E and M steps on the real data until convergence, here, only $P^{(t)}(Z_{j \to i} = y)$ and $\pi^{(t)}$ are being updated, while the spillover probabilities are kept as estimated from the beds experiment.
+
+We initialize the probability mass function using the nonparametric estimate,
 $$
 P^{(0)}(Z_{j \to i} = y) = \frac{y_{\cdot j}}{\sum_{j = 1}^J y_{\cdot j}},
 $$
@@ -204,8 +209,8 @@ P(j \text{ spills into } i \, | \, Y_i = y_{kj}) = \frac{\pi_{j \to i}^{(t)} \, 
 $$
 * M-step: We update, $(t+1)$, the mixture probability vector, 
 $$
-\pi_{j \to i}^{(t+1)} = \frac{1}{K} \sum_{k = 1}^{K} P(j \text{ spills into } i \, | \, Y_i = y_{kj}),
-$$
+\pi_{j \to i}^{(t+1)} = \frac{1}{K} \sum_{k = 1}^{K} P(j \text{ spills into } i \mid Y_i = y_{kj}),
+$$ [TODO: y^(t+1) not introduced]
 assign counts to the marker with the largest posterior probability, and re-estimate the distribution for the target marker, $Z_i$, with the newly assigned counts,
 $$
 P^{(t+1)}(Z_{i \to i} = y) = \frac{y_{\cdot j}^{(t+1)}}{\sum_{j = 1}^J y_{\cdot j}^{(t+1)}}.
@@ -214,22 +219,22 @@ $$
 The M-step relies on our assumption [(A1)](#assumption1). The E-step relies on our assumption [(A2)](#assumption2). After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
 \hat{P}(\text{spillover} | Y_i = y) = 1 - \frac{\pi_{i \to i}^{(T)} \, P^{(T)}(Z_{i \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i}^{(T)} \, P^{(T)}(Z_{j \to i} = y)}.
-$$
-In experiments, setting $T = 10$ is enough to reach convergence.
+$$ [TODO: not all probabilities updated]
+In our experiments, setting $T = 10$ was enough to reach convergence. [TODO: report something quantitative]
 
 ### Step 2: Logistic Regression
 
-This step is a post-processing step of $\hat{P}(\text{spillover} | Y_i = y)$. Until now, the procedure is fully nonparametric. We apply no regularization to $y$'s that are close to one another. As a result, the spillover probability estimates are noisy and we regularize them using our assumption [(A3)](#assumption3).
+This step is a post-processing step of $\hat{P}(\text{spillover} \mid Y_i = y)$. Until now, the procedure is fully nonparametric. We apply no regularization to $y$'s that are close to one another. As a result, the spillover probability estimates are noisy and we regularize them using our assumption [(A3)](#assumption3).
 
 The logistic regression model is,
 $$
-\log\left(\frac{P(\text{spillover} \, | \, Y_i = y)}{1-P(\text{spillover} \, | \, Y_i = y)}\right) = \beta_0 + \beta_1 y,
+\log\left(\frac{P(\text{spillover} \mid Y_i = y)}{1-P(\text{spillover} \mid Y_i = y)}\right) = \beta_0 + \beta_1 y,
 $$
-with $y$ transformed using the inverse hyperbolic sine transformation with the cofactor set 5 [@bendall2011single] to stabilize the variance and account for heteroskedasticity. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability is the predicted probability for $Y_i = y$,
+with $y$ transformed using the inverse hyperbolic sine transformation with the cofactor set 5 [@bendall2011single] to stabilize the variance and account for heteroskedasticity. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability for $Y_i = y$,
 $$
-\hat{P}^*(\text{spillover} \, | \, Y_i = y) = (1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)})^{-1}.
+\hat{P}^*(\text{spillover} \mid Y_i = y) = (1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)})^{-1}.
 $$
-The $\hat{P}^*(\text{spillover} \, | \, Y_i = y)$ is a smooth version of the noisy estimate from step 1, $\hat{P}(\text{spillover} | Y_i = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and declare the current count as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover counts as counts that have no clear biological interpretation and remove them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions.
+The $\hat{P}^*(\text{spillover} \mid Y_i = y)$ is a smooth version of the noisy estimate from step 1, $\hat{P}(\text{spillover} \mid Y_i = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and declare the current count as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover counts as counts that have no clear biological interpretation and remove them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions.
 
 <!-- 
 
@@ -434,7 +439,7 @@ We choose four different experiments to test how robust `spillR` is when one of 
 We have one pile of earth that we would like to move to another location. We know the source pile of earth distribution and we also know the distribution of the target pile. The task is to transport small chunks of dirt from the source pile to the target pile while traveling the least amount possible. The distances weighted by the weight of the dirt chunk is the earth mover's distance.
 -->
 
-Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimental setup. The first row tests our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The second row tests assumption [(A3)](#assumption3) with two different experiments. For all experiments, we model counts using a Poisson distribution with parameter $\lambda$. We use 10,000 real cells, 1,000 beads, $\lambda = 100$ for real cells, $\lambda = 70$ for beads, the mixing probability is $0.5$ for bimodal distribution, and the spillover probability is $0.1$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are in Appendix \@ref(generative-models). We quantify uncertainty with grey vertical lines representing the standard error computed over five replications of the same experiment.
+Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimental setup. The first row tests our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The second row tests assumption [(A3)](#assumption3) with two different experiments. For all experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability is $0.1$. We simulate bimodal distributions of bead and real cells using a mixture probability of $0.5$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are in Appendix \@ref(generative-models). We quantify uncertainty with grey vertical lines representing the standard error computed over five replications of the same experiment.
 
 ### Invariant Spillover Distributions (A1)
 
@@ -442,7 +447,7 @@ In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), w
 
 ### No Hidden Confounding (A2)
 
-In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this that the hidden spillover is a form of hidden confounding. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it start to increase quickly.
+In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of hidden confounding. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it starts to increase quickly.
 
 ### Bimodal Beads (A3)
 
@@ -552,7 +557,7 @@ plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2)
 
 Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. The experiment for [(A1)](#assumption1) shows the performance of our method on different settings that are also present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data (Figure \@ref(fig:method-example-cd68-cd45) in Appendix \@ref(two-real-cases)) for protein CD68 with the metal label Eu153Di. In that case, assumption [(A1)](#assumption1) does not hold. For some markers CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment. In that case, assumption [(A1)](#assumption1) holds. As expected our method performs worse when the true signal overlaps with the spillover. The experiment for [(A2)](#assumption2) shows that our methods is robust to hidden spillover. Hidden spillover should not be a major issue as we can add all channels. The increase in computational cost is relatively minor as our methods scales linearly in the number of spillover markers. Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. The probability of spillover increases and our method tends to overcompensate. The bimodal real cells experiment displays large distances to the true signal when the second mode of the true signal is close to the bead mode.
 
-Comparisons between methods on real data are also challenging. Unfortunately, there is no ground truth available. Overall, our method compensate more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes linearity up to 5,000 of the spillover. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
+Comparisons between methods on real data are challenging because there is no ground truth available. Overall, our method compensates more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes that spillover is linear up to counts of 5,000. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
 
 We estimate bead and real distributions using their empirical distributions from the bead experiment. From histograms, we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different post-processing methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distributions. All methods were unstable. They worked on some markers, but failed on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
 
@@ -628,6 +633,26 @@ Figure \@ref(fig:critical-points-a1) represents the distributions at $\tau = -60
 
 ## No Hidden Confounding (A2)
 
+[TODO: Resolve comment by Sebastian:
+
+Unsure about this experiment:
+Z_h is just like any other Z_j→i, isn't it?
+All Z_j→i are unobserved.
+
+Is the assumption that Y_i is indeed generated as per the mixture model you posit and there is no unobserved confounder that enters Y?
+But what would you understand as a confounder here?
+Also, does increasing beyond 0.5 make sense? In this case, we could say Z_h is actually Z.
+
+One thing I can see is that your set-up violates "Y follows mixture models of underlying unobserved Z for which we have beads experiments to estimate P(Z_j to i)", but in what sense is this a confounder?
+It seems to me that it's another mixture component that can generate Y for which we have no way of getting a meaningful estimate of the Poisson rate and for which we don't even model a mixture component, so it's model-misspecification where we model less components than there are.
+What do you think?
+
+If you set the rate of Z_h to 90, then wouldn't there simply be no way for us to realise even that we are observing sometimes Z and sometimes Zh, but would remove counts lower than 70 and attribute them to Z'?
+
+So, perhaps the violation is: "undercomplete mixture model, there are more mixture components than observed and than can spillover distributions be estimated for in a beads experiment"
+
+In this sense it seems A.3 may be somewhat analogous/related]
+
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
@@ -653,6 +678,10 @@ ggplot(tb_a2, aes(y, probability, color = type)) +
 Figure \@ref(fig:critical-points-a2) represents the two end points of the range where distances are stable, and the point $\tau = 0.6$ illustrates the distribution outside of this range.
 
 ## Biomodal Beads (A3)
+
+[TODO: resolve comment by Sebastian:
+
+I think the data generating process can equivalently be rewritten following the standard model we posit in the main text, where there are 2 spillover and 1 true Z that mix, while the trick here seems to be that the premixing and subsuming Z1 and Z2 as one spillover-component somewhat "hides the separate identities of Z1 and Z2" – which is closely related to A.2.]
 
 The generative model for real cells $Y$ of this experiment is,
 $$
