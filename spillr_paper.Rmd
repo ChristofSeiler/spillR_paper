@@ -151,9 +151,11 @@ The dashed curve is our estimated spillover probability. We can see that at thre
 
 ## Definition of Spillover Probability and Assumptions
 
+[TODO: revised with notation from https://stephens999.github.io/fiveMinuteStats/intro_to_em.html]
+
 We observe a count $Y_i$ of marker $i$. If spillover is present, then some observations of $Y_i$ will correspond to counts of the true marker $i$ and others to markers $j$ spilling over into marker $i$. We model the observed $Y_i$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Z_{1 \to i}, \dots, Z_{J \to i}$, which each may spill into $Y_i$ with spillover probability $\pi_{j \to i}$, 
 $$
-P(Y_i = y) = \sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y).
+P(Y_i = y) = \sum_{k = 1}^K \pi_k \, P(Y_i = y \mid Z_i = k).
 $$
 The probability of spillover of $i$ into itself corresponds to the proportion of true signal in the observed counts. The total of all the spillover probabilities equals to one, $\sum_j \pi_{j \to i} = 1$. Conceptually, we divide the probabilities into true signal probability, $\pi_{i \to i}$, and the probability of spillover, that is, the total probability of all but the $i$th probability, $\sum_{j \ne i} \pi_{i \to j}$. The total number of markers $J$ in mass cytometry panels is between 30 and 40 [@bendall2011single]. Typically, only a small subset of three to four markers spill over into the target marker [@catalyst].
 
@@ -167,7 +169,9 @@ The distribution of $Z_{j \to i}$ that spills over into the true marker $i$ is t
 
 This assumption is already implied by the statement of the mixture model, and we can calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from marker $j$,
 $$
-P(\text{spillover} \, | \, Y_i = y) = \frac{\sum_{j \ne i} \pi_{j \to i} \, P(Z_{j \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)} = 1 - \frac{\pi_{i \to i} \, P(Z_{i \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i} \, P(Z_{j \to i} = y)}.
+P(\text{spillover} \mid Y_i = y) = 
+1 - P(Z_i = i \mid Y_i = y) = 
+1 - \frac{\pi_i \, P(Y_i = y \mid Z_i = i)}{\sum_{j = 1}^K \pi_k \, P(Y_k = y) \mid Z_i = k)}.
 $$
 
 To parse this calculation, recall that in mixture models the probability $\pi_{j \to i}$ is the prior probability, $P(Z_{j \to i} = y)$ is the conditional probability of obtaining count $y$ given the mixture component [TODO: add random variable] is marker $j$ spilling over into marker $i$, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
