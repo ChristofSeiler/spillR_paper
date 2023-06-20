@@ -151,8 +151,6 @@ The dashed curve is our estimated spillover probability. We can see that at thre
 
 ## Definition of Spillover Probability and Assumptions
 
-\textcolor{red}{TODO:} [revised with notation from https://stephens999.github.io/fiveMinuteStats/intro_to_em.html]
-
 We observe a count $Y_{ij}$ of marker $j$ in cell $i$. If spillover is present, then some observations of $Y_{ij}$ will correspond to counts of the true marker $j$ and others to markers $k \ne j$ spilling over into marker $j$. We model the observed $Y_{ij}$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Y_{ij} \mid Z_i = 1, \dots, Y_{ij} \mid Z_i = K$, which each may spill into $Y_{ij}$ with spillover probability $\pi_1, \dots, \pi_K$, 
 $$
 P(Y_{ij} = y) = \sum_{k = 1}^K \pi_k \, P(Y_{ij} = y \mid Z_i = k).
@@ -182,15 +180,11 @@ The spillover probability is the probability that the counts are not due to the 
 
 ## Estimation of Spillover Probability
 
-\textcolor{red}{TODO:} [clearly state what is done on beads, and what on real]
-
 We propose a two step procedure for estimating spillover probability. In step 1, we initialize all marker distributions $P(Y_{ij} = y \mid Z_i = k)$ and the mixture probabilities $\pi_k$. We update the mixture component of the target marker $P(Y_{ij} = y \mid Z_i = j)$ and the mixture probabilities using the EM algorithm [@dempster1977maximum]. In step 2, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use the smooth probability estimates to assign counts to spillover or signal.
 
 Step 1 is standard EM algorithm with some application specific modifications: components come from two different data sources (beads experiment and real cells). We estimate the non-target mixture components for $P(Y_{ij} = y \mid Z_i = k)$ with $j \ne k$ from beads experimental data. We estimate the target mixture component $P(Y_{ij} = y \mid Z_i = j)$ from experiments with real cells, which we denote by the conditioning on the target marker $j$. Furthermore, we only update the target mixture component and the mixture probabilities during the E and M steps until convergence, while we keep the non-target mixture components fixed as estimated from the beads experiment.
 
 ### Step 1: EM Algorithm
-
-\textcolor{red}{TODO:} Still working on it!
 
 We initialize the probability mass function using the nonparametric estimate,
 $$
@@ -203,21 +197,49 @@ $$
 
 We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
 
-* E-step: We calculate the probability of a count $Y_i = y_{ij}$ spilling over from $j$ into $k$ at the current estimate $t$ of the marker distributions and mixture probability vector:
+* E step: We calculate the probability of a count $Y_i = y_{ij}$ spilling over from $j$ into $k$ at the current estimate $t$ of the marker distributions and mixture probability vector:
 $$
 P(Z_i = k \mid Y_i = y_{ij}) = \frac{\pi_k \, P^{(t)}(Y_{ij} = y \mid Z_i = k)}{\sum_{k' = 1}^K \pi_{k'} P^{(t)}(Y_{ij} = y \mid Z_i = k')}.
 $$
-* M-step: We update, $(t+1)$, the mixture probability vector, 
+* M step: We update, $(t+1)$, the mixture probability vector, 
 $$
 \pi_k^{(t+1)} = \frac{1}{I} \sum_{i = 1}^{I} P(Z_i = k \mid Y_i = y_{ij}),
 $$ 
-assign counts to the marker with the largest posterior probability, and re-estimate the distribution for the target marker with the newly assigned counts,
+assign counts to the marker with the largest posterior probability and re-estimate the distribution for the target marker with the newly assigned counts,
 $$
 P^{(t+1)}(Y_{ij} =y \mid Z_i = k) = \frac{\sum_{i = 1}^I I(y_{ij}^{(t+1)} = y)}{\sum_{j = 1}^J \sum_{i = 1}^I I(y_{ij}^{(t+1)} = y)}.
 $$
-\textcolor{red}{TODO:} [add sketch going from $y_{ij}^(t)$ to $y_{ij}^(t+1)$]
 
-The M-step relies on our assumption [(A1)](#assumption1) because we only update the distribution of the target marker. The E-step relies on our assumption [(A2)](#assumption2) because we use the logit function, which is monotonic decreasing function. After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
+Here is a numerical example to illustrate the M step:
+$$
+y_{\cdot j}^{(t)} = 
+\begin{bmatrix}
+3 \\ 5 \\ 17 \\ 3 \\ 17 \\ 2
+\end{bmatrix}
+\longmapsto
+y_{\cdot j}^{(t+1)} = 
+\begin{bmatrix}
+\times \\ 5 \\ 17 \\ \times \\ 17 \\ \times
+\end{bmatrix}.
+$$
+The vector of observations for the target marker $j$ has six cells. At iteration $t$, all six cells are assigned to the target marker. At the next iteration $t+1$, cell 1, 4, and 6 are assigned to the target marker. We denote counts assigned as non-target counts by $\times$. We estimate the target distribution at iteration $t$,
+$$
+\begin{aligned}
+P^{(t)}(Y_{\cdot j} = 2 \mid Z_i = j)  & =  1/6 \\
+P^{(t)}(Y_{\cdot j} = 3 \mid Z_i = j)  & =  2/6 \\
+P^{(t)}(Y_{\cdot j} = 5 \mid Z_i = j)  & =  1/6 \\
+P^{(t)}(Y_{\cdot j} = 17 \mid Z_i = j) & =  2/6,
+\end{aligned}
+$$
+and $t+1$,
+$$
+\begin{aligned}
+P^{(t+1)}(Y_{\cdot j} = 5 \mid Z_i = j)  & =  1/3 \\
+P^{(t+1)}(Y_{\cdot j} = 17 \mid Z_i = j) & =  2/3.
+\end{aligned}
+$$
+
+The M step relies on our assumption [(A1)](#assumption1) because we only update the distribution of the target marker. The E step relies on our assumption [(A2)](#assumption2) because we use the logit function, which is monotonic decreasing function. After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
 \hat{P}(\text{spillover} | Y_{ij} = y) = 1 - P^{(T)}(Z_i = j \mid Y_{ij} = y).
 $$
@@ -361,7 +383,7 @@ p_a2 <- expand.grid(
   mutate(w1 = compute_wasserstein(generate_data_a2, spill_hidden)) %>%
   plot_results("spill_hidden") + 
   xlab("P(hidden spillover marker)") +
-  ggtitle("No Hidden Confounding (A2)")
+  ggtitle("Model Misspecification (A2)")
 
 # --------- panel (c) ---------
 
@@ -447,9 +469,9 @@ Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimen
 
 In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption [(A1)](#assumption1). The distances start around $8$ when $\tau = -60$. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -10$.
 
-### No Hidden Confounding (A2)
+### Model Misspecification (A2)
 
-In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of hidden confounding. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it starts to increase quickly.
+In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than that what we observe in the bead experiments. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it starts to increase quickly.
 
 ### Bimodal Beads (A3)
 
@@ -557,7 +579,7 @@ plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2)
 
 # Discussion
 
-Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. The experiment for [(A1)](#assumption1) shows the performance of our method on different settings that are also present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data (Figure \@ref(fig:method-example-cd68-cd45) in Appendix \@ref(two-real-cases)) for protein CD68 with the metal label Eu153Di. In that case, assumption [(A1)](#assumption1) does not hold. For some markers CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment. In that case, assumption [(A1)](#assumption1) holds. As expected our method performs worse when the true signal overlaps with the spillover. The experiment for [(A2)](#assumption2) shows that our methods is robust to hidden spillover. Hidden spillover should not be a major issue as we can add all channels. The increase in computational cost is relatively minor as our methods scales linearly in the number of spillover markers. Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. The probability of spillover increases and our method tends to overcompensate. The bimodal real cells experiment displays large distances to the true signal when the second mode of the true signal is close to the bead mode.
+Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. The experiment for [(A1)](#assumption1) shows the performance of our method on different settings that are also present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data (Figure \@ref(fig:method-example-cd68-cd45) in Appendix \@ref(two-real-cases)) for protein CD68 with the metal label Eu153Di. In that case, assumption [(A1)](#assumption1) does not hold. For some markers CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment. In that case, assumption [(A1)](#assumption1) holds. As expected our method performs worse when the true signal overlaps with the spillover. The experiment for [(A2)](#assumption2) shows that our methods is robust to model misspecification. Misspecification should not be a major issue as we can add all channels. The increase in computational cost is relatively minor as our methods scales linearly in the number of spillover markers. Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. The probability of spillover increases and our method tends to overcompensate. The bimodal real cells experiment displays large distances to the true signal when the second mode of the true signal is close to the bead mode.
 
 Comparisons between methods on real data are challenging because there is no ground truth available. Overall, our method compensates more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes that spillover is linear up to counts of 5,000. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
 
@@ -584,13 +606,12 @@ We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a pr
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
-S          & \sim \text{Bernoulli}(0.1)   & \qquad \text{(pick spillover)} \\
-Z          & \sim \text{Poisson}(100)     & \qquad \text{(true signal)} \\
-Z'         & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover with shift } \tau \text{)} \\
-Y_\text{r} & = (1-S) Z + S Z'             & \qquad \text{(observed real cells)}.
+Z            & \sim \text{Bernoulli}(0.1)   & \qquad \text{(pick spillover)} \\
+Y \mid Z = 0 & \sim \text{Poisson}(100)     & \qquad \text{(true signal)} \\
+Y \mid Z = 1 & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover with shift } \tau \text{)}.
 \end{aligned}
 $$
-The generative model for beads is an independent copy of the unshifted $Z'$ at $\tau = 0$.
+The generative model for beads is an independent copy of the unshifted $Y \mid Z = 1$ at $\tau = 0$.
 
 ```{r critical-points-a1, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
 # --------- helper functions ---------
@@ -607,16 +628,16 @@ generate_critical <- function(fn, parameter) {
   tb_target <- tibble(y = data$Z_target) %>% 
     count(y) %>% 
     mutate(probability = n/max(n)) %>% 
-    mutate(type = "signal (Z)") %>% 
+    mutate(type = "signal") %>% 
     dplyr::select(-n)
   tb_spill <- tibble(y = data$Z_spill) %>% 
     count(y) %>% 
     mutate(probability = n/max(n)) %>% 
-    mutate(type = "spillover (Z')") %>% 
+    mutate(type = "spillover") %>% 
     dplyr::select(-n)
   tb_prob <- comp$tb_spill_prob %>% 
     dplyr::select(y = Y, probability = spill_prob_smooth) %>% 
-    mutate(type = "P(spillover)")
+    mutate(type = "P(spillover | Y = y)")
   bind_rows(tb_target, tb_spill, tb_prob) %>% 
     mutate(parameter = parameter)
 
@@ -633,7 +654,7 @@ ggplot(tb_a1, aes(y, probability, color = type)) +
 
 Figure \@ref(fig:critical-points-a1) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
 
-## No Hidden Confounding (A2)
+## Model Misspecification (A2)
 
 \textcolor{red}{TODO:} [Resolve comment by Sebastian:
 
@@ -658,11 +679,10 @@ In this sense it seems A.3 may be somewhat analogous/related]
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
-S   & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with hidden probability } \tau \text{)} \\
-Z   & \sim \text{Poisson}(100)                             & \qquad \text{(true signal)} \\
-Z'  & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
-Z_h & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)} \\
-Y   & = I(S=1) Z + I(S = 2) Z' + I(S = 3) Z_h              & \qquad \text{(observed real cells)}.
+Z             & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with hidden probability } \tau \text{)} \\
+Y \mid Z = 0 & \sim \text{Poisson}(100)       & \qquad \text{(true signal)} \\
+Y \mid Z = 1 & \sim \text{Poisson}(70)        & \qquad \text{(spillover)} \\
+Y \mid Z = 2 & \sim \text{Poisson}(70)        & \qquad \text{(hidden spillover)} \\
 \end{aligned}
 $$
 The generative model for beads is an independent copy of $Z'$.
@@ -674,7 +694,7 @@ tb_a2 <- lapply(c(0, 0.5, 0.6),
 ggplot(tb_a2, aes(y, probability, color = type)) + 
   geom_line() +
   facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("No Hidden Confounding (A2)")
+  ggtitle("Model Misspecification (A2)")
 ```
 
 Figure \@ref(fig:critical-points-a2) represents the two end points of the range where distances are stable, and the point $\tau = 0.6$ illustrates the distribution outside of this range.
