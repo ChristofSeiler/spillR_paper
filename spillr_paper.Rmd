@@ -151,30 +151,30 @@ The dashed curve is our estimated spillover probability. We can see that at thre
 
 ## Definition of Spillover Probability and Assumptions
 
-[TODO: revised with notation from https://stephens999.github.io/fiveMinuteStats/intro_to_em.html]
+\textcolor{red}{TODO:} [revised with notation from https://stephens999.github.io/fiveMinuteStats/intro_to_em.html]
 
-We observe a count $Y_i$ of marker $i$. If spillover is present, then some observations of $Y_i$ will correspond to counts of the true marker $i$ and others to markers $j$ spilling over into marker $i$. We model the observed $Y_i$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Z_{1 \to i}, \dots, Z_{J \to i}$, which each may spill into $Y_i$ with spillover probability $\pi_{j \to i}$, 
+We observe a count $Y_{ij}$ of marker $j$ in cell $i$. If spillover is present, then some observations of $Y_{ij}$ will correspond to counts of the true marker $j$ and others to markers $k \ne j$ spilling over into marker $j$. We model the observed $Y_{ij}$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Y_{ij} \mid Z_i = 1, \dots, Y_{ij} \mid Z_i = K$, which each may spill into $Y_{ij}$ with spillover probability $\pi_1, \dots, \pi_K$, 
 $$
-P(Y_i = y) = \sum_{k = 1}^K \pi_k \, P(Y_i = y \mid Z_i = k).
+P(Y_{ij} = y) = \sum_{k = 1}^K \pi_k \, P(Y_{ij} = y \mid Z_i = k).
 $$
-The probability of spillover of $i$ into itself corresponds to the proportion of true signal in the observed counts. The total of all the spillover probabilities equals to one, $\sum_j \pi_{j \to i} = 1$. Conceptually, we divide the probabilities into true signal probability, $\pi_{i \to i}$, and the probability of spillover, that is, the total probability of all but the $i$th probability, $\sum_{j \ne i} \pi_{i \to j}$. The total number of markers $J$ in mass cytometry panels is between 30 and 40 [@bendall2011single]. Typically, only a small subset of three to four markers spill over into the target marker [@catalyst].
+The probability of spillover of $k$ into itself corresponds to the proportion of true signal in the observed counts. The total of all the spillover probabilities equals to one, $\sum_k \pi_k = 1$. Conceptually, we divide the probabilities into true signal probability, $\pi_j$, and the probability of spillover, that is, the total probability of all but the $j$th probability, $\sum_{k \ne i} \pi_k$. The total number of markers $J$ in mass cytometry panels is between 30 and 40 [@bendall2011single]. Typically, only a small subset $K$ of three to four markers spill over into the target marker [@catalyst].
 
-Experimentally, we only measure a sample from the distribution $Y_i$. The probabilities $\pi_{j \to i}$ and true distributions $P(Z_{j \to i} = y)$ are unobserved, and we need to estimate them from data. In many applications, the mixture components, $P(Z_{1 \to i}), \dots, P(Z_{J \to i})$, are in a parametric family, for example, the negative binomial distribution. Here we propose to fit nonparametric mixture components. We make three assumptions that render the components and mixture probabilities identifiable:
+Experimentally, we only measure a sample from the distribution $Y_{ij}$. The probabilities $\pi_k$ and true distributions $P(Y_{ij} = y \mid Z_i = k)$ are unobserved, and we need to estimate them from data. In many applications, the mixture components, $P(Y_{ij} = y \mid Z_i = 1), \dots, P(Y_{ij} = y \mid Z_i = K)$, are in a parametric family, for example, the negative binomial distribution. Here we propose to fit nonparametric mixture components. We make three assumptions that render the components and mixture probabilities identifiable:
 
 * <div id='assumption1'>(A1) Spillover distributions are the same in bead and real experiments.</div>
 
-The distribution of $Z_{j \to i}$ that spills over into the true marker $i$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Z_{1 \to i},\dots,Z_{i-1 \to i},Z_{i+1 \to i},\dots,Z_{J \to i}$---except the true marker $Z_{i \to i}$---from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
+The distribution of $Y_{ij} \mid Z_i = k$ that spills over into the true marker $j$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_{i1} \mid Z_i = k, \dots, Y_{iJ} \mid Z_i = K$---except the true marker $Y_{ij} \mid Z_i = j$---from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
 
-* <div id='assumption2'>(A2) Observed counts $Y_i$ can only be due to any one of the $Z_j$.</div>
+* <div id='assumption2'>(A2) Observed counts $Y_{ij}$ can only be due to any one of the $Y_{ij} = y \mid Z_i = k$.</div>
 
-This assumption is already implied by the statement of the mixture model, and we can calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from marker $j$,
+This assumption is already implied by the statement of the mixture model, and we can calculate the spillover probability for a given count $Y_{ij} = y$ from the posterior probability that it arises through spillover from marker $j$,
 $$
-P(\text{spillover} \mid Y_i = y) = 
-1 - P(Z_i = i \mid Y_i = y) = 
-1 - \frac{\pi_i \, P(Y_i = y \mid Z_i = i)}{\sum_{j = 1}^K \pi_k \, P(Y_k = y) \mid Z_i = k)}.
+P(\text{spillover} \mid Y_{ij} = y) = 
+1 - P(Z_i = j \mid Y_{ij} = y) = 
+1 - \frac{\pi_j \, P(Y_{ij} = y \mid Z_i = j)}{\sum_{j = 1}^K \pi_k \, P(Y_ik = y) \mid Z_i = k)}.
 $$
 
-To parse this calculation, recall that in mixture models the probability $\pi_{j \to i}$ is the prior probability, $P(Z_{j \to i} = y)$ is the conditional probability of obtaining count $y$ given the mixture component [TODO: add random variable] is marker $j$ spilling over into marker $i$, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
+To parse this calculation, recall that in mixture models the probability $\pi_k$ is the prior probability, $P(Y_{ij} = y \mid Z_i = k)$ is the conditional probability of obtaining count $y$ given the mixture component for marker $k$ spilling over into marker $j$, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
 
 * <div id='assumption3'>(A3) Spillover probability curves are logistic functions.</div>
 
@@ -182,7 +182,7 @@ The spillover probability is the probability that the counts are not due to the 
 
 ## Estimation of Spillover Probability
 
-[TODO: clearly state what is done on beads, and what on real]
+\textcolor{red}{TODO:} [clearly state what is done on beads, and what on real]
 
 We propose a two step procedure for estimating spillover probability. In step 1, we initialize all marker distributions $P(Z_{j \to i} = y)$ and the mixture probability vector $\pi_{j \to i}$. We update the mixture probability vector and the mixture component of the target marker $P(Z_{i \to i} = y)$ using the EM algorithm [@dempster1977maximum]. In step 2, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression and apply the correction.
 
@@ -191,7 +191,7 @@ We propose a two step procedure for estimating spillover probability. In step 1,
 Our data are count matrices that contain cells on the rows and markers on the columns. We have two count matrices, a real cells matrix and a beads matrix. In general, the number of beads is much smaller than real cells. To simplify notation, but without loss of generality, we will assume that both matrices have the same dimension $K \times J$. We denote an element from this matrix as $y_{kj}$. We count the frequency of cells that have $y$ proteins on marker $j$,
 $$
 y_{\cdot j} = \sum_{k = 1}^K I(y_{kj} = y),
-$$ [TODO: merge into nonparametric estimate?]
+$$ \textcolor{red}{TODO:} merge into nonparametric estimate?
 where $I(\cdot)$ is the indicator function. 
 
 First, we estimate the $P(Z_{j \to i} = y)$ on the beads experiment data. Second, we initialize $P^{(0)}(Z_{j \to i} = y)$ and $\pi^{(0)}$ using the real data. Third, we iterate the following E and M steps on the real data until convergence, here, only $P^{(t)}(Z_{j \to i} = y)$ and $\pi^{(t)}$ are being updated, while the spillover probabilities are kept as estimated from the beds experiment.
@@ -214,7 +214,7 @@ $$
 * M-step: We update, $(t+1)$, the mixture probability vector, 
 $$
 \pi_{j \to i}^{(t+1)} = \frac{1}{K} \sum_{k = 1}^{K} P(j \text{ spills into } i \mid Y_i = y_{kj}),
-$$ [TODO: y^(t+1) not introduced]
+$$ \textcolor{red}{TODO:} [y^(t+1) not introduced]
 assign counts to the marker with the largest posterior probability, and re-estimate the distribution for the target marker, $Z_i$, with the newly assigned counts,
 $$
 P^{(t+1)}(Z_{i \to i} = y) = \frac{y_{\cdot j}^{(t+1)}}{\sum_{j = 1}^J y_{\cdot j}^{(t+1)}}.
@@ -223,8 +223,8 @@ $$
 The M-step relies on our assumption [(A1)](#assumption1). The E-step relies on our assumption [(A2)](#assumption2). After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
 \hat{P}(\text{spillover} | Y_i = y) = 1 - \frac{\pi_{i \to i}^{(T)} \, P^{(T)}(Z_{i \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i}^{(T)} \, P^{(T)}(Z_{j \to i} = y)}.
-$$ [TODO: not all probabilities updated]
-In our experiments, setting $T = 10$ was enough to reach convergence. [TODO: report something quantitative]
+$$ \textcolor{red}{TODO:} [not all probabilities updated]
+In our experiments, setting $T = 10$ was enough to reach convergence. \textcolor{red}{TODO:} [report something quantitative]
 
 ### Step 2: Logistic Regression
 
@@ -637,7 +637,7 @@ Figure \@ref(fig:critical-points-a1) represents the distributions at $\tau = -60
 
 ## No Hidden Confounding (A2)
 
-[TODO: Resolve comment by Sebastian:
+\textcolor{red}{TODO:} [Resolve comment by Sebastian:
 
 Unsure about this experiment:
 Z_h is just like any other Z_j→i, isn't it?
@@ -683,7 +683,7 @@ Figure \@ref(fig:critical-points-a2) represents the two end points of the range 
 
 ## Biomodal Beads (A3)
 
-[TODO: resolve comment by Sebastian:
+\textcolor{red}{TODO:} [resolve comment by Sebastian:
 
 I think the data generating process can equivalently be rewritten following the standard model we posit in the main text, where there are 2 spillover and 1 true Z that mix, while the trick here seems to be that the premixing and subsuming Z1 and Z2 as one spillover-component somewhat "hides the separate identities of Z1 and Z2" – which is closely related to A.2.]
 
