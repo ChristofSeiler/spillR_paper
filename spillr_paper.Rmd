@@ -171,7 +171,7 @@ This assumption is already implied by the statement of the mixture model, and we
 $$
 P(\text{spillover} \mid Y_{ij} = y) = 
 1 - P(Z_i = j \mid Y_{ij} = y) = 
-1 - \frac{\pi_j \, P(Y_{ij} = y \mid Z_i = j)}{\sum_{j = 1}^K \pi_k \, P(Y_ik = y) \mid Z_i = k)}.
+1 - \frac{\pi_j \, P(Y_{ij} = y \mid Z_i = j)}{\sum_{j = 1}^K \pi_k \, P(Y_{ik} = y) \mid Z_i = k)}.
 $$
 
 To parse this calculation, recall that in mixture models the probability $\pi_k$ is the prior probability, $P(Y_{ij} = y \mid Z_i = k)$ is the conditional probability of obtaining count $y$ given the mixture component for marker $k$ spilling over into marker $j$, and the denominator is the marginal distribution. Putting all this together and applying Bayes rule leads to the posterior probability.
@@ -203,24 +203,26 @@ $$
 
 We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
 
-* E-step: We calculate the probability of a count $Y_i = y_{kj}$ spilling over from $j$ into $i$ from the current estimate $t$ of the marker distributions and mixture probability vector:
+* E-step: We calculate the probability of a count $Y_i = y_{ij}$ spilling over from $j$ into $k$ at the current estimate $t$ of the marker distributions and mixture probability vector:
 $$
-P(j \text{ spills into } i \, | \, Y_i = y_{kj}) = \frac{\pi_{j \to i}^{(t)} \, P^{(t)}(Z_{j \to i} = y_{kj})}{\sum_{j' = 1}^J \pi_{j' \to i}^{(t)} \, P^{(t)}(Z_{j' \to i} = y_{kj})}.
+P(Z_i = k \mid Y_i = y_{ij}) = \frac{\pi_k \, P^{(t)}(Y_{ij} = y \mid Z_i = k)}{\sum_{k' = 1}^K \pi_{k'} P^{(t)}(Y_{ij} = y \mid Z_i = k')}.
 $$
 * M-step: We update, $(t+1)$, the mixture probability vector, 
 $$
-\pi_{j \to i}^{(t+1)} = \frac{1}{K} \sum_{k = 1}^{K} P(j \text{ spills into } i \mid Y_i = y_{kj}),
-$$ \textcolor{red}{TODO:} [y^(t+1) not introduced]
-assign counts to the marker with the largest posterior probability, and re-estimate the distribution for the target marker, $Z_i$, with the newly assigned counts,
+\pi_k^{(t+1)} = \frac{1}{I} \sum_{i = 1}^{I} P(Z_i = k \mid Y_i = y_{ij}),
+$$ 
+assign counts to the marker with the largest posterior probability, and re-estimate the distribution for the target marker with the newly assigned counts,
 $$
-P^{(t+1)}(Z_{i \to i} = y) = \frac{y_{\cdot j}^{(t+1)}}{\sum_{j = 1}^J y_{\cdot j}^{(t+1)}}.
+P^{(t+1)}(Y_{ij} =y \mid Z_i = k) = \frac{\sum_{i = 1}^I I(y_{ij}^{(t+1)} = y)}{\sum_{j = 1}^J \sum_{i = 1}^I I(y_{ij}^{(t+1)} = y)}.
+$$
+\textcolor{red}{TODO:} [add sketch going from $y_{ij}^(t)$ to $y_{ij}^(t+1)$]
+
+The M-step relies on our assumption [(A1)](#assumption1) because we only update the distribution of the target marker. The E-step relies on our assumption [(A2)](#assumption2) because we use the logit function, which is monotonic decreasing function. After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
+$$
+\hat{P}(\text{spillover} | Y_{ij} = y) = 1 - P^{(T)}(Z_i = j \mid Y_{ij} = y).
 $$
 
-The M-step relies on our assumption [(A1)](#assumption1). The E-step relies on our assumption [(A2)](#assumption2). After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
-$$
-\hat{P}(\text{spillover} | Y_i = y) = 1 - \frac{\pi_{i \to i}^{(T)} \, P^{(T)}(Z_{i \to i} = y)}{\sum_{j = 1}^J \pi_{j \to i}^{(T)} \, P^{(T)}(Z_{j \to i} = y)}.
-$$ \textcolor{red}{TODO:} [not all probabilities updated]
-In our experiments, setting $T = 10$ was enough to reach convergence. \textcolor{red}{TODO:} [report something quantitative]
+In our experiments, setting $T = 10$ was enough to reach convergence to reach convergence with many different initial values. \textcolor{red}{TODO:} [report something quantitative]
 
 ### Step 2: Logistic Regression
 
@@ -228,13 +230,13 @@ This step is a post-processing step of $\hat{P}(\text{spillover} \mid Y_i = y)$.
 
 The logistic regression model is,
 $$
-\log\left(\frac{P(\text{spillover} \mid Y_i = y)}{1-P(\text{spillover} \mid Y_i = y)}\right) = \beta_0 + \beta_1 y,
+\log\left(\frac{P(\text{spillover} \mid Y_{ij} = y)}{1-P(\text{spillover} \mid Y_{ij} = y)}\right) = \beta_0 + \beta_1 y,
 $$
-with $y$ transformed using the inverse hyperbolic sine transformation with the cofactor set 5 [@bendall2011single] to stabilize the variance and account for heteroskedasticity. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability for $Y_i = y$,
+with $y$ transformed using the inverse hyperbolic sine transformation with the cofactor set 5 [@bendall2011single] to stabilize the variance and account for heteroskedasticity. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability for $Y_{ij} = y$,
 $$
-\hat{P}^*(\text{spillover} \mid Y_i = y) = (1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)})^{-1}.
+\hat{P}^*(\text{spillover} \mid Y_{ij} = y) = (1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)})^{-1}.
 $$
-The $\hat{P}^*(\text{spillover} \mid Y_i = y)$ is a smooth version of the noisy estimate from step 1, $\hat{P}(\text{spillover} \mid Y_i = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and declare the current count as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover counts as counts that have no clear biological interpretation and remove them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions.
+The $\hat{P}^*(\text{spillover} \mid Y_{ij} = y)$ is a smooth version of the noisy estimate from step 1, $\hat{P}(\text{spillover} \mid Y_{ij} = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. We use the spillover probability to flip a biased coin and declare the current count as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover counts as counts that have no clear biological interpretation and remove them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions.
 
 <!-- 
 
