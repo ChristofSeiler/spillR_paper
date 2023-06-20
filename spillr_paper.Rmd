@@ -184,23 +184,19 @@ The spillover probability is the probability that the counts are not due to the 
 
 \textcolor{red}{TODO:} [clearly state what is done on beads, and what on real]
 
-We propose a two step procedure for estimating spillover probability. In step 1, we initialize all marker distributions $P(Z_{j \to i} = y)$ and the mixture probability vector $\pi_{j \to i}$. We update the mixture probability vector and the mixture component of the target marker $P(Z_{i \to i} = y)$ using the EM algorithm [@dempster1977maximum]. In step 2, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression and apply the correction.
+We propose a two step procedure for estimating spillover probability. In step 1, we initialize all marker distributions $P(Y_{ij} = y \mid Z_i = k)$ and the mixture probabilities $\pi_k$. We update the mixture component of the target marker $P(Y_{ij} = y \mid Z_i = j)$ and the mixture probabilities using the EM algorithm [@dempster1977maximum]. In step 2, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use the smooth probability estimates to assign counts to spillover or signal.
+
+Step 1 is standard EM algorithm with some application specific modifications: components come from two different data sources (beads experiment and real cells). We estimate the non-target mixture components for $P(Y_{ij} = y \mid Z_i = k)$ with $j \ne k$ from beads experimental data. We estimate the target mixture component $P(Y_{ij} = y \mid Z_i = j)$ from experiments with real cells, which we denote by the conditioning on the target marker $j$. Furthermore, we only update the target mixture component and the mixture probabilities during the E and M steps until convergence, while we keep the non-target mixture components fixed as estimated from the beads experiment.
 
 ### Step 1: EM Algorithm
 
-Our data are count matrices that contain cells on the rows and markers on the columns. We have two count matrices, a real cells matrix and a beads matrix. In general, the number of beads is much smaller than real cells. To simplify notation, but without loss of generality, we will assume that both matrices have the same dimension $K \times J$. We denote an element from this matrix as $y_{kj}$. We count the frequency of cells that have $y$ proteins on marker $j$,
-$$
-y_{\cdot j} = \sum_{k = 1}^K I(y_{kj} = y),
-$$ \textcolor{red}{TODO:} merge into nonparametric estimate?
-where $I(\cdot)$ is the indicator function. 
-
-First, we estimate the $P(Z_{j \to i} = y)$ on the beads experiment data. Second, we initialize $P^{(0)}(Z_{j \to i} = y)$ and $\pi^{(0)}$ using the real data. Third, we iterate the following E and M steps on the real data until convergence, here, only $P^{(t)}(Z_{j \to i} = y)$ and $\pi^{(t)}$ are being updated, while the spillover probabilities are kept as estimated from the beds experiment.
+\textcolor{red}{TODO:} Still working on it!
 
 We initialize the probability mass function using the nonparametric estimate,
 $$
-P^{(0)}(Z_{j \to i} = y) = \frac{y_{\cdot j}}{\sum_{j = 1}^J y_{\cdot j}},
+P^{(0)}(Y_{ij} =y \mid Z_i = k) = \frac{\sum_{i = 1}^I I(y_{ij} = y)}{\sum_{j = 1}^J \sum_{i = 1}^I I(y_{ij} = y)},
 $$
-and set the mixture probability vector to the discrete uniform, 
+where $I(\cdot)$ is the indicator function, $I$ is the total number of cells, and $J$ is the total number of markers. We set the mixture probability vector to the discrete uniform, 
 $$
 \pi_{1 \to i}^{(0)}, \dots, \pi_{J \to i}^{(0)} = 1/J.
 $$ 
