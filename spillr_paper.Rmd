@@ -102,7 +102,7 @@ To illustrate the main idea of our work, we consider an example with only two ma
 
 The example highlights the main difference between our method and @catalyst. After removing cells that fall into the blue shaded area, the average CD36 (Nd144Di) count will be larger. So, in this example, our spillover correction method increases the average count. In contrast, @catalyst will shrink all the counts towards zero. As a consequence, the average count will be lower after correction.
 
-In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm and logistic regression, and implemented in our new R package `spillR` (https://github.com/marcoguazzini/spillR). In Section \@ref(results), we conduct experiments on simulated and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) relates our findings to `CATALYST` and gives recommendation when to use `spillR`.
+In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm and logistic regression, and implemented in our new R package `spillR` (https://github.com/marcoguazzini/spillR). In Section \@ref(results), we conduct experiments on simulated and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) relates our findings to `CATALYST` and gives recommendations on when to use `spillR`.
 
 # Methods
 
@@ -143,7 +143,7 @@ plot_grid(
   )
 ```
 
-Figure \@ref(fig:method-example) illustrates our two step procedure using an exemplary dataset from the `CATALYST` package. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). We have bead experiments on all the spillover markers. The panel on the left displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method removes some counts in the range between zero to four. Larger counts are not affected by the correction and as both curves overlap. 
+Figure \@ref(fig:method-example) illustrates our two step procedure using a dataset from the `CATALYST` package as an example. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). We have bead experiments on all the spillover markers. The panel on the left displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method removes some counts in the range between zero to four. Larger counts are not affected by the correction and as both curves overlap. 
 
 The panel on the right depicts the marker distributions from the beads experiment. We see that for this marker the bead experiments are high-quality as the target marker Yb173Di is concentrated around six, similarly to the experiment with real cells. This suggests that the spillover markers can be transferred to the real experiments. Marker Yb172Di shows large spillover into Yb173Di, and suggests that much of the first mode of the distribution may be attributed to that marker. The other spillover markers act on the low counts, and make it justifiable to set all the low counts to zero.
 
@@ -163,7 +163,7 @@ Experimentally, we only measure a sample from the distribution $Y_{ij}$. The pro
 
 * <div id='assumption1'>(A1) Spillover distributions are the same in bead and real experiments.</div>
 
-The distribution of $Y_{ij} \mid Z_i = k$ that spills over into the true marker $j$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_{i1} \mid Z_i = k, \dots, Y_{iJ} \mid Z_i = K$---except the true marker $Y_{ij} \mid Z_i = j$---from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
+The distribution of $Y_{ij} \mid Z_i = k$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_{i1} \mid Z_i = k, \dots, Y_{iJ} \mid Z_i = K$---except the true marker $Y_{ij} \mid Z_i = j$---from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
 
 * <div id='assumption2'>(A2) Observed counts $Y_{ij}$ can only be due to any one of the $Y_{ij} = y \mid Z_i = k$.</div>
 
@@ -178,15 +178,15 @@ To parse this calculation, recall that in mixture models the probability $\pi_k$
 
 * <div id='assumption3'>(A3) Spillover probability curves are logistic functions.</div>
 
-The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Larger $y$ will not have any spillover and only have true signal. In contrast, smaller $y$ are more likely a result of another marker spilling over. Although it is biologically possible that spillover happens at higher counts, this assumption makes our statistical procedure more stable. We chose the logistic function as it is the standard option for logistic regression.
+The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Sufficiently large $y$ are not due to spillover and only carry the true signal. In contrast, smaller $y$ are more likely a result of another marker spilling over. Although it is biologically possible that spillover happens at higher counts, this assumption makes our statistical procedure more stable. We chose the logistic function as it is the standard option for logistic regression.
 
 ## Estimation of Spillover Probability
 
 \textcolor{red}{TODO:} [clearly state what is done on beads, and what on real]
 
-We propose a two step procedure for estimating spillover probability. In step 1, we initialize all marker distributions $P(Y_{ij} = y \mid Z_i = k)$ and the mixture probabilities $\pi_k$. We update the mixture component of the target marker $P(Y_{ij} = y \mid Z_i = j)$ and the mixture probabilities using the EM algorithm [@dempster1977maximum]. In step 2, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use the smooth probability estimates to assign counts to spillover or signal.
+We propose a two step procedure for estimating spillover probability. In step 1, we initialize all marker distributions $P(Y_{ij} = y \mid Z_i = k)$ and the mixture probabilities $\pi_k$. We update the mixture component of the target marker $P(Y_{ij} = y \mid Z_i = j)$ and the mixture probabilities using the EM algorithm [@dempster1977maximum]. In step 2, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use smooth probability estimates to assign counts to spillover or signal.
 
-Step 1 is standard EM algorithm with some application specific modifications: components come from two different data sources (beads experiment and real cells). We estimate the non-target mixture components for $P(Y_{ij} = y \mid Z_i = k)$ with $j \ne k$ from beads experimental data. We estimate the target mixture component $P(Y_{ij} = y \mid Z_i = j)$ from experiments with real cells, which we denote by the conditioning on the target marker $j$. Furthermore, we only update the target mixture component and the mixture probabilities during the E and M steps until convergence, while we keep the non-target mixture components fixed as estimated from the beads experiment.
+Step 1 is the standard EM algorithm with some application-specific modifications: components come from two different data sources (beads experiment and real cells). We estimate the non-target mixture components for $P(Y_{ij} = y \mid Z_i = k)$ with $k \ne j$ from experimental data obtained on beads. We estimate the target mixture component $P(Y_{ij} = y \mid Z_i = j)$ from experiments with real cells, which we denote by the conditioning on the target marker $j$. During the E and M steps, we only update the target mixture component and the mixture probabilities, while we keep the non-target mixture components fixed at their estimates from the beads experiment.
 
 ### Step 1: EM Algorithm
 
@@ -205,24 +205,24 @@ We update---going from current estimate $t$ to the next $t+1$---the target distr
 
 * E-step: We calculate the probability of a count $Y_i = y_{ij}$ spilling over from $j$ into $k$ at the current estimate $t$ of the marker distributions and mixture probability vector:
 $$
-P(Z_i = k \mid Y_i = y_{ij}) = \frac{\pi_k \, P^{(t)}(Y_{ij} = y \mid Z_i = k)}{\sum_{k' = 1}^K \pi_{k'} P^{(t)}(Y_{ij} = y \mid Z_i = k')}.
+P(Z_i = k \mid Y_{ij} = y) = \frac{\pi_k \, P^{(t)}(Y_{ij} = y \mid Z_i = k)}{\sum_{k' = 1}^K \pi_{k'} P^{(t)}(Y_{ij} = y \mid Z_i = k')}.
 $$
 * M-step: We update, $(t+1)$, the mixture probability vector, 
 $$
 \pi_k^{(t+1)} = \frac{1}{I} \sum_{i = 1}^{I} P(Z_i = k \mid Y_i = y_{ij}),
 $$ 
-assign counts to the marker with the largest posterior probability, and re-estimate the distribution for the target marker with the newly assigned counts,
+re-assign counts to the marker with the largest posterior probability, and re-estimate the distribution for the target marker with the newly assigned counts,
 $$
 P^{(t+1)}(Y_{ij} =y \mid Z_i = k) = \frac{\sum_{i = 1}^I I(y_{ij}^{(t+1)} = y)}{\sum_{j = 1}^J \sum_{i = 1}^I I(y_{ij}^{(t+1)} = y)}.
 $$
-\textcolor{red}{TODO:} [add sketch going from $y_{ij}^(t)$ to $y_{ij}^(t+1)$]
+\textcolor{red}{TODO:} [add sketch going from $y_{ij}^{(t)}$ to $y_{ij}^{(t+1)}$]
 
 The M-step relies on our assumption [(A1)](#assumption1) because we only update the distribution of the target marker. The E-step relies on our assumption [(A2)](#assumption2) because we use the logit function, which is monotonic decreasing function. After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
 \hat{P}(\text{spillover} | Y_{ij} = y) = 1 - P^{(T)}(Z_i = j \mid Y_{ij} = y).
 $$
 
-In our experiments, setting $T = 10$ was enough to reach convergence to reach convergence with many different initial values. \textcolor{red}{TODO:} [report something quantitative]
+In our experiments, setting $T = 10$ was enough to reach convergence with many different initial values. \textcolor{red}{TODO:} [report something quantitative]
 
 ### Step 2: Logistic Regression
 
@@ -559,11 +559,11 @@ plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2)
 
 Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. The experiment for [(A1)](#assumption1) shows the performance of our method on different settings that are also present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data (Figure \@ref(fig:method-example-cd68-cd45) in Appendix \@ref(two-real-cases)) for protein CD68 with the metal label Eu153Di. In that case, assumption [(A1)](#assumption1) does not hold. For some markers CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment. In that case, assumption [(A1)](#assumption1) holds. As expected our method performs worse when the true signal overlaps with the spillover. The experiment for [(A2)](#assumption2) shows that our methods is robust to hidden spillover. Hidden spillover should not be a major issue as we can add all channels. The increase in computational cost is relatively minor as our methods scales linearly in the number of spillover markers. Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. The probability of spillover increases and our method tends to overcompensate. The bimodal real cells experiment displays large distances to the true signal when the second mode of the true signal is close to the bead mode.
 
-Comparisons between methods on real data are challenging because there is no ground truth available. Overall, our method compensates more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes that spillover is linear up to counts of 5,000. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
+Comparisons between methods on real data are challenging because there is no ground truth available. Overall, our method compensates more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to draw final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes that spillover is linear up to counts of 5,000. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
 
 We estimate bead and real distributions using their empirical distributions from the bead experiment. From histograms, we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different post-processing methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distributions. All methods were unstable. They worked on some markers, but failed on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
 
-The advantage of our methods is that we can inspect it by plotting the spillover probability curve using the function `plotDiagnostics`. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation. Therefore, we recommend to use `spillR` whenever high quality bead experiments are available.
+An advantage of our methods is that we can inspect it by plotting the spillover probability curve using the function `plotDiagnostics`. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation. Therefore, we recommend to use `spillR` whenever high quality bead experiments are available.
 
 # Acknowledgments {-}
 
