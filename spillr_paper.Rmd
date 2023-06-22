@@ -467,7 +467,7 @@ In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments))
 ### Bimodal Real Cells (A3)
 -->
 
-In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. Here we again explore the robustness of our method against a violation of the third assumption [(A3)](#assumption3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode.
+In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. We assume that the spillover has two modes emitted by the same spillover marker. This is different from the previous experiment, where we assume that there is a hidden spillover marker. In this experiment, we explore the robustness of our method against a violation of the third assumption [(A3)](#assumption3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode.
 
 ## Real Data
 
@@ -623,8 +623,8 @@ The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
 Z            & \sim \text{Bernoulli}(0.1)   & \qquad \text{(pick spillover)} \\
-Y \mid Z = 0 & \sim \text{Poisson}(100)     & \qquad \text{(true signal)} \\
-Y \mid Z = 1 & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover with shift } \tau \text{)}.
+(Y \mid Z = 0) & \sim \text{Poisson}(100)     & \qquad \text{(true signal)} \\
+(Y \mid Z = 1) & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover with shift } \tau \text{)}.
 \end{aligned}
 $$
 The generative model for beads is an independent copy of the unshifted $Y \mid Z = 1$ at $\tau = 0$.
@@ -672,36 +672,16 @@ Figure \@ref(fig:critical-points-a1) represents the distributions at $\tau = -60
 
 ## Model Misspecification (A2)
 
-\textcolor{red}{TODO:} [Resolve comment by Sebastian:
-
-Unsure about this experiment:
-Z_h is just like any other Z_j→i, isn't it?
-All Z_j→i are unobserved.
-
-Is the assumption that Y_i is indeed generated as per the mixture model you posit and there is no unobserved confounder that enters Y?
-But what would you understand as a confounder here?
-Also, does increasing beyond 0.5 make sense? In this case, we could say Z_h is actually Z.
-
-One thing I can see is that your set-up violates "Y follows mixture models of underlying unobserved Z for which we have beads experiments to estimate P(Z_j to i)", but in what sense is this a confounder?
-It seems to me that it's another mixture component that can generate Y for which we have no way of getting a meaningful estimate of the Poisson rate and for which we don't even model a mixture component, so it's model-misspecification where we model less components than there are.
-What do you think?
-
-If you set the rate of Z_h to 90, then wouldn't there simply be no way for us to realise even that we are observing sometimes Z and sometimes Zh, but would remove counts lower than 70 and attribute them to Z'?
-
-So, perhaps the violation is: "undercomplete mixture model, there are more mixture components than observed and than can spillover distributions be estimated for in a beads experiment"
-
-In this sense it seems A.3 may be somewhat analogous/related]
-
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
 Z             & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with hidden probability } \tau \text{)} \\
-Y \mid Z = 0 & \sim \text{Poisson}(100)       & \qquad \text{(true signal)} \\
-Y \mid Z = 1 & \sim \text{Poisson}(70)        & \qquad \text{(spillover)} \\
-Y \mid Z = 2 & \sim \text{Poisson}(70)        & \qquad \text{(hidden spillover)} \\
+(Y \mid Z = 0) & \sim \text{Poisson}(100)       & \qquad \text{(true signal)} \\
+(Y \mid Z = 1) & \sim \text{Poisson}(70)        & \qquad \text{(spillover)} \\
+(Y \mid Z = 2) & \sim \text{Poisson}(70)        & \qquad \text{(hidden spillover)} \\
 \end{aligned}
 $$
-The generative model for beads is an independent copy of $Z'$.
+The generative model for beads is an independent copy of $Y \mid Z \ne 0$.
 
 ```{r critical-points-a2, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
 tb_a2 <- lapply(c(0, 0.5, 0.6), 
@@ -717,23 +697,18 @@ Figure \@ref(fig:critical-points-a2) represents the two end points of the range 
 
 ## Biomodal Beads (A3)
 
-\textcolor{red}{TODO:} [resolve comment by Sebastian:
-
-I think the data generating process can equivalently be rewritten following the standard model we posit in the main text, where there are 2 spillover and 1 true Z that mix, while the trick here seems to be that the premixing and subsuming Z1 and Z2 as one spillover-component somewhat "hides the separate identities of Z1 and Z2" – which is closely related to A.2.]
-
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
-M   & \sim \text{Bernoulli}(0.5)       & \qquad \text{(pick mode)} \\
-Z_1 & \sim \text{Poisson}(70)          & \qquad \text{(first mode of spillover)} \\
-Z_2 & \sim \text{Poisson}(\tau)        & \qquad \text{(second mode with mean } \tau \text{ of spillover } \\
-Z'  & = (1-M) Z_1 + M Z_2              & \qquad \text{(spillover)} \\
-S   & \sim \text{Bernoulli}(0.1)       & \qquad \text{(pick spillover)} \\
-Z   & \sim \text{Poisson}(100)         & \qquad \text{(true signal)} \\
-Y   & = (1-S) Z + S Z'                 & \qquad \text{(observed real cells)}.
+Z   & \sim \text{Bernoulli}(0.1)       & \qquad \text{(pick spillover)} \\
+(Y \mid Z = 0) & \sim \text{Poisson}(100)         & \qquad \text{(true signal)} \\
+M   & \sim \text{Bernoulli}(0.5)          & \qquad \text{(pick mode)} \\
+(S \mid M = 0) & \sim \text{Poisson}(70)   & \qquad \text{(first mode of spillover)} \\
+(S \mid M = 1) & \sim \text{Poisson}(\tau) & \qquad \text{(second mode with spillover at } \tau) \\
+( Y \mid Z = 1 )   & = S                 & \qquad \text{(spillover)}.
 \end{aligned}
 $$
-The generative model for beads is an independent copy of $Z'$.
+The generative model for beads is an independent copy of $Y \mid Z = 1$.
 
 ```{r critical-points-a3-bead, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
 tb_a3_bead <- lapply(c(70, 100, 130), 
@@ -752,16 +727,15 @@ Figure \@ref(fig:critical-points-a3-bead) represents points from the stable and 
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
-S   & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
-Z'  & \sim \text{Poisson}(70)    & \qquad \text{(spillover)} \\
+Z   & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
 M   & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
-Z_1 & \sim \text{Poisson}(100)   & \qquad \text{(first mode of true signal)} \\
-Z_2 & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode with mean } \tau \text{ of true signal)} \\
-Z   & = (1-M) Z_1 + M Z_2        & \qquad \text{(true signal)} \\
-Y   & = (1-S) Z + S Z'           & \qquad \text{(observed real cells)}.
+(T \mid M = 0) & \sim \text{Poisson}(100)   & \qquad \text{(first mode of true signal)} \\
+(T \mid M = 1) & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode of true signal at } \tau) \\
+(Y \mid Z = 0)   & = T            & \qquad \text{(true signal)} \\
+(Y \mid Z = 1)  & \sim \text{Poisson}(70)    & \qquad \text{(spillover)}
 \end{aligned}
 $$
-The generative model for beads is an independent copy of $Z'$.
+The generative model for beads is an independent copy of $Y \mid Z = 1$.
 
 ```{r critical-points-a3-real, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
 tb_a3_real <- lapply(c(50, 70, 130), 
@@ -779,9 +753,9 @@ Figure \@ref(fig:critical-points-a3-real) represents points two points in the ta
 
 # Exemplary Real Cases
 
-Dataset from original `CATALYST` paper [@catalyst].
+Figure \@ref(fig:exemplary-cases) shows two cases from the dataset in the `CATALYST` paper [@catalyst].
 
-```{r method-example-cd68-cd45, fig.height=6, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The black dashed curve in the plot on the right represents the spillover probability estimated by our method.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r exemplary-cases, fig.height=6, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The black dashed curve in the plot on the right represents the spillover probability estimated by our method.", echo=FALSE, warning=FALSE, message=FALSE}
 p_list <- plotDiagnostics(sce_spillr, "Eu153Di")
 p1 <- plot_grid(
     p_list[[1]] + xlab("CD68 (Eu153Di)"),
