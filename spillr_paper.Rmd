@@ -182,49 +182,40 @@ The spillover probability is the probability that the counts are not due to the 
 
 We propose a two step procedure for estimating the spillover probability. In step 1, we initialize all marker distributions $Y_{ij} \mid Z_{ij} = k$ and the mixture probabilities $\pi_{kj}$. We update the mixture component of the target marker $Y_{ij} \mid Z_{ij} = j$ and the mixture probabilities using the EM algorithm [@dempster1977maximum]. In step 2, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use the smooth probability estimates to assign counts to spillover or signal.
 
-Step 1 is a standard EM algorithm with some application specific modifications: components come from two different data sources (beads experiment and real cells). We estimate the non-target mixture components $Y_{ij} \mid Z_{ij} = k$ with $j \ne k$ from beads experimental data. We estimate the target mixture component $Y_{ij} \mid Z_{ij} = j$ from experiments with real cells, which we denote by the conditioning on the target marker $j$. Furthermore, we only update the target mixture component and the mixture probabilities during the E and M steps until convergence, while we keep the non-target mixture components fixed as estimated from the beads experiment.
+Step 1 is a standard EM algorithm with some application-specific modifications: we estimate mixture components from two different data sources. We estimate the non-target mixture components $Y_{ij} \mid Z_{ij} = k$ with $j \ne k$ from beads experimental data. We estimate the target mixture component $Y_{ij} \mid Z_{ij} = j$ from experiments with real cells. Furthermore, we only update the target mixture component and the mixture probabilities during the E and M steps until convergence, while we keep the non-target mixture components fixed as estimated from the beads experiment.
 
 ### Step 1: EM Algorithm
 
-We refer to Appendix \@ref(generative-models) for a mathematical description of our EM algorithm. Here we illustrate the procedure with an numerical example. 
+We refer to Appendix \@ref(em-algorithm-example) for a numerical example of our EM algorithm. We initialize the conditional probability mass function using the nonparametric estimate by counting the proportion of $y_{ij}$ that take the value $y$,
+$$
+P^{(0)}(Y_{ij} =y \mid Z_{ij} = k) = \frac{\sum_{i = 1}^{n_j} \mathbf{1}\left(y_{ij}^{(0)} = y\right)}{\sum_{j = 1}^K \sum_{i = 1}^{n_j} \mathbf{1}\left(y_{ij}^{(0)} = y\right)},
+$$
+where $y_{ij}^{(0)}$ is the element at the $i$th row and $j$th column in observed count matrix $\mathbf{Y} = (y_{ij})$ at iteration $t = 0$, $\mathbf{1}(\cdot)$ is the indicator function, $n_j$ is the total number of cells measured on marker $j$, and $K$ is the total number of spillover markers. We set the mixture probability vector to the discrete uniform, 
+$$
+\pi_{1j}^{(0)}, \dots, \pi_{Kj}^{(0)} = 1/K.
+$$ 
 
-The E step: \textcolor{red}{TODO}
+We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
 
-The M step:
+* E step: We calculate the probability of a count $Y_{ij} = y_{ij}$ spilling over from $k$ into $j$ at the current estimate $t$ of the marker distributions and mixture probability vector:
 $$
-y_j^{(t)} =
-\begin{bmatrix}
-3 \\ 5 \\ 17 \\ 3 \\ 17 \\ 2
-\end{bmatrix}
-\longmapsto
-y_j^{(t+1)} =
-\begin{bmatrix}
-\times \\ 5 \\ 17 \\ \times \\ 17 \\ \times
-\end{bmatrix}.
+P\left(Z_{ij} = k \mid Y_{ij} = y_{ij}^{(t)}\right) = \frac{\pi_{kj} \, P^{(t)}(Y_{ij} = y_{ij}^{(t)} \mid Z_{ij} = k)}{\sum_{k' = 1}^K \pi_{k'j} P^{(t)}(Y_{ij} = y_{ij}^{(t)} \mid Z_{ij} = k')}.
 $$
-The vector of observations for the target marker $j$ has six cells. At iteration $t$, all six cells are assigned to the target marker. At the next iteration $t+1$, cell 1, 4, and 6 are assigned to the target marker. We denote counts assigned as non-target counts by $\times$. We estimate the target distribution at iteration $t$,
+* M step: We update, $(t+1)$, the mixture probability vector, 
 $$
-\begin{aligned}
-P^{(t)}(Y_{ij} = 2 \mid Z_{ij} = j)  & =  1/6 \\
-P^{(t)}(Y_{ij} = 3 \mid Z_{ij} = j)  & =  2/6 \\
-P^{(t)}(Y_{ij} = 5 \mid Z_{ij} = j)  & =  1/6 \\
-P^{(t)}(Y_{ij} = 17 \mid Z_{ij} = j) & =  2/6,
-\end{aligned}
+\pi_{kj}^{(t+1)} = \frac{1}{n} \sum_{i = 1}^{n} P(Z_{ij} = k \mid Y_{ij} = y_{ij}^{(t)}),
+$$ 
+assign counts to the marker with the largest posterior probability and re-estimate the distribution for the target marker with the newly assigned counts,
 $$
-and $t+1$,
-$$
-\begin{aligned}
-P^{(t+1)}(Y_{ij} = 5 \mid Z_{ij} = j)  & =  1/3 \\
-P^{(t+1)}(Y_{ij} = 17 \mid Z_{ij} = j) & =  2/3.
-\end{aligned}
+P^{(t+1)}(Y_{ij} =y \mid Z_{ij} = k) = \frac{\sum_{i = 1}^{n_j} \mathbf{1}\left(y_{ij}^{(t+1)} = y\right)}{\sum_{j = 1}^K \sum_{i = 1}^{n_j} \mathbf{1}\left(y_{ij}^{(t+1)} = y\right)}.
 $$
 
-The M step relies on our assumption [(A1)](#assumption1) because we only update the distribution of the target marker. The E step relies on our assumption [(A2)](#assumption2) because we use the logit function, which is monotonic decreasing function. After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
+After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
-\hat{P}(\text{spillover} | Y_{ij} = y) = 1 - P^{(T)}(Z_{ij} = j \mid Y_{ij} = y).
+\hat{P}(\text{spillover} \mid Y_{ij} = y) = 1 - P^{(T)}(Z_{ij} = j \mid Y_{ij} = y).
 $$
 
-In our experiments, setting $T = 10$ was enough to reach convergence with many different initial values.
+We rely on assumption [(A1)](#assumption1) to justify to only update the distribution of the target marker. We rely on assumption [(A2)](#assumption2) to justify calculating the spillover probability from the mixture model.
 
 ### Step 2: Logistic Regression
 
@@ -250,7 +241,7 @@ The $\tilde{P}(\text{spillover} \mid Y_{ij} = y)$ is a smooth version of the noi
 
 # Results
 
-We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its shortcomings. Then, we compare `spillR` to the method implemented in `CATALYST` based on non-negative least squares on real data from the `CATALYST` package on Bioconductor. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd`^[https://github.com/ChristofSeiler/spillR_paper].
+We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its shortcomings. Then, we compare `spillR` to the method implemented in `CATALYST` based on non-negative least squares on real data from the `CATALYST` package on Bioconductor. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd`^[https://github.com/ChristofSeiler/spillR_paper]. In our experiments, setting $T = 10$ was enough to reach convergence with many different initial values.
 
 ## Simulated Data
 
@@ -589,31 +580,72 @@ We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a pr
 
 \newpage
 
-# EM Algorithm
+# EM Algorithm Example
 
-We initialize the conditional probability mass function using the nonparametric estimate by counting the proportion of $y_{ij}$ that take the value $y$,
+Here we illustrate the procedure with an numerical example with one target and one spillover marker. We represent the observed count matrix $\mathbf{Y} = (y_{ij})$ as a irregular matrix with empty cells, and the target marker in the first column and the spillover marker in the second column,
 $$
-P^{(0)}(Y_{ij} =y \mid Z_{ij} = k) = \frac{\sum_{i = 1}^n \mathbf{1}(y_{ij}^{(0)} = y)}{\sum_{j = 1}^K \sum_{i = 1}^n \mathbf{1}(y_{ij}^{(0)} = y)},
+\mathbf{Y} = (y_{ij}) = 
+\begin{bmatrix}
+3  & 2 \\ 
+5  & 3 \\ 
+17 & 2 \\ 
+3  & \\ 
+17 & \\ 
+2  & 
+\end{bmatrix}.
 $$
-where $y_{ij}^{(0)}$ is the element at the $i$th row and $j$th column in observed count matrix $\mathbf{Y} = (y_{ij})$ at iteration $t = 0$, $\mathbf{1}(\cdot)$ is the indicator function, $n$ is the total number of cells, and $K$ is the total number of spillover markers. We set the mixture probability vector to the discrete uniform, 
+This matrix cannot be used for linear algebra because it is has different sized columns. Also, the order of rows can be permuted without loosing information. For example, counts on the first row are not measured on the same cell. The first column represents the counts for the target marker measured in the experiment with real cells. The second column represents the counts for the spillover marker measured in the experiment with beads.
+
+We initialize our EM algorithm by estimating the conditional probability of observing $y$ given that it belongs to the target marker, and another conditional probability given that it belongs to the spillover marker,
 $$
-\pi_{1j}^{(0)}, \dots, \pi_{Kj}^{(0)} = 1/K.
+\begin{aligned}
+& P^{(0)}(Y_{i1} = 2 \mid Z_{i1} = 1)  =  1/6 \qquad & P^{(0)}(Y_{i2} = 2 \mid Z_{i2} = 2) = 1/3 \\
+& P^{(0)}(Y_{i1} = 3 \mid Z_{i1} = 1)  =  2/6 \qquad & P^{(0)}(Y_{i2} = 3 \mid Z_{i2} = 2) = 2/3 \\
+& P^{(0)}(Y_{i1} = 5 \mid Z_{i1} = 1)  =  1/6 \\
+& P^{(0)}(Y_{i1} = 17 \mid Z_{i1} = 1) =  2/6.
+\end{aligned}
+$$
+We initialize the mixture probabilities with the discrete uniform, 
+$$
+\pi_{11} = 1/2 \qquad \pi_{21} = 1/2.
 $$ 
+Now, we update these initialize values using the E and M step.
 
-We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
-
-* E step: We calculate the probability of a count $Y_{ij} = y_{ij}$ spilling over from $k$ into $j$ at the current estimate $t$ of the marker distributions and mixture probability vector:
+* The E step: Calculate the posterior probability for the true marker, and the spillover marker,
 $$
-P(Z_{ij} = k \mid Y_i = y_{ij}^{(0)}) = \frac{\pi_{kj} \, P^{(t)}(Y_{ij} = y_{ij}^{(t)} \mid Z_{ij} = k)}{\sum_{k' = 1}^K \pi_{k'j} P^{(t)}(Y_{ij} = y_{ij}^{(0)} \mid Z_{ij} = k')}.
+\begin{aligned}
+& P(Z_{ij} = 1 \mid Y_{ij} = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 1/3} = 1/3 \qquad & P(Z_{ij} = 1 \mid Y_{ij} = 2) = 1 - 1/3 = 2/3 \\
+& P(Z_{ij} = 1 \mid Y_{ij} = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 2/3} = 1/3 \qquad & P(Z_{ij} = 1 \mid Y_{ij} = 3) = 1 - 1/3 = 2/3 \\
+& P(Z_{ij} = 1 \mid Y_{ij} = 5)  = 1 \\
+& P(Z_{ij} = 1 \mid Y_{ij} = 17) = 1.
+\end{aligned}
 $$
-* M step: We update, $(t+1)$, the mixture probability vector, 
+* The M step: Update the mixing probability vector,
 $$
-\pi_{kj}^{(t+1)} = \frac{1}{n} \sum_{i = 1}^{n} P(Z_{ij} = k \mid Y_{ij} = y_{ij}^{(t)}),
-$$ 
-assign counts to the marker with the largest posterior probability and re-estimate the distribution for the target marker with the newly assigned counts,
+\pi_{11} = \frac{1/3 + 1/3 + 1 + 1}{4} = 2/3 \qquad \pi_{21} = \frac{(2/3 + 2/3 + 0 + 0}{4} = 1/3,
 $$
-P^{(t+1)}(Y_{ij} =y \mid Z_{ij} = k) = \frac{\sum_{i = 1}^n \mathbf{1}(y_{ij}^{(t+1)} = y)}{\sum_{j = 1}^K \sum_{i = 1}^n \mathbf{1}(y_{ij}^{(t+1)} = y)}.
+re-assign counts to the marker with largest posterior probability,
 $$
+\mathbf{Y} = (y_{ij}) = 
+\begin{bmatrix}
+\times  & 2 \\ 
+5       & 3 \\ 
+17      & 2 \\ 
+\times  & \\ 
+17      & \\ 
+\times  & 
+\end{bmatrix}.
+$$
+The crosses indicate what elements are re-assigned to the other component based on the posterior probability computed in the E step. Finally, re-estimate the distribution for the target marker and calculate the spillover probability estimate, 
+$$
+\begin{aligned}
+& P^{(0)}(Y_{i1} = 2 \mid Z_{i1} = 1)  =  0 \quad & \hat{P}(\text{spillover} \mid Y_{ij} = 2) = 1 \\
+& P^{(0)}(Y_{i1} = 3 \mid Z_{i1} = 1)  =  0       & \hat{P}(\text{spillover} \mid Y_{ij} = 3) = 1 \\
+& P^{(0)}(Y_{i1} = 5 \mid Z_{i1} = 1)  =  1/3     & \hat{P}(\text{spillover} \mid Y_{ij} = 5) = 2/3 \\
+& P^{(0)}(Y_{i1} = 17 \mid Z_{i1} = 1) =  2/3     & \hat{P}(\text{spillover} \mid Y_{ij} = 17) = 1/3.
+\end{aligned}
+$$
+This is the end of iteration $t = 1$.
 
 # Generative Models
 
