@@ -558,15 +558,21 @@ plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2)
 
 # Discussion
 
-Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. The experiment for [(A1)](#assumption1) shows the performance of our method on different settings that are also present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di (Figure \@ref(fig:exemplary-cases) in Appendix). In that case, assumption [(A1)](#assumption1) does not hold. For some markers CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment (Figure \@ref(fig:exemplary-cases) in Appendix). In that case, assumption [(A1)](#assumption1) holds. As expected our method performs worse when the true signal overlaps with the spillover. The experiment for [(A2)](#assumption2) shows that our methods is robust to model misspecification. Misspecification should not be a major issue as we can add all channels. The increase in computational cost is relatively minor as our methods scales linearly in the number of spillover markers. Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. The probability of spillover increases and our method tends to overcompensate. The bimodal real cells experiment displays large distances to the true signal when the second mode of the true signal is close to the bead mode.
+Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. 
 
-Comparisons between methods on real data are challenging because there is no ground truth available. Overall, our method compensates more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes that spillover is linear up to counts of 5,000. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
+The experiment for [(A1)](#assumption1) shows the performance of our method in settings that are present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di (first row in Figure \@ref(fig:exemplary-cases) in Appendix). In that case, assumption [(A1)](#assumption1) does not hold. For other markers, such as CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment (second row). In that case, assumption [(A1)](#assumption1) holds. 
+
+The experiment for [(A2)](#assumption2) shows that our methods is robust to model misspecification. Moreover, misspecification should not be a major issue as we can add all channels if necessary. The increase in computational cost is relatively minor as our method scales linearly in the number of spillover markers. 
+
+Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. As expected, our method performs worse when the true signal overlaps with the spillover. This behavior is not surprising as it is impossible to identify true from spillover signal when they overlap. Naturally, any method is prone to guess work due to the lack of evidence from data.
+
+Comparisons between methods on real data are challenging because there is no ground truth available. Overall, our method compensates more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions based on real experiments. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes that spillover is linear up to counts of 5,000. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
 
 We estimate bead and real distributions using their empirical distributions from the bead experiment. From histograms, we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different post-processing methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distributions. All methods were unstable. They worked on some markers, but failed on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
 
 # Conclusion
 
-The advantage of our methods is that we can inspect it by plotting the spillover probability curve using the function `plotDiagnostics`. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation. Therefore, we recommend to use `spillR` whenever high quality bead experiments are available.
+The advantage of our method is the diagnostics plot of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation. Therefore, we recommend to use `spillR` whenever high quality bead experiments are available.
 
 # Acknowledgments {-}
 
@@ -576,9 +582,9 @@ We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a pr
 
 <div id="refs"></div>
 
-# (APPENDIX) Supplementary Material {-}
-
 \newpage
+
+# (APPENDIX) Supplementary Material {-}
 
 # EM Algorithm Example
 
@@ -594,7 +600,7 @@ $$
 2  & 
 \end{bmatrix}.
 $$
-This matrix cannot be used for linear algebra because it is has different sized columns. Also, the order of rows can be permuted without loosing information. For example, counts on the first row are not measured on the same cell. The first column represents the counts for the target marker measured in the experiment with real cells. The second column represents the counts for the spillover marker measured in the experiment with beads.
+This matrix cannot be used for linear algebra because it is has different sized columns. Also, the order of rows can be permuted without loosing information. For example, counts on the first row are not measured on the same cell. The first column represents the counts for the target marker measured in the experiment with real cells, and the second column are counts from the beads experiment.
 
 We initialize our EM algorithm by estimating the conditional probability of observing $y$ given that it belongs to the target marker, and another conditional probability given that it belongs to the spillover marker,
 $$
@@ -609,7 +615,7 @@ We initialize the mixture probabilities with the discrete uniform,
 $$
 \pi_{11} = 1/2 \qquad \pi_{21} = 1/2.
 $$ 
-Now, we update these initialize values using the E and M step.
+Now, we update these initial values using the E and M steps.
 
 * The E step: Calculate the posterior probability for the true marker, and the spillover marker,
 $$
@@ -622,7 +628,7 @@ $$
 $$
 * The M step: Update the mixing probability vector,
 $$
-\pi_{11} = \frac{1/3 + 1/3 + 1 + 1}{4} = 2/3 \qquad \pi_{21} = \frac{(2/3 + 2/3 + 0 + 0}{4} = 1/3,
+\pi_{11} = \frac{1/3 + 1/3 + 1 + 1}{4} = 2/3 \qquad \pi_{21} = \frac{2/3 + 2/3 + 0 + 0}{4} = 1/3,
 $$
 re-assign counts to the marker with largest posterior probability,
 $$
@@ -636,7 +642,7 @@ $$
 \times  & 
 \end{bmatrix}.
 $$
-The crosses indicate what elements are re-assigned to the other component based on the posterior probability computed in the E step. Finally, re-estimate the distribution for the target marker and calculate the spillover probability estimate, 
+The crosses indicate which elements are re-assigned to the other component based on the posterior probability computed in the E step. Finally, re-estimate the distribution for the target marker and calculate the spillover probability estimate, 
 $$
 \begin{aligned}
 & P^{(0)}(Y_{i1} = 2 \mid Z_{i1} = 1)  =  0 \quad & \hat{P}(\text{spillover} \mid Y_{ij} = 2) = 1 \\
@@ -732,15 +738,15 @@ Figure \@ref(fig:critical-points-a2) represents the two end points of the range 
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
-Z   & \sim \text{Bernoulli}(0.1)       & \qquad \text{(pick spillover)} \\
-(Y \mid Z = 0) & \sim \text{Poisson}(100)         & \qquad \text{(true signal)} \\
-M   & \sim \text{Bernoulli}(0.5)          & \qquad \text{(pick mode)} \\
-(S \mid M = 0) & \sim \text{Poisson}(70)   & \qquad \text{(first mode of spillover)} \\
-(S \mid M = 1) & \sim \text{Poisson}(\tau) & \qquad \text{(second mode with spillover at } \tau) \\
-( Y \mid Z = 1 )   & = S                 & \qquad \text{(spillover)}.
+Z                & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
+(Y \mid Z = 0)   & \sim \text{Poisson}(100)   & \qquad \text{(true signal)} \\
+M                & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
+(S \mid M = 0)   & \sim \text{Poisson}(70)    & \qquad \text{(first mode of spillover)} \\
+(S \mid M = 1)   & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode with spillover at } \tau) \\
+( Y \mid Z = 1 ) & \overset{d}{=} S           & \qquad \text{(spillover)}.
 \end{aligned}
 $$
-The generative model for beads is an independent copy of $Y \mid Z = 1$.
+We use $\overset{d}{=}$ to denote that both random variables follow the same distribution. The generative model for beads is an independent copy of $Y \mid Z = 1$.
 
 ```{r critical-points-a3-bead, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
 tb_a3_bead <- lapply(c(70, 100, 130), 
@@ -759,12 +765,12 @@ Figure \@ref(fig:critical-points-a3-bead) represents points from the stable and 
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
-Z   & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
-M   & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
+Z              & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
+M              & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
 (T \mid M = 0) & \sim \text{Poisson}(100)   & \qquad \text{(first mode of true signal)} \\
 (T \mid M = 1) & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode of true signal at } \tau) \\
-(Y \mid Z = 0)   & = T            & \qquad \text{(true signal)} \\
-(Y \mid Z = 1)  & \sim \text{Poisson}(70)    & \qquad \text{(spillover)}
+(Y \mid Z = 0) & \overset{d}{=} T           & \qquad \text{(true signal)} \\
+(Y \mid Z = 1) & \sim \text{Poisson}(70)    & \qquad \text{(spillover)}
 \end{aligned}
 $$
 The generative model for beads is an independent copy of $Y \mid Z = 1$.
@@ -781,13 +787,11 @@ ggplot(tb_a3_real, aes(y, probability, color = type)) +
 
 Figure \@ref(fig:critical-points-a3-real) represents points two points in the tail with smaller distances and the global maximum.
 
-\newpage
-
 # Exemplary Real Cases
 
 Figure \@ref(fig:exemplary-cases) shows two cases from the dataset in the `CATALYST` paper [@catalyst].
 
-```{r exemplary-cases, fig.height=6, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The black dashed curve in the plot on the right represents the spillover probability estimated by our method.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r exemplary-cases, fig.height=6, fig.width=9, out.width="90%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The black dashed curve in the plot on the right represents the spillover probability estimated by our method.", echo=FALSE, warning=FALSE, message=FALSE}
 p_list <- plotDiagnostics(sce_spillr, "Eu153Di")
 p1 <- plot_grid(
     p_list[[1]] + xlab("CD68 (Eu153Di)"),
