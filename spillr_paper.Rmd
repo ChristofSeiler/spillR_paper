@@ -198,7 +198,7 @@ These components then have no superscript as they do not change.
 
 ### Step 2: EM Algorithm Updating Target Mixture Component and Mixture Probabilities {-}
 
-\textcolor{red}{[TODO:]} Fix that only target marker and mixture probabilities and masked target counts have superscripts
+\textcolor{red}{TODO: fix that only target marker and mixture probabilities and masked target counts have superscripts}
 
 For the target mixture component $j$,
 $$
@@ -445,11 +445,19 @@ We choose four different experiments to test how robust `spillR` is when one of 
 We have one pile of earth that we would like to move to another location. We know the source pile of earth distribution and we also know the distribution of the target pile. The task is to transport small chunks of dirt from the source pile to the target pile while traveling the least amount possible. The distances weighted by the weight of the dirt chunk is the earth mover's distance.
 -->
 
+\textcolor{red}{TODO: all plots should have Wasserstein=0 label on the y-axis and perhaps a horizontal line at Wasserstein=0?}
+
 Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimental setup. The first row tests our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The second row tests assumption [(A3)](#assumption3) with two different experiments. For all experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. We simulate bimodal distributions of bead and real cells using a mixture probability of $0.5$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are in Appendix \@ref(generative-models). We quantify uncertainty with grey vertical lines representing the standard error computed over five replications of the same experiment.
 
 <!--
 ### Invariant Spillover Distributions (A1)
 -->
+
+\textcolor{red}{TODO: details are in appendix, but would it be helpful here to give an idea of what the "shift" is in, say something like: "...when tau=-16, that is, when the poisson mean parameter in the beads is 60 counts smaller than that in the real experiment..."?}
+
+\textcolor{red}{TODO: Would add something to put this into context and qualify, something along the lines: That is, if the real spillover distribution has a rate of 70 and the beads experiment of 60–70, the distribution of the spillR compensated counts is close to the true count distribution if there were no spillover. "The Wasserstein distance is 8" or "small", otherwise does not tell the reader much?}
+
+\textcolor{red}{TODO: perhaps the shift is easier to present by not using tau, but a lambda real and a lambda bead? Then the plot labels are perhaps easier to grasp and one could highlight the 70 on the x-axes where bead is equal to real-spillover rate?}
 
 In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption [(A1)](#assumption1). The distances start around $8$ when $\tau = -60$. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -10$.
 
@@ -457,11 +465,13 @@ In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), w
 ### Model Misspecification (A2)
 -->
 
-In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than that what we observe in the bead experiments. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of hidden spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it starts to increase quickly.
+In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the bead experiments. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of hidden spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it starts to increase quickly.
 
 <!--
 ### Bimodal Beads (A3)
 -->
+
+\textcolor{red}{"The distance is close to" and other phrases: As the unit of Wasserstein distance is hard to interpret, I'd probably prefer other phrases, such as "The true unobserved distribution is close to the distribution of the spillR-corrected counts" etc – this also highlights "we do not correct all counts by shrinking them, but we remove some counts, in the hope that the distribution of the remaining counts that we keep is close to the true distribution" This seems to be a conceptual difference between Chevralier and your approach}
 
 In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments)), we model spillover with a bimodal distribution. The parameter $\tau$ is the location of the second mode. If $\tau = 70$, then our assumption [(A3)](#assumption3) is correct. values different from $\tau = 70$ violate our assumption. The distances up to $\tau < 70$ are stable. From $\tau = 70$ to $\tau = 100$, the distances increase. Starting around $\tau = 100$, the distances get unstable with large standard errors. 
 
@@ -472,6 +482,32 @@ In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments))
 In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. We assume that the spillover has two modes emitted by the same spillover marker. This is different from the second experiment, where we assume that there is a hidden spillover marker. In this experiment, we explore the robustness of our method against a violation of the third assumption [(A3)](#assumption3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode.
 
 ## Real Data
+
+\textcolor{red}{TODO: Quick comment, just seeing this now:
+In Figure 4, the colour coding seems to not code absolute counts for all 3 
+plots in a cell. If it was total counts and the same colour scale across all 3 
+plots, we would expect that the colouring of the "uncorrelated" and the 
+"spillR" scatters are exactly the same, only that some observations have been 
+removed completely from the "spillR" scatter plot.
+I do see however, that some of the upper blob in the middle left-hand side 
+panel changes colour indicating that after spillR correction there are more 
+higher CD3 counts.
+Perhaps I am missing something?}
+
+\textcolor{red}{TODO: the thing about Wasserstein distance is less about defending the 
+choice but an opportunity that we currently don't use to highlight the 
+conceptual difference between your approach and Chevralier –
+they can compare shrunk vs true counts in a simulation on a per-observation 
+basis while this does not make any sense for your correction method:
+you propose to actively mask low counts that are attributed to spillover, 
+while hoping the reduced number of count-observations better represents the 
+unobserved true counts-distribution than the full count-observations would.
+Idea: Show true counts average vs average on all observed counts vs average on 
+only the counts you deem non-spillover.
+Idea: Show true counts average vs average on all observed counts vs average on 
+only the counts you deem non-spillover.}
+
+\textcolor{red}{TODO: axes labels need to be logarithmic}
 
 We compare our method to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset has an experiment with real cells and a corresponding bead experiment. The experiments on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels. They have single stained bead experiments. The number of beads per mental label range from 112 to 241.
 
@@ -569,13 +605,42 @@ plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2)
 
 # Discussion
 
+\textcolor{red}{TODO: I find this first paragraph odd. It presents this as a weakness - perhaps we should focus on the conceptual difference this highlights:
+Chevralier can compare true-count-vs-real-count for each data point.
+Since we do not alter counts, but we "mask" some counts, such a comparison would not even make sense in our case, so what we have is:
+- n observed counts
+- n true counts
+- n-k counts that we retain (after masking k counts as spillover)
+and we somehow need to assess, whether our n-k counts are in some sense closer and a better representation of the n true counts than using all of the n observed counts - one way to do that is to compare the distributions, a choice here is the Wasserstein distance, which may even be argued is a canonical choice - alternatively, or additionally, we could report "true count average vs observed count average vs corrected count average" and we would hope that the latter, after removing some spillover observations, is closer to the first :-)}
+
 Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. 
 
-The experiment for [(A1)](#assumption1) shows the performance of our method in settings that are present in the real data. The main challenge is when the distribution in the bead experiment has larger mass on higher counts than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di (first row in Figure \@ref(fig:exemplary-cases) in Appendix). In that case, assumption [(A1)](#assumption1) does not hold. For other markers, such as CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment (second row). In that case, assumption [(A1)](#assumption1) holds. 
+The experiment for [(A1)](#assumption1) shows the performance of our method in settings that are present in the real data. The main challenge is when the distribution in the bead experiment has higher mean than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di (first row in Figure \@ref(fig:exemplary-cases) in Appendix). In that case, assumption [(A1)](#assumption1) does not hold. For other markers, such as CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment (second row). In that case, assumption [(A1)](#assumption1) holds. 
 
 The experiment for [(A2)](#assumption2) shows that our methods is robust to model misspecification. Moreover, misspecification should not be a major issue as we can add all channels if necessary. The increase in computational cost is relatively minor as our method scales linearly in the number of spillover markers. 
 
 Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. As expected, our method performs worse when the true signal overlaps with the spillover. This behavior is not surprising as it is impossible to identify true from spillover signal when they overlap. Naturally, any method is prone to guess work due to the lack of evidence from data.
+
+\textcolor{red}{TODO: what Chevralier write about "spillover is linear" to motivate a linear 
+shrinkage (the linearity they establish is essentially saying that a fixed 
+fraction of a marker will spill over, so if the count is double as high what 
+will be spilled over into another channel is also double as high – but counts 
+in their figure are in the order of 200–500 and spillover < 10, so imho this 
+linearity is not really important when correcting a marker count that may have 
+received spillover, whether the spilling-over count was 200 or 500 the 
+correction is in the order of ~10 either way).
+But they appear to focus on correlation that can be seen in those pair-wise 
+scatter plots – in bead experiments we know that there is no correlation, so 
+good correction is if there is no correlation. But they also transfer this to 
+the real experiments – perhaps this is something to highlight, take the left 
+middle plot of your Figure 4:
+spillR-correction does not remove the positive correlation between HLA-ABC and 
+CD3 while CATALYST does – this could hugely affect downstream analysis.
+While in single-stained beads experiments, there can be no correlation,
+why would we enforce this on multi-stained real cells? Perhaps aiming to 
+reduce correlation in real cells is actually removing meaningful biological 
+signal namely that certain expression levels correlated in cells?
+}
 
 Comparisons between methods on real data are challenging because there is no ground truth available. Overall, our method compensates more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions based on real experiments. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes that spillover is linear up to counts of 5,000. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
 
@@ -611,7 +676,9 @@ $$
 2  & 
 \end{bmatrix}.
 $$
-This matrix cannot be used for linear algebra because it is has different sized columns. Also, the order of rows can be permuted without loosing information. For example, counts on the first row are not measured on the same cell. The first column represents the counts for the target marker measured in the experiment with real cells, and the second column are counts from the beads experiment.
+This matrix cannot be used for linear algebra because it is has different sized columns. Also, the order of rows can be permuted without loosing information. 
+\textcolor{red}{TODO: Is this always/really the case? I never realised that the counts across markers cannot be clearly attributed to individual cells – this seems odd to me :-) If the counts do not belong to the same cells, then those scatter plots people usually look at would not make any sense as it's not meaningful to plot one marker against the other at all?}
+For example, counts on the first row are not measured on the same cell. The first column represents the counts for the target marker measured in the experiment with real cells, and the second column are counts from the beads experiment.
 
 We initialize our EM algorithm by estimating the conditional probability of observing $y$ given that it belongs to the target marker, and another conditional probability given that it belongs to the spillover marker,
 $$
@@ -799,6 +866,11 @@ ggplot(tb_a3_real, aes(y, probability, color = type)) +
 Figure \@ref(fig:critical-points-a3-real) represents points two points in the tail with smaller distances and the global maximum.
 
 # Exemplary Real Cases
+
+\textcolor{red}{TODO: What about the pink spike in the bottom right?
+So, if there were counts of 1 before the correction, we would remove almost all of them? But we don't see this in the left plot because there were no counts of 1?
+Why don't we see the "spillover-probability" dashed black curve to be super high for counts of 1 in the bottom right (as we would attribute them to Tb 159Di)?
+Perhaps this is just plotting artifacts as that struggles with this very peaky spike, if so, probably good to clarify?}
 
 Figure \@ref(fig:exemplary-cases) shows two cases from the dataset in the `CATALYST` paper [@catalyst].
 
