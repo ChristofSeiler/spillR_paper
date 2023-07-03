@@ -223,7 +223,7 @@ $$
 P^{(t+1)}(Y_i = y \mid Z_{ij} = 1) = \frac{\sum_{i = 1}^{n_y} \mathbf{1}\left(y_i^{(t+1)} = y\right)}{\sum_{i = 1}^{n_y} y_i^{(t+1)}}.
 $$
 
-After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_{ij}$, 
+After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
 \widehat{P}(\text{spillover} \mid Y_i = y) = 1 - P^{(T)}(Z_i = 1 \mid Y_i = y).
 $$
@@ -232,17 +232,17 @@ We rely on assumption [(A1)](#assumption1) to justify to only update the distrib
 
 ### Step 3: Logistic Regression {-}
 
-This step is a post-processing step of $\widehat{P}(\text{spillover} \mid Y_{ij} = y)$. Until now, the procedure is fully nonparametric. We apply no regularization to $y$'s that are close to one another. As a result, the spillover probability estimates are noisy and we regularize them using our assumption [(A3)](#assumption3).
+This step is a post-processing step of $\widehat{P}(\text{spillover} \mid Y_i = y)$. Until now, the procedure is fully nonparametric. We apply no regularization to $y$'s that are close to one another. As a result, the spillover probability estimates are noisy and we regularize them using our assumption [(A3)](#assumption3).
 
 The logistic regression model is,
 $$
-\log\left(\frac{P(\text{spillover} \mid Y_{ij} = y)}{1-P(\text{spillover} \mid Y_{ij} = y)}\right) = \beta_0 + \beta_1 y,
+\log\left(\frac{P(\text{spillover} \mid Y_i = y)}{1-P(\text{spillover} \mid Y_i = y)}\right) = \beta_0 + \beta_1 y,
 $$
-with $y$ transformed using the inverse hyperbolic sine transformation with the cofactor set to five to stabilize the variance and account for heteroskedasticity [@bendall2011single]. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability for $Y_{ij} = y$ is,
+with $y$ transformed using the inverse hyperbolic sine transformation with the cofactor set to five to stabilize the variance and account for heteroskedasticity [@bendall2011single]. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability for $Y_i = y$ is,
 $$
-\widetilde{P}(\text{spillover} \mid Y_{ij} = y) = \left(1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)}\right)^{-1}.
+\widetilde{P}(\text{spillover} \mid Y_i = y) = \left(1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)}\right)^{-1}.
 $$
-The $\widetilde{P}(\text{spillover} \mid Y_{ij} = y)$ is a smooth version of the noisy estimate from step 1, $\widehat{P}(\text{spillover} \mid Y_{ij} = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. 
+The $\widetilde{P}(\text{spillover} \mid Y_i = y)$ is a smooth version of the noisy estimate from step 1, $\widehat{P}(\text{spillover} \mid Y_i = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. 
 
 To compensate, we use the spillover probability to flip a biased coin and declare the current count as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover counts as counts that have no clear biological interpretation and mask them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions. 
 
@@ -672,15 +672,22 @@ We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a pr
 
 Here we illustrate the procedure with an numerical example with one target and one spillover marker. We represent the observed count matrix $\mathbf{Y} = (y_{ij})$ as a irregular matrix with empty cells, and the target marker in the first column and the spillover marker in the second column,
 $$
-\mathbf{Y} = (y_{ij}) = 
+\mathbf{y} = (y_i) = 
 \begin{bmatrix}
-3  & 2 \\ 
-5  & 3 \\ 
-17 & 2 \\ 
-3  & \\ 
-17 & \\ 
-2  & 
-\end{bmatrix}.
+3  \\ 
+5  \\ 
+17 \\ 
+3   \\ 
+17 \\ 
+2 
+\end{bmatrix}
+\qquad
+\mathbf{X} = (x_{ij}) = 
+\begin{bmatrix}
+2 \\ 
+3 \\ 
+2 
+\end{bmatrix}
 $$
 This matrix cannot be used for linear algebra because it is has different sized columns. Also, the order of rows can be permuted without loosing information. 
 \textcolor{red}{TODO: Is this always/really the case? I never realised that the counts across markers cannot be clearly attributed to individual cells – this seems odd to me :-) If the counts do not belong to the same cells, then those scatter plots people usually look at would not make any sense as it's not meaningful to plot one marker against the other at all?}
@@ -689,50 +696,50 @@ For example, counts on the first row are not measured on the same cell. The firs
 We initialize our EM algorithm by estimating the conditional probability of observing $y$ given that it belongs to the target marker, and another conditional probability given that it belongs to the spillover marker,
 $$
 \begin{aligned}
-& P^{(0)}(Y_{i1} = 2 \mid Z_{i1} = 1)  =  1/6 \qquad & P^{(0)}(Y_{i2} = 2 \mid Z_{i2} = 2) = 1/3 \\
-& P^{(0)}(Y_{i1} = 3 \mid Z_{i1} = 1)  =  2/6 \qquad & P^{(0)}(Y_{i2} = 3 \mid Z_{i2} = 2) = 2/3 \\
-& P^{(0)}(Y_{i1} = 5 \mid Z_{i1} = 1)  =  1/6 \\
-& P^{(0)}(Y_{i1} = 17 \mid Z_{i1} = 1) =  2/6.
+& P^{(0)}(Y_i = 2 \mid Z_i = 1)  =  1/6 \qquad & P^{(0)}(Y_i = 2 \mid Z_i = 2) = 1/3 \\
+& P^{(0)}(Y_i = 3 \mid Z_i = 1)  =  2/6 \qquad & P^{(0)}(Y_i = 3 \mid Z_i = 2) = 2/3 \\
+& P^{(0)}(Y_i = 5 \mid Z_i = 1)  =  1/6 \\
+& P^{(0)}(Y_i = 17 \mid Z_i = 1) =  2/6.
 \end{aligned}
 $$
 We initialize the mixture probabilities with the discrete uniform, 
 $$
-\pi_{11} = 1/2 \qquad \pi_{21} = 1/2.
+\pi_1 = 1/2 \qquad \pi_2 = 1/2.
 $$ 
 Now, we update these initial values using the E and M steps.
 
 * The E step: Calculate the posterior probability for the true marker, and the spillover marker,
 $$
 \begin{aligned}
-& P(Z_{ij} = 1 \mid Y_{ij} = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 1/3} = 1/3 \qquad & P(Z_{ij} = 1 \mid Y_{ij} = 2) = 1 - 1/3 = 2/3 \\
-& P(Z_{ij} = 1 \mid Y_{ij} = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 2/3} = 1/3 \qquad & P(Z_{ij} = 1 \mid Y_{ij} = 3) = 1 - 1/3 = 2/3 \\
-& P(Z_{ij} = 1 \mid Y_{ij} = 5)  = 1 \\
-& P(Z_{ij} = 1 \mid Y_{ij} = 17) = 1.
+& P(Z_i = 1 \mid Y_i = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 1/3} = 1/3 \qquad & P(Z_i = 1 \mid Y_i = 2) = 1 - 1/3 = 2/3 \\
+& P(Z_i = 1 \mid Y_i = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 2/3} = 1/3 \qquad & P(Z_i = 1 \mid Y_i = 3) = 1 - 1/3 = 2/3 \\
+& P(Z_i = 1 \mid Y_i = 5)  = 1 \\
+& P(Z_i = 1 \mid Y_i = 17) = 1.
 \end{aligned}
 $$
 * The M step: Update the mixing probability vector,
 $$
-\pi_{11} = \frac{1/3 + 1/3 + 1 + 1}{4} = 2/3 \qquad \pi_{21} = \frac{2/3 + 2/3 + 0 + 0}{4} = 1/3,
+\pi_1 = \frac{1/3 + 1/3 + 1 + 1}{4} = 2/3 \qquad \pi_2 = \frac{2/3 + 2/3 + 0 + 0}{4} = 1/3,
 $$
 re-assign counts to the marker with largest posterior probability,
 $$
-\mathbf{Y} = (y_{ij}) = 
+\mathbf{y} = (y_i) = 
 \begin{bmatrix}
-\times  & 2 \\ 
-5       & 3 \\ 
-17      & 2 \\ 
-\times  & \\ 
-17      & \\ 
-\times  & 
+\times \\ 
+5      \\ 
+17     \\ 
+\times \\ 
+17     \\ 
+\times
 \end{bmatrix}.
 $$
 The crosses indicate which elements are re-assigned to the other component based on the posterior probability computed in the E step. Finally, re-estimate the distribution for the target marker and calculate the spillover probability estimate, 
 $$
 \begin{aligned}
-& P^{(0)}(Y_{i1} = 2 \mid Z_{i1} = 1)  =  0 \quad & \widehat{P}(\text{spillover} \mid Y_{ij} = 2) = 1 \\
-& P^{(0)}(Y_{i1} = 3 \mid Z_{i1} = 1)  =  0       & \widehat{P}(\text{spillover} \mid Y_{ij} = 3) = 1 \\
-& P^{(0)}(Y_{i1} = 5 \mid Z_{i1} = 1)  =  1/3     & \widehat{P}(\text{spillover} \mid Y_{ij} = 5) = 2/3 \\
-& P^{(0)}(Y_{i1} = 17 \mid Z_{i1} = 1) =  2/3     & \widehat{P}(\text{spillover} \mid Y_{ij} = 17) = 1/3.
+& P^{(0)}(Y_i = 2 \mid Z_i = 1)  =  0 \quad & \widehat{P}(\text{spillover} \mid Y_i = 2) = 1 \\
+& P^{(0)}(Y_i = 3 \mid Z_i = 1)  =  0       & \widehat{P}(\text{spillover} \mid Y_i = 3) = 1 \\
+& P^{(0)}(Y_i = 5 \mid Z_i = 1)  =  1/3     & \widehat{P}(\text{spillover} \mid Y_i = 5) = 2/3 \\
+& P^{(0)}(Y_i = 17 \mid Z_i = 1) =  2/3     & \widehat{P}(\text{spillover} \mid Y_i = 17) = 1/3.
 \end{aligned}
 $$
 This is the end of iteration $t = 1$.
