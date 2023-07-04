@@ -44,7 +44,7 @@ Mass cytometry makes it possible to count a large number of proteins simultaneou
 
 @catalyst propose a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single antibody. Then they calculate the number of antibodies without the target staining over the total number of antibodies in that experiment. We will refer to this ratio as the spillover proportion. @miao2021ab attempt to solve spillover by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous versions rely on an estimate for the spillover matrix obtained using non-negative matrix factorization. The spillover matrix encodes the pairwise spillover proportion between channels. We avoid a bead experiment and attempt to solve spillover by fitting a mixture model to the observed counts. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we transfer the spillover distribution to the real experiment instead of just the spillover proportion encoded in the spillover matrix.
 
-```{r intro-example, fig.height=3, fig.width=6, out.width="70%", fig.align="center", fig.cap="Two-dimensional histograms of cell counts. The blue shaded rectangle is an estimate of spillover from CD36 (Nd144Di) into CD4 (Nd145Di). Our method masks counts that fall inside this rectangle.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r intro-example, fig.height=3, fig.width=6, out.width="70%", fig.align="center", fig.cap="Two-dimensional histograms of cell counts. The blue shaded rectangle is an estimate of spillover from CD36 (Nd144Di) into CD4 (Nd145Di). Our method masks counts that fall inside this rectangle. Arcsinh transformed counts with cofactor of 5.", echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 
@@ -107,7 +107,7 @@ In Section \@ref(methods), we present our mixture model and link it to calculati
 
 ## Example
 
-```{r method-example, fig.height=3, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panel: Frequency polygons of marker CD3 (Yb173Di) before and after spillover compensation. Right panel: Density plot of spillover markers. The dashed curve represents the estimated spillover probability with our method.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r method-example, fig.height=3, fig.width=9, out.width="100%", fig.align="center", fig.cap="Left panel: Frequency polygons of marker CD3 (Yb173Di) before and after spillover compensation. Right panel: Density plot of spillover markers. The dashed curve represents the estimated spillover probability with our method. Arcsinh transformed counts with cofactor of 5.", echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 
@@ -272,6 +272,7 @@ lambda_real <- 100
 lambda_bead  <- 70
 mode_prob    <- 0.5
 spill_prob   <- 0.1
+n_rep <- 5
 
 # --------- helper functions ---------
 
@@ -286,27 +287,6 @@ compute_wasserstein <- function(ftn, parameter) {
   #y_comp[y_comp == 0] <- NA
   y_truth <- data$Z_target
   transport::wasserstein1d(y_comp[!is.na(y_comp)], y_truth)
-}
-
-plot_results <- function(tb_experiment, group_var) {
-  
-  # summarize replicates
-  tb_summary <- tb_experiment %>% 
-    group_by(.data[[group_var]]) %>% 
-    summarize(
-      mean = mean(w1),
-      se = sd(w1)
-      ) %>% 
-    ungroup()
-  
-  # plot with error bars
-  tb_summary %>% 
-    mutate(lower = mean-se, upper = mean+se) %>%
-    ggplot(aes(.data[[group_var]], mean)) +
-    geom_linerange(aes(ymin = lower, ymax = upper), alpha = 0.3) +
-    geom_line() + 
-    ylab("Wasserstein distance")
-  
 }
 
 # --------- panel (a) ---------
@@ -328,15 +308,13 @@ generate_data_a1 <- function(shift) {
 }
 
 # create parameter combination
-p_a1 <- expand.grid(
-  shift = seq(-60, 0, 1), 
-  replicate = 1:5
+d_a1 <- expand.grid(
+  parameter = seq(-60, 0, 1), 
+  replicate = 1:n_rep,
+  title = "Bead Shift (A1)"
   ) %>%
   rowwise() %>% 
-  mutate(w1 = compute_wasserstein(generate_data_a1, shift)) %>% 
-  plot_results("shift") + 
-  xlab("bead shift") + 
-  ggtitle("Invariant Spillover Distributions (A1)")
+  mutate(w1 = compute_wasserstein(generate_data_a1, parameter))
 
 # --------- panel (b) ---------
 
@@ -364,15 +342,13 @@ generate_data_a2 <- function(spill_hidden) {
 }
 
 # create parameter combination
-p_a2 <- expand.grid(
-  spill_hidden = seq(from = 0, to = 0.85, by = 0.01), 
-  replicate = 1:5
+d_a2 <- expand.grid(
+  parameter = seq(from = 0, to = 0.6, by = 0.01), 
+  replicate = 1:n_rep,
+  title = "Model Misspecification (A2)"
   ) %>%
   rowwise() %>% 
-  mutate(w1 = compute_wasserstein(generate_data_a2, spill_hidden)) %>%
-  plot_results("spill_hidden") + 
-  xlab("P(hidden spillover marker)") +
-  ggtitle("Model Misspecification (A2)")
+  mutate(w1 = compute_wasserstein(generate_data_a2, parameter))
 
 # --------- panel (c) ---------
 
@@ -399,15 +375,13 @@ generate_data_a3_bead <- function(second_mode) {
 }
 
 # create parameter combination
-p_a3_bead <- expand.grid(
-  second_mode = seq(5, 150, 1), 
-  replicate = 1:5
-  ) %>%
-  rowwise() %>% 
-  mutate(w1 = compute_wasserstein(generate_data_a3_bead, second_mode)) %>%
-  plot_results("second_mode") + 
-  xlab("location of second mode") +
-  ggtitle("Bimodal Beads (A3)")
+d_a3_bead <- expand.grid(
+  parameter = seq(5, 150, 1), 
+  replicate = 1:n_rep,
+  title = "Bimodal Beads (A3)"
+  ) %>% 
+  rowwise() %>%
+  mutate(w1 = compute_wasserstein(generate_data_a3_bead, parameter))
 
 # --------- panel (d) ---------
 
@@ -431,19 +405,31 @@ generate_data_a3_real <- function(second_mode) {
 }
 
 # create parameter combination
-p_a3_real <- expand.grid(
-  second_mode = seq(5, 150, 1), 
-  replicate = 1:5
-  ) %>%
+d_a3_real <- expand.grid(
+  parameter = seq(5, 150, 1), 
+  replicate = 1:n_rep,
+  title = "Bimodal Real Cells (A3)"
+  ) %>% 
   rowwise() %>% 
-  mutate(w1 = compute_wasserstein(generate_data_a3_real, second_mode)) %>%
-  plot_results("second_mode") + 
-  xlab("location of second mode") +
-  ggtitle("Bimodal Real Cells (A3)")
+  mutate(w1 = compute_wasserstein(generate_data_a3_real, parameter))
 
 # --------- combined plot ---------
 
-plot_grid(p_a1, p_a2, p_a3_bead, p_a3_real, nrow = 2)
+tb_experiment <- bind_rows(d_a1, d_a2, d_a3_bead, d_a3_real)
+tb_summary <- tb_experiment %>% 
+    group_by(title, parameter) %>% 
+    summarize(
+      mean = mean(w1),
+      se = sd(w1)
+      ) %>% 
+    ungroup()
+tb_summary %>% 
+  mutate(lower = mean-se, upper = mean+se) %>%
+  ggplot(aes(parameter, mean)) +
+  geom_linerange(aes(ymin = lower, ymax = upper), alpha = 0.3) +
+  geom_line() + 
+  ylab("Wasserstein distance") + 
+  facet_wrap(~title, scales = "free_x")
 ```
 
 We choose four different experiments to test how robust `spillR` is when one of our three assumptions are violated. We explore a wide range of possible parameter settings. To visualize the massive amount of experiments, we measure distances between true and compensated distributions. Among the many possibilities to calculate the distance between two probability distributions, we choose the Wasserstein distance or earth mover's distance, as it has an intuitive interpretation and has been applied to single cell data [@schefzik2021fast]. We use the implementation in R package `transport` on CRAN [@schuhmacher2020transport].
@@ -451,8 +437,6 @@ We choose four different experiments to test how robust `spillR` is when one of 
 <!-- 
 We have one pile of earth that we would like to move to another location. We know the source pile of earth distribution and we also know the distribution of the target pile. The task is to transport small chunks of dirt from the source pile to the target pile while traveling the least amount possible. The distances weighted by the weight of the dirt chunk is the earth mover's distance.
 -->
-
-\textcolor{red}{TODO: all plots should have Wasserstein=0 label on the y-axis and perhaps a horizontal line at Wasserstein=0?}
 
 Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimental setup. The first row tests our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The second row tests assumption [(A3)](#assumption3) with two different experiments. For all experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. We simulate bimodal distributions of bead and real cells using a mixture probability of $0.5$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are in Appendix \@ref(generative-models). We quantify uncertainty with grey vertical lines representing the standard error computed over five replications of the same experiment.
 
@@ -472,7 +456,7 @@ In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), w
 ### Model Misspecification (A2)
 -->
 
-In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the bead experiments. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$, so the maximum amount of hidden spillover is $\tau = 0.9$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it starts to increase quickly.
+In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the bead experiments. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it starts to increase quickly.
 
 <!--
 ### Bimodal Beads (A3)
@@ -510,17 +494,13 @@ you propose to actively mask low counts that are attributed to spillover,
 while hoping the reduced number of count-observations better represents the 
 unobserved true counts-distribution than the full count-observations would.
 Idea: Show true counts average vs average on all observed counts vs average on 
-only the counts you deem non-spillover.
-Idea: Show true counts average vs average on all observed counts vs average on 
 only the counts you deem non-spillover.}
-
-\textcolor{red}{TODO: axes labels need to be logarithmic}
 
 We compare our method to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset has an experiment with real cells and a corresponding bead experiment. The experiments on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels. They have single stained bead experiments. The number of beads per mental label range from 112 to 241.
 
 We compare the two methods on the same marker as in the original `CATALYST` paper [@catalyst] in their Figure 3B. In the original experiment, they conjugated three proteins---CD3, CD8, and HLA-DR---with two different metal labels. They conjugated CD8 (first row in Figure \@ref(fig:spillr-vignette)) with Yb174Di (Yb is the metal and 174 is the number of neutrons of the isotope) and La139Di, and similarly for the other rows. On the horizontal axis, we plot the same markers as in the original paper, CD3 and HLA-ABC (for the second and third row). We visualize the joint distributions using two-dimensional histograms.
 
-```{r spillr-vignette, fig.height = 6, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data."}
+```{r spillr-vignette, fig.height = 6, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Arcsinh transformed counts with cofactor of 5."}
  # constants
 bc_key <- c(139, 141:156, 158:176)
 
@@ -886,7 +866,7 @@ Perhaps this is just plotting artifacts as that struggles with this very peaky s
 
 Figure \@ref(fig:exemplary-cases) shows two cases from the dataset in the `CATALYST` paper [@catalyst].
 
-```{r exemplary-cases, fig.height=6, fig.width=9, out.width="90%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The black dashed curve in the plot on the right represents the spillover probability estimated by our method.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r exemplary-cases, fig.height=6, fig.width=9, out.width="90%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The black dashed curve in the plot on the right represents the spillover probability estimated by our method. Arcsinh transformed counts with cofactor of 5.", echo=FALSE, warning=FALSE, message=FALSE}
 p_list <- plotDiagnostics(sce_spillr, "Eu153Di")
 p1 <- plot_grid(
     p_list[[1]] + xlab("CD68 (Eu153Di)"),
