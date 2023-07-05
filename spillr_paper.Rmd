@@ -278,18 +278,8 @@ n_rep <- 5
 
 tfm <- function(x) asinh(x/5)
 
-compute_wasserstein <- function(ftn, parameter) {
-  data <- ftn(parameter)
-  comp <- compensate(data$df_real, data$df_bead, 
-                     target_marker = "Y", 
-                     spillover_markers = "Z")
-  y_comp  <- comp$tb_compensate$corrected
-  y_truth <- data$Z_target
-  transport::wasserstein1d(y_comp[!is.na(y_comp)], y_truth)
-}
-
-compute_average <- function(ftn, parameter) {
-  data <- ftn(parameter)
+compute_average <- function(ftn, tau) {
+  data <- ftn(tau)
   comp <- compensate(data$df_real, data$df_bead, 
                      target_marker = "Y", 
                      spillover_markers = "Z")
@@ -318,12 +308,12 @@ generate_data_a1 <- function(shift) {
 
 # create parameter combination
 d_a1 <- expand.grid(
-  parameter = seq(-30, 0, 1), 
+  tau = seq(-30, 0, 1), 
   replicate = 1:n_rep,
   title = "Bead Shift (A1)"
   ) %>%
   rowwise() %>% 
-  mutate(w1 = compute_average(generate_data_a1, parameter))
+  mutate(diff_mean = compute_average(generate_data_a1, tau))
 
 # --------- panel (b) ---------
 
@@ -352,12 +342,12 @@ generate_data_a2 <- function(spill_hidden) {
 
 # create parameter combination
 d_a2 <- expand.grid(
-  parameter = seq(from = 0, to = 0.4, by = 0.01), 
+  tau = seq(from = 0, to = 0.4, by = 0.01), 
   replicate = 1:n_rep,
   title = "Model Misspecification (A2)"
   ) %>%
   rowwise() %>% 
-  mutate(w1 = compute_average(generate_data_a2, parameter))
+  mutate(diff_mean = compute_average(generate_data_a2, tau))
 
 # --------- panel (c) ---------
 
@@ -385,26 +375,26 @@ generate_data_a3 <- function(mode_prob) {
 
 # create parameter combination
 d_a3 <- expand.grid(
-  parameter = seq(from = 0, to = 1, by = 0.02), 
+  tau = seq(from = 0, to = 1, by = 0.02), 
   replicate = 1:n_rep,
   title = "High Count Spillover (A3)"
   ) %>%
   rowwise() %>% 
-  mutate(w1 = compute_average(generate_data_a3, parameter))
+  mutate(diff_mean = compute_average(generate_data_a3, tau))
 
 # --------- combined plot ---------
 
 tb_experiment <- bind_rows(d_a1, d_a2, d_a3)
 tb_summary <- tb_experiment %>% 
-    group_by(title, parameter) %>% 
+    group_by(title, tau) %>% 
     summarize(
-      mean = mean(w1),
-      se = sd(w1)
+      mean = mean(diff_mean),
+      se = sd(diff_mean)
       ) %>% 
     ungroup()
 tb_summary %>% 
   mutate(lower = mean-se, upper = mean+se) %>%
-  ggplot(aes(parameter, mean)) +
+  ggplot(aes(tau, mean)) +
   geom_hline(yintercept = 0.5, linetype = "dashed") +
   geom_linerange(aes(ymin = lower, ymax = upper), alpha = 0.3) +
   geom_line() + 
@@ -421,15 +411,15 @@ We have one pile of earth that we would like to move to another location. We kno
 Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimental setup. The first row tests our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The second row tests assumption [(A3)](#assumption3) with two different experiments. For all experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. We simulate bimodal distributions of bead and real cells using a mixture probability of $0.5$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are in Appendix \@ref(generative-models). We quantify uncertainty with grey vertical lines representing the standard error computed over five replications of the same experiment.
 
 ```{r critical-points, fig.height = 5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
-generate_critical <- function(fn, parameter) {
-  data <- fn(parameter)
+generate_critical <- function(fn, tau) {
+  data <- fn(tau)
   bind_rows(
     tibble(count = data$Z_target, variable = "signal", type = "truth"),
     tibble(count = data$Z_spill, variable = "spillover", type = "truth"),
     tibble(count = data$df_real$Y, variable = "signal", type = "observed"),
     tibble(count = data$df_bead$Y, variable = "spillover", type = "observed")
     ) %>% 
-    mutate(parameter = paste0("tau = ", parameter)) %>%
+    mutate(tau = tau) %>%
     mutate(type = factor(type, levels = c("observed", "truth")))
 }
 
@@ -466,7 +456,7 @@ df <- bind_rows(df_a1, df_a2, df_a3) %>%
 
 ggplot(df, aes(count, color = variable, linetype = type)) + 
   geom_density() + 
-  facet_wrap(~title + parameter, ncol = 3)
+  facet_wrap(~title + tau, ncol = 3)
 ```
 
 Figure \@ref(fig:critical-points) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
