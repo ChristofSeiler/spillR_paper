@@ -263,14 +263,14 @@ We first evaluate our new method `spillR` on simulated datasets. We probe our me
 
 ## Simulated Data
 
-```{r simulated-experiments, fig.height = 5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE, fig.cap="Four experiments testing our three assumptions (A1), (A2), and (A3). In all experiments, the vertical axis represents the Wassertein distance between true signal and compensated signal."}
+```{r simulated-experiments, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE, fig.cap="Four experiments testing our three assumptions (A1), (A2), and (A3). In all experiments, the vertical axis represents the Wassertein distance between true signal and compensated signal."}
 # --------- global parameters ---------
 
 n_real <-10000
 n_bead <- 1000
 lambda_real <- 100
 lambda_bead  <- 70
-mode_prob    <- 0.5
+lambda_bead_high  <- 130
 spill_prob   <- 0.1
 n_rep <- 5
 
@@ -284,9 +284,18 @@ compute_wasserstein <- function(ftn, parameter) {
                      target_marker = "Y", 
                      spillover_markers = "Z")
   y_comp  <- comp$tb_compensate$corrected
-  #y_comp[y_comp == 0] <- NA
   y_truth <- data$Z_target
   transport::wasserstein1d(y_comp[!is.na(y_comp)], y_truth)
+}
+
+compute_average <- function(ftn, parameter) {
+  data <- ftn(parameter)
+  comp <- compensate(data$df_real, data$df_bead, 
+                     target_marker = "Y", 
+                     spillover_markers = "Z")
+  y_comp  <- comp$tb_compensate$corrected
+  y_truth <- data$Z_target
+  mean(y_comp, na.rm = TRUE) - mean(y_truth)
 }
 
 # --------- panel (a) ---------
@@ -309,12 +318,12 @@ generate_data_a1 <- function(shift) {
 
 # create parameter combination
 d_a1 <- expand.grid(
-  parameter = seq(-60, 0, 1), 
+  parameter = seq(-30, 0, 1), 
   replicate = 1:n_rep,
   title = "Bead Shift (A1)"
   ) %>%
   rowwise() %>% 
-  mutate(w1 = compute_wasserstein(generate_data_a1, parameter))
+  mutate(w1 = compute_average(generate_data_a1, parameter))
 
 # --------- panel (b) ---------
 
@@ -343,20 +352,20 @@ generate_data_a2 <- function(spill_hidden) {
 
 # create parameter combination
 d_a2 <- expand.grid(
-  parameter = seq(from = 0, to = 0.6, by = 0.01), 
+  parameter = seq(from = 0, to = 0.4, by = 0.01), 
   replicate = 1:n_rep,
   title = "Model Misspecification (A2)"
   ) %>%
   rowwise() %>% 
-  mutate(w1 = compute_wasserstein(generate_data_a2, parameter))
+  mutate(w1 = compute_average(generate_data_a2, parameter))
 
 # --------- panel (c) ---------
 
-generate_data_a3_bead <- function(second_mode) {
+generate_data_a3 <- function(mode_prob) {
   # real experiment
   Z_target  <- rpois(n = n_real, lambda = lambda_real)
   Z_spill1  <- rpois(n = n_real, lambda = lambda_bead)
-  Z_spill2  <- rpois(n = n_real, lambda = second_mode)
+  Z_spill2  <- rpois(n = n_real, lambda = lambda_bead_high)
   mode      <- rbinom(n = n_real, size = 1, prob = mode_prob)
   Z_spill   <- (1-mode)*Z_spill1 + mode*Z_spill2
   spill     <- rbinom(n = n_real, size = 1, prob = spill_prob)
@@ -365,7 +374,7 @@ generate_data_a3_bead <- function(second_mode) {
   
   # bead experiment
   Z_bead1   <- rpois(n = n_real, lambda = lambda_bead)
-  Z_bead2   <- rpois(n = n_real, lambda = second_mode)
+  Z_bead2   <- rpois(n = n_real, lambda = lambda_bead_high)
   mode      <- rbinom(n = n_real, size = 1, prob = mode_prob)
   Z_bead    <- (1-mode)*Z_bead1 + mode*Z_bead2
   df_bead   <- tibble(Y = Z_bead, barcode = "Z", type = "beads")
@@ -375,47 +384,17 @@ generate_data_a3_bead <- function(second_mode) {
 }
 
 # create parameter combination
-d_a3_bead <- expand.grid(
-  parameter = seq(5, 150, 1), 
+d_a3 <- expand.grid(
+  parameter = seq(from = 0, to = 1, by = 0.02), 
   replicate = 1:n_rep,
-  title = "Bimodal Beads (A3)"
-  ) %>% 
-  rowwise() %>%
-  mutate(w1 = compute_wasserstein(generate_data_a3_bead, parameter))
-
-# --------- panel (d) ---------
-
-generate_data_a3_real <- function(second_mode) {
-  # real experiment
-  Z_target1 <- rpois(n = n_real, lambda = lambda_real)
-  Z_target2 <- rpois(n = n_real, lambda = second_mode)
-  mode      <- rbinom(n = n_real, size = 1, prob = mode_prob)
-  Z_target  <- (1-mode)*Z_target1 + mode*Z_target2
-  Z_spill   <- rpois(n = n_real, lambda = lambda_bead)
-  spill     <- rbinom(n = n_real, size = 1, prob = spill_prob)
-  Y         <- (1-spill)*Z_target + spill*Z_spill
-  df_real   <- tibble(Y = Y, barcode = "Y", type = "real cells")
-  
-  # bead experiment
-  Z_bead    <- rpois(n = n_real, lambda = lambda_bead)
-  df_bead   <- tibble(Y = Z_bead, barcode = "Z", type = "beads")
-
-  list(df_real = df_real, df_bead = df_bead, 
-       Z_target = Z_target, Z_spill = Z_spill)
-}
-
-# create parameter combination
-d_a3_real <- expand.grid(
-  parameter = seq(5, 150, 1), 
-  replicate = 1:n_rep,
-  title = "Bimodal Real Cells (A3)"
-  ) %>% 
+  title = "High Count Spillover (A3)"
+  ) %>%
   rowwise() %>% 
-  mutate(w1 = compute_wasserstein(generate_data_a3_real, parameter))
+  mutate(w1 = compute_average(generate_data_a3, parameter))
 
 # --------- combined plot ---------
 
-tb_experiment <- bind_rows(d_a1, d_a2, d_a3_bead, d_a3_real)
+tb_experiment <- bind_rows(d_a1, d_a2, d_a3)
 tb_summary <- tb_experiment %>% 
     group_by(title, parameter) %>% 
     summarize(
@@ -426,9 +405,10 @@ tb_summary <- tb_experiment %>%
 tb_summary %>% 
   mutate(lower = mean-se, upper = mean+se) %>%
   ggplot(aes(parameter, mean)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
   geom_linerange(aes(ymin = lower, ymax = upper), alpha = 0.3) +
   geom_line() + 
-  ylab("Wasserstein distance") + 
+  ylab("difference in means") + 
   facet_wrap(~title, scales = "free_x")
 ```
 
@@ -439,6 +419,57 @@ We have one pile of earth that we would like to move to another location. We kno
 -->
 
 Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimental setup. The first row tests our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The second row tests assumption [(A3)](#assumption3) with two different experiments. For all experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. We simulate bimodal distributions of bead and real cells using a mixture probability of $0.5$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are in Appendix \@ref(generative-models). We quantify uncertainty with grey vertical lines representing the standard error computed over five replications of the same experiment.
+
+```{r critical-points, fig.height = 5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
+generate_critical <- function(fn, parameter) {
+  data <- fn(parameter)
+  bind_rows(
+    tibble(count = data$Z_target, variable = "signal", type = "truth"),
+    tibble(count = data$Z_spill, variable = "spillover", type = "truth"),
+    tibble(count = data$df_real$Y, variable = "signal", type = "observed"),
+    tibble(count = data$df_bead$Y, variable = "spillover", type = "observed")
+    ) %>% 
+    mutate(parameter = paste0("tau = ", parameter)) %>%
+    mutate(type = factor(type, levels = c("observed", "truth")))
+}
+
+df_a1 <- lapply(
+  c(-30, -15, 0), 
+  function(x) generate_critical(generate_data_a1, x)
+  ) %>% 
+  bind_rows() %>% 
+  mutate(title = "Bead Shift (A1)")
+
+df_a2 <- lapply(
+  c(0, 0.2, 0.4), 
+  function(x) 
+    generate_critical(generate_data_a2, x)
+  ) %>% 
+  bind_rows() %>%
+  mutate(title = "Model Misspecification (A2)")
+
+df_a3 <- lapply(
+  c(0, 0.5, 1.0), 
+  function(x) 
+    generate_critical(generate_data_a3, x)
+  ) %>% 
+  bind_rows() %>%
+  mutate(title = "High Count Spillover (A3)")
+
+df <- bind_rows(df_a1, df_a2, df_a3) %>%
+  mutate(title = factor(
+    title, levels = c(
+      "Bead Shift (A1)", 
+      "Model Misspecification (A2)", 
+      "High Count Spillover (A3)"
+    )))
+
+ggplot(df, aes(count, color = variable, linetype = type)) + 
+  geom_density() + 
+  facet_wrap(~title + parameter, ncol = 3)
+```
+
+Figure \@ref(fig:critical-points) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
 
 <!--
 ### Invariant Spillover Distributions (A1)
@@ -725,7 +756,7 @@ This is the end of iteration $t = 1$.
 
 # Generative Models
 
-## Invariant Spillover Distributions (A1)
+## Bead Shift (A1)
 
 The generative model for real cells $Y$ of this experiment is,
 $$
@@ -736,47 +767,6 @@ Z            & \sim \text{Bernoulli}(0.1)   & \qquad \text{(pick spillover)} \\
 \end{aligned}
 $$
 The generative model for beads is an independent copy of the unshifted $Y \mid Z = 1$ at $\tau = 0$.
-
-```{r critical-points-a1, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
-# --------- helper functions ---------
-generate_critical <- function(fn, parameter) {
-  
-  # generate data and run compensation algorithm
-  data <- fn(parameter)
-  comp <- compensate(data$df_real, 
-                     data$df_bead, 
-                     target_marker = "Y", 
-                     spillover_markers = "Z")
-  
-  # prepare data for plotting
-  tb_target <- tibble(y = data$Z_target) %>% 
-    count(y) %>% 
-    mutate(probability = n/max(n)) %>% 
-    mutate(type = "signal") %>% 
-    dplyr::select(-n)
-  tb_spill <- tibble(y = data$Z_spill) %>% 
-    count(y) %>% 
-    mutate(probability = n/max(n)) %>% 
-    mutate(type = "spillover") %>% 
-    dplyr::select(-n)
-  tb_prob <- comp$tb_spill_prob %>% 
-    dplyr::select(y = Y, probability = spill_prob_smooth) %>% 
-    mutate(type = "P(spillover | Y = y)")
-  bind_rows(tb_target, tb_spill, tb_prob) %>% 
-    mutate(parameter = parameter)
-
-}
-
-tb_a1 <- lapply(c(-60, -30, 0), 
-                function(i) generate_critical(generate_data_a1, i)
-                ) %>% bind_rows()
-ggplot(tb_a1, aes(y, probability, color = type)) + 
-  geom_line() +
-  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("Invariant Spillover Distributions (A1)")
-```
-
-Figure \@ref(fig:critical-points-a1) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
 
 ## Model Misspecification (A2)
 
@@ -791,71 +781,20 @@ Z              & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \
 $$
 The generative model for beads is an independent copy of $Y \mid Z \ne 0$.
 
-```{r critical-points-a2, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
-tb_a2 <- lapply(c(0, 0.5, 0.6), 
-                function(i) generate_critical(generate_data_a2, i)
-                ) %>% bind_rows()
-ggplot(tb_a2, aes(y, probability, color = type)) + 
-  geom_line() +
-  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("Model Misspecification (A2)")
-```
-
-Figure \@ref(fig:critical-points-a2) represents the two end points of the range where distances are stable, and the point $\tau = 0.6$ illustrates the distribution outside of this range.
-
-## Biomodal Beads (A3)
+## High Count Spillover (A3)
 
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
 Z                & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
 (Y \mid Z = 0)   & \sim \text{Poisson}(100)   & \qquad \text{(true signal)} \\
-M                & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
+M                & \sim \text{Bernoulli}(\tau) & \qquad \text{(pick mode with probability } \tau \text{)} \\
 (S \mid M = 0)   & \sim \text{Poisson}(70)    & \qquad \text{(first mode of spillover)} \\
-(S \mid M = 1)   & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode with spillover at } \tau) \\
+(S \mid M = 1)   & \sim \text{Poisson}(130)  & \qquad \text{(second mode of spillover)} \\
 ( Y \mid Z = 1 ) & \overset{d}{=} S           & \qquad \text{(spillover)}.
 \end{aligned}
 $$
 We use $\overset{d}{=}$ to denote that both random variables follow the same distribution. The generative model for beads is an independent copy of $Y \mid Z = 1$.
-
-```{r critical-points-a3-bead, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
-tb_a3_bead <- lapply(c(70, 100, 130), 
-                function(i) generate_critical(generate_data_a3_bead, i)
-                ) %>% bind_rows()
-ggplot(tb_a3_bead, aes(y, probability, color = type)) + 
-  geom_line() +
-  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("Bimodal Beads (A3)")
-```
-
-Figure \@ref(fig:critical-points-a3-bead) represents points from the stable and unstable range.
-
-## Bimodal Real Cells (A3)
-
-The generative model for real cells $Y$ of this experiment is,
-$$
-\begin{aligned}
-Z              & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
-M              & \sim \text{Bernoulli}(0.5) & \qquad \text{(pick mode)} \\
-(T \mid M = 0) & \sim \text{Poisson}(100)   & \qquad \text{(first mode of true signal)} \\
-(T \mid M = 1) & \sim \text{Poisson}(\tau)  & \qquad \text{(second mode of true signal at } \tau) \\
-(Y \mid Z = 0) & \overset{d}{=} T           & \qquad \text{(true signal)} \\
-(Y \mid Z = 1) & \sim \text{Poisson}(70)    & \qquad \text{(spillover)}
-\end{aligned}
-$$
-The generative model for beads is an independent copy of $Y \mid Z = 1$.
-
-```{r critical-points-a3-real, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
-tb_a3_real <- lapply(c(50, 70, 130), 
-                function(i) generate_critical(generate_data_a3_real, i)
-                ) %>% bind_rows()
-ggplot(tb_a3_real, aes(y, probability, color = type)) + 
-  geom_line() +
-  facet_wrap(~parameter, nrow = 1, scales = "free_x") +
-  ggtitle("Bimodal Real Cells (A3)")
-```
-
-Figure \@ref(fig:critical-points-a3-real) represents points two points in the tail with smaller distances and the global maximum.
 
 # Exemplary Real Cases
 
