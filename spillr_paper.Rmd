@@ -285,7 +285,12 @@ compute_average <- function(ftn, tau) {
                      spillover_markers = "Z")
   y_comp  <- comp$tb_compensate$corrected
   y_truth <- data$Z_target
-  mean(y_comp, na.rm = TRUE) - mean(y_truth)
+
+  tibble(
+    mean_obsv = mean(data$df_real$Y),
+    mean_comp = mean(y_comp, na.rm = TRUE),
+    mean_truth = mean(y_truth)
+  )
 }
 
 # --------- panel (a) ---------
@@ -313,7 +318,7 @@ d_a1 <- expand.grid(
   title = "Bead Shift (A1)"
   ) %>%
   rowwise() %>% 
-  mutate(diff_mean = compute_average(generate_data_a1, tau))
+  mutate(unnest(compute_average(generate_data_a1, tau)))
 
 # --------- panel (b) ---------
 
@@ -347,7 +352,7 @@ d_a2 <- expand.grid(
   title = "Model Misspecification (A2)"
   ) %>%
   rowwise() %>% 
-  mutate(diff_mean = compute_average(generate_data_a2, tau))
+  mutate(unnest(compute_average(generate_data_a2, tau)))
 
 # --------- panel (c) ---------
 
@@ -380,7 +385,7 @@ d_a3 <- expand.grid(
   title = "High Count Spillover (A3)"
   ) %>%
   rowwise() %>% 
-  mutate(diff_mean = compute_average(generate_data_a3, tau))
+  mutate(unnest(compute_average(generate_data_a3, tau)))
 
 # --------- combined plot ---------
 
@@ -388,17 +393,17 @@ tb_experiment <- bind_rows(d_a1, d_a2, d_a3)
 tb_summary <- tb_experiment %>% 
     group_by(title, tau) %>% 
     summarize(
-      mean = mean(diff_mean),
-      se = sd(diff_mean)
+      observed = mean(mean_obsv),
+      truth = mean(mean_truth),
+      spillR = mean(mean_comp)
       ) %>% 
     ungroup()
-tb_summary %>% 
-  mutate(lower = mean-se, upper = mean+se) %>%
-  ggplot(aes(tau, mean)) +
-  geom_hline(yintercept = 0.5, linetype = "dashed") +
-  geom_linerange(aes(ymin = lower, ymax = upper), alpha = 0.3) +
+
+pivot_longer(tb_summary, -c(title, tau), 
+             names_to = "mean", values_to = "count") %>%
+  mutate(mean = factor(mean, levels = c("observed", "truth", "spillR"))) %>%
+  ggplot(aes(tau, count, color = mean)) +
   geom_line() + 
-  ylab("difference in means") + 
   facet_wrap(~title, scales = "free_x")
 ```
 
