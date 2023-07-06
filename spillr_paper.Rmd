@@ -456,7 +456,7 @@ p_critical <- ggplot(df, aes(count, color = variable, linetype = type)) +
   facet_wrap(~title + tau, dir = "v")
 ```
 
-```{r simulated-experiments-plot, fig.height = 7, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Four experiments testing our three assumptions (A1), (A2), and (A3). In all experiments, the vertical axis represents the Wassertein distance between true signal and compensated signal."}
+```{r simulated-experiments-plot, fig.height = 7, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our three assumptions (A1), (A2), and (A3). Top row: mean values over the entire range of the experimental setups. Second to last row: density plots of three parameter settings."}
 plot_grid(p_overview, p_critical, 
           ncol = 1, rel_heights = c(0.3, 0.7), align = "v")
 ```
@@ -484,34 +484,6 @@ In the second experiment (column two), we add a hidden spillover marker to explo
 In the third experiment (column three), we model spillover with a bimodal distribution. Here $\tau$ is the mixing probability of the two modes. The parameter $\tau$ is the location of the second mode. If $\tau = 0$, then our assumption [(A3)](#assumption3) is correct. If $\tau = 0.5$, the first mode of the bimodal beads distribution is left to the signal mode, and the second mode is to the right. This setup violates [(A3)](#assumption3) as there is spillover follows an u-shape trend. If $\tau = 1$, then [(A3)](#assumption3) holds but most of the signal is masked as indicated by the underestimation of the mean.
 
 ## Real Data
-
-\textcolor{red}{TODO: Quick comment, just seeing this now:
-In Figure 4, the colour coding seems to not code absolute counts for all 3 
-plots in a cell. If it was total counts and the same colour scale across all 3 
-plots, we would expect that the colouring of the "uncorrelated" and the 
-"spillR" scatters are exactly the same, only that some observations have been 
-removed completely from the "spillR" scatter plot.
-I do see however, that some of the upper blob in the middle left-hand side 
-panel changes colour indicating that after spillR correction there are more 
-higher CD3 counts.
-Perhaps I am missing something?}
-
-\textcolor{red}{TODO: the thing about Wasserstein distance is less about defending the 
-choice but an opportunity that we currently don't use to highlight the 
-conceptual difference between your approach and Chevralier –
-they can compare shrunk vs true counts in a simulation on a per-observation 
-basis while this does not make any sense for your correction method:
-you propose to actively mask low counts that are attributed to spillover, 
-while hoping the reduced number of count-observations better represents the 
-unobserved true counts-distribution than the full count-observations would.
-Idea: Show true counts average vs average on all observed counts vs average on 
-only the counts you deem non-spillover.}
-
-\textcolor{red}{TODO: "The true unobserved distribution is close to the distribution of the spillR-corrected counts" etc – this also highlights "we do not correct all counts by shrinking them, but we remove some counts, in the hope that the distribution of the remaining counts that we keep is close to the true distribution" This seems to be a conceptual difference between Chevralier and your approach}
-
-We compare our method to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset has an experiment with real cells and a corresponding bead experiment. The experiments on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels. They have single stained bead experiments. The number of beads per mental label range from 112 to 241.
-
-We compare the two methods on the same marker as in the original `CATALYST` paper [@catalyst] in their Figure 3B. In the original experiment, they conjugated three proteins---CD3, CD8, and HLA-DR---with two different metal labels. They conjugated CD8 (first row in Figure \@ref(fig:spillr-vignette)) with Yb174Di (Yb is the metal and 174 is the number of neutrons of the isotope) and La139Di, and similarly for the other rows. On the horizontal axis, we plot the same markers as in the original paper, CD3 and HLA-ABC (for the second and third row). We visualize the joint distributions using two-dimensional histograms.
 
 ```{r spillr-vignette, fig.height = 6, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Arcsinh transformed counts with cofactor of 5."}
  # constants
@@ -602,6 +574,14 @@ p6 <- ggplot(combo, aes(x = HLA.ABC, y = HLA.DR.2)) +
 
 plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2)
 ```
+
+We compare our method to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset has an experiment with real cells and a corresponding bead experiment. The experiments on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels. They have single stained bead experiments. The number of beads per mental label range from 112 to 241.
+
+We compare the two methods on the same marker as in the original `CATALYST` paper [@catalyst] in their Figure 3B. In the original experiment, they conjugated three proteins---CD3, CD8, and HLA-DR---with two different metal labels. They conjugated CD8 (first row in Figure \@ref(fig:spillr-vignette)) with Yb174Di (Yb is the metal and 174 is the number of neutrons of the isotope) and La139Di, and similarly for the other rows. On the horizontal axis, we plot the same markers as in the original paper, CD3 and HLA-ABC (for the second and third row). We visualize the joint distributions using two-dimensional histograms.
+
+In all six panels, we observed that `spillR` compensates more aggressively in the low counts. In panel CD3 (Yb173Di) against HLA-ABC (Yb172Di), `CATALYST` compensates more aggressively in the middle range. It removes the spherical pattern that shows correlation between the two markers. `spillR` preserves this correlation structure and only masks out the lower counts of CD3 (Yb173Di). This highlights a key difference between `spillR` and `CATALYST`. We do not correct all counts by shrinking them, but we remove some counts, in the hope that the distribution of the remaining counts that we keep is close to the true distribution. `CATALYST` follows another strategy by shrinking not just low counts but across the entire range.
+
+The color code of the two-dimensional histograms counts the absolute number of cells. The reason why the coloring of the uncorrected and `spillR` corrected plots have a slightly different color code even for the high counts is due rounding. We convert values to the next lower integer.
 
 # Discussion
 
