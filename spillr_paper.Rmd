@@ -633,7 +633,7 @@ and we somehow need to assess, whether our n-k counts are in some sense closer a
 
 Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. 
 
-The experiment for [(A1)](#assumption1) shows the performance of our method in settings that are present in the real data. The main challenge is when the distribution in the bead experiment has higher mean than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di (first row in Figure \@ref(fig:exemplary-cases) in Appendix). In that case, assumption [(A1)](#assumption1) does not hold. For other markers, such as CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment (second row). In that case, assumption [(A1)](#assumption1) holds. 
+The experiment for [(A1)](#assumption1) shows the performance of our method in settings that are present in the real data. The main challenge is when the distribution in the bead experiment has higher mean than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di. In that case, assumption [(A1)](#assumption1) does not hold. For other markers, such as CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment. In that case, assumption [(A1)](#assumption1) holds. 
 
 The experiment for [(A2)](#assumption2) shows that our methods is robust to model misspecification. Moreover, misspecification should not be a major issue as we can add all channels if necessary. The increase in computational cost is relatively minor as our method scales linearly in the number of spillover markers. 
 
@@ -795,30 +795,3 @@ M                & \sim \text{Bernoulli}(\tau) & \qquad \text{(pick mode with pr
 \end{aligned}
 $$
 We use $\overset{d}{=}$ to denote that both random variables follow the same distribution. The generative model for beads is an independent copy of $Y \mid Z = 1$.
-
-# Exemplary Real Cases
-
-\textcolor{red}{TODO: What about the pink spike in the bottom right?
-So, if there were counts of 1 before the correction, we would remove almost all of them? But we don't see this in the left plot because there were no counts of 1?
-Why don't we see the "spillover-probability" dashed black curve to be super high for counts of 1 in the bottom right (as we would attribute them to Tb 159Di)?
-Perhaps this is just plotting artifacts as that struggles with this very peaky spike, if so, probably good to clarify?}
-
-Figure \@ref(fig:exemplary-cases) shows two cases from the dataset in the `CATALYST` paper [@catalyst].
-
-```{r exemplary-cases, fig.height=6, fig.width=9, out.width="90%", fig.align="center", fig.cap="Left panels: Frequency polygons before and after spillover compensation. Right panels: Density plot of spillover markers. The black dashed curve in the plot on the right represents the spillover probability estimated by our method. Arcsinh transformed counts with cofactor of 5.", echo=FALSE, warning=FALSE, message=FALSE}
-p_list <- plotDiagnostics(sce_spillr, "Eu153Di")
-p1 <- plot_grid(
-    p_list[[1]] + xlab("CD68 (Eu153Di)"),
-    p_list[[2]] + xlab("CD68 (Eu153Di)"),
-    rel_widths = c(0.5, 0.5), nrow = 1
-  )
-
-p_list <- plotDiagnostics(sce_spillr, "Gd160Di")
-p2 <- plot_grid(
-    p_list[[1]] + xlab("CD45 (Gd160Di)"),
-    p_list[[2]] + xlab("CD45 (Gd160Di)"),
-    rel_widths = c(0.5, 0.5), nrow = 1
-  )
-
-plot_grid(p1, p2, nrow = 2)
-```
