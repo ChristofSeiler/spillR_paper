@@ -313,7 +313,7 @@ generate_data_a1 <- function(shift) {
 
 # create parameter combination
 d_a1 <- expand.grid(
-  tau = seq(-30, 0, 1), 
+  tau = seq(-30, 0, length.out = 30), 
   replicate = 1:n_rep,
   title = "Bead Shift (A1)"
   ) %>%
@@ -347,7 +347,7 @@ generate_data_a2 <- function(spill_hidden) {
 
 # create parameter combination
 d_a2 <- expand.grid(
-  tau = seq(from = 0, to = 0.4, by = 0.01), 
+  tau = seq(from = 0, to = 0.1, length.out = 30), 
   replicate = 1:n_rep,
   title = "Model Misspecification (A2)"
   ) %>%
@@ -380,7 +380,7 @@ generate_data_a3 <- function(mode_prob) {
 
 # create parameter combination
 d_a3 <- expand.grid(
-  tau = seq(from = 0, to = 1, by = 0.02), 
+  tau = seq(from = 0, to = 1, length.out = 30), 
   replicate = 1:n_rep,
   title = "High Count Spillover (A3)"
   ) %>%
@@ -428,7 +428,7 @@ df_a1 <- lapply(
   mutate(title = "Bead Shift (A1)")
 
 df_a2 <- lapply(
-  c(0, 0.2, 0.4), 
+  c(0, 0.05, 0.1), 
   function(x) 
     generate_critical(generate_data_a2, x)
   ) %>% 
