@@ -263,7 +263,7 @@ We first evaluate our new method `spillR` on simulated datasets. We probe our me
 
 ## Simulated Data
 
-```{r simulated-experiments, fig.height = 2.5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE, fig.cap="Four experiments testing our three assumptions (A1), (A2), and (A3). In all experiments, the vertical axis represents the Wassertein distance between true signal and compensated signal."}
+```{r simulated-experiments, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE}
 # --------- global parameters ---------
 
 n_real <-10000
@@ -399,23 +399,15 @@ tb_summary <- tb_experiment %>%
       ) %>% 
     ungroup()
 
-pivot_longer(tb_summary, -c(title, tau), 
+p_overview <- pivot_longer(tb_summary, -c(title, tau), 
              names_to = "mean", values_to = "count") %>%
   mutate(mean = factor(mean, levels = c("observed", "truth", "spillR"))) %>%
   ggplot(aes(tau, count, color = mean)) +
   geom_line() + 
-  facet_wrap(~title, scales = "free_x")
+  facet_wrap(~title, scales = "free_x", nrow = 1)
 ```
 
-We choose four different experiments to test how robust `spillR` is when one of our three assumptions are violated. We explore a wide range of possible parameter settings. To visualize the massive amount of experiments, we measure distances between true and compensated distributions. Among the many possibilities to calculate the distance between two probability distributions, we choose the Wasserstein distance or earth mover's distance, as it has an intuitive interpretation and has been applied to single cell data [@schefzik2021fast]. We use the implementation in R package `transport` on CRAN [@schuhmacher2020transport].
-
-<!-- 
-We have one pile of earth that we would like to move to another location. We know the source pile of earth distribution and we also know the distribution of the target pile. The task is to transport small chunks of dirt from the source pile to the target pile while traveling the least amount possible. The distances weighted by the weight of the dirt chunk is the earth mover's distance.
--->
-
-Figure \@ref(fig:simulated-experiments) has four panels, one panel per experimental setup. The first row tests our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The second row tests assumption [(A3)](#assumption3) with two different experiments. For all experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. We simulate bimodal distributions of bead and real cells using a mixture probability of $0.5$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are in Appendix \@ref(generative-models). We quantify uncertainty with grey vertical lines representing the standard error computed over five replications of the same experiment.
-
-```{r critical-points, fig.height = 5, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three points from each experiment."}
+```{r simulated-experiments-critical-values, echo = FALSE, warning = FALSE, message = FALSE}
 generate_critical <- function(fn, tau) {
   data <- fn(tau)
   bind_rows(
@@ -459,12 +451,25 @@ df <- bind_rows(df_a1, df_a2, df_a3) %>%
       "High Count Spillover (A3)"
     )))
 
-ggplot(df, aes(count, color = variable, linetype = type)) + 
+p_critical <- ggplot(df, aes(count, color = variable, linetype = type)) + 
   geom_density() + 
-  facet_wrap(~title + tau, ncol = 3)
+  facet_wrap(~title + tau, dir = "v")
 ```
 
-Figure \@ref(fig:critical-points) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
+```{r simulated-experiments-plot, fig.height = 7, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Four experiments testing our three assumptions (A1), (A2), and (A3). In all experiments, the vertical axis represents the Wassertein distance between true signal and compensated signal."}
+plot_grid(p_overview, p_critical, 
+          ncol = 1, rel_heights = c(0.3, 0.7), align = "v")
+```
+
+We choose four different experiments to test how robust `spillR` is when one of our three assumptions are violated. We explore a wide range of possible parameter settings. To visualize the massive amount of experiments, we measure distances between true and compensated distributions. Among the many possibilities to calculate the distance between two probability distributions, we choose the Wasserstein distance or earth mover's distance, as it has an intuitive interpretation and has been applied to single cell data [@schefzik2021fast]. We use the implementation in R package `transport` on CRAN [@schuhmacher2020transport].
+
+<!-- 
+We have one pile of earth that we would like to move to another location. We know the source pile of earth distribution and we also know the distribution of the target pile. The task is to transport small chunks of dirt from the source pile to the target pile while traveling the least amount possible. The distances weighted by the weight of the dirt chunk is the earth mover's distance.
+-->
+
+Figure \@ref(fig:simulated-experiments-plot) has four panels, one panel per experimental setup. The first row tests our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The second row tests assumption [(A3)](#assumption3) with two different experiments. For all experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. We simulate bimodal distributions of bead and real cells using a mixture probability of $0.5$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are in Appendix \@ref(generative-models). We quantify uncertainty with grey vertical lines representing the standard error computed over five replications of the same experiment.
+
+Figure \@ref(fig:simulated-experiments-plot) represents the distributions at $\tau = -60$, $\tau = -30$, and $\tau = 0$. The signal $Z$ and spillover distribution $Z'$ are density plots. The red curve represents the estimated probability spillover curve. Note that the red curve does not integrate to one. It represents the probability of spillover at a given point on the horizontal axis.
 
 <!--
 ### Invariant Spillover Distributions (A1)
@@ -476,13 +481,13 @@ Figure \@ref(fig:critical-points) represents the distributions at $\tau = -60$, 
 
 \textcolor{red}{TODO: perhaps the shift is easier to present by not using tau, but a lambda real and a lambda bead? Then the plot labels are perhaps easier to grasp and one could highlight the 70 on the x-axes where bead is equal to real-spillover rate?}
 
-In the first experiment (top left of Figure \@ref(fig:simulated-experiments)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption [(A1)](#assumption1). The distances start around $8$ when $\tau = -60$. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -10$.
+In the first experiment (top left of Figure \@ref(fig:simulated-experiments-plot)), we shift the spillover distribution in the beads by $\tau$ to explore the robustness of our method with respect to our first assumption [(A1)](#assumption1). The distances start around $8$ when $\tau = -60$. The distances decrease as $\tau$ increases and the spillover signal shift further towards larger values. The distances plateau at around $\tau = -10$.
 
 <!--
 ### Model Misspecification (A2)
 -->
 
-In the second experiment (top right of Figure \@ref(fig:simulated-experiments)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the bead experiments. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it starts to increase quickly.
+In the second experiment (top right of Figure \@ref(fig:simulated-experiments-plot)), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the bead experiments. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct. Large $\tau$ violate our assumption. Our true spillover has probability of $0.1$. The distance increases monotonically. The distance is close to zero for $\tau < 0.5$. After that, it starts to increase quickly.
 
 <!--
 ### Bimodal Beads (A3)
@@ -490,13 +495,13 @@ In the second experiment (top right of Figure \@ref(fig:simulated-experiments)),
 
 \textcolor{red}{"The distance is close to" and other phrases: As the unit of Wasserstein distance is hard to interpret, I'd probably prefer other phrases, such as "The true unobserved distribution is close to the distribution of the spillR-corrected counts" etc – this also highlights "we do not correct all counts by shrinking them, but we remove some counts, in the hope that the distribution of the remaining counts that we keep is close to the true distribution" This seems to be a conceptual difference between Chevralier and your approach}
 
-In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments)), we model spillover with a bimodal distribution. The parameter $\tau$ is the location of the second mode. If $\tau = 70$, then our assumption [(A3)](#assumption3) is correct. values different from $\tau = 70$ violate our assumption. The distances up to $\tau < 70$ are stable. From $\tau = 70$ to $\tau = 100$, the distances increase. Starting around $\tau = 100$, the distances get unstable with large standard errors. 
+In the third experiment (bottom left of Figure \@ref(fig:simulated-experiments-plot)), we model spillover with a bimodal distribution. The parameter $\tau$ is the location of the second mode. If $\tau = 70$, then our assumption [(A3)](#assumption3) is correct. values different from $\tau = 70$ violate our assumption. The distances up to $\tau < 70$ are stable. From $\tau = 70$ to $\tau = 100$, the distances increase. Starting around $\tau = 100$, the distances get unstable with large standard errors. 
 
 <!--
 ### Bimodal Real Cells (A3)
 -->
 
-In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. We assume that the spillover has two modes emitted by the same spillover marker. This is different from the second experiment, where we assume that there is a hidden spillover marker. In this experiment, we explore the robustness of our method against a violation of the third assumption [(A3)](#assumption3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode.
+In the last experiment (bottom right of Figure \@ref(fig:simulated-experiments-plot)), we model the true signal with a bimodal distribution, a pattern that we observe frequently in real data. We assume that the spillover has two modes emitted by the same spillover marker. This is different from the second experiment, where we assume that there is a hidden spillover marker. In this experiment, we explore the robustness of our method against a violation of the third assumption [(A3)](#assumption3). The parameter $\tau$ represents the location of the second mode. The distances are below $2.5$ for $\tau < 50$ and $\tau > 100$. There is global maximum at $\tau = 70$, when the second signal mode overlaps the spillover mode.
 
 ## Real Data
 
@@ -751,7 +756,7 @@ This is the end of iteration $t = 1$.
 
 # Generative Models
 
-## Bead Shift (A1)
+## Bead Shift (A1) {-}
 
 The generative model for real cells $Y$ of this experiment is,
 $$
@@ -763,20 +768,20 @@ Z            & \sim \text{Bernoulli}(0.1)   & \qquad \text{(pick spillover)} \\
 $$
 The generative model for beads is an independent copy of the unshifted $Y \mid Z = 1$ at $\tau = 0$.
 
-## Model Misspecification (A2)
+## Model Misspecification (A2) {-}
 
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
-Z              & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with hidden probability } \tau \text{)} \\
+Z              & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with probability } \tau \text{)} \\
 (Y \mid Z = 0) & \sim \text{Poisson}(100)                             & \qquad \text{(true signal)} \\
 (Y \mid Z = 1) & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
 (Y \mid Z = 2) & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)} \\
 \end{aligned}
 $$
-The generative model for beads is an independent copy of $Y \mid Z \ne 0$.
+The generative model for beads is an independent copy of $Y \mid Z > 0$.
 
-## High Count Spillover (A3)
+## High Count Spillover (A3) {-}
 
 The generative model for real cells $Y$ of this experiment is,
 $$
@@ -784,8 +789,8 @@ $$
 Z                & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
 (Y \mid Z = 0)   & \sim \text{Poisson}(100)   & \qquad \text{(true signal)} \\
 M                & \sim \text{Bernoulli}(\tau) & \qquad \text{(pick mode with probability } \tau \text{)} \\
-(S \mid M = 0)   & \sim \text{Poisson}(70)    & \qquad \text{(first mode of spillover)} \\
-(S \mid M = 1)   & \sim \text{Poisson}(130)  & \qquad \text{(second mode of spillover)} \\
+(S \mid M = 0)   & \sim \text{Poisson}(70)    & \qquad \text{(spillover)} \\
+(S \mid M = 1)   & \sim \text{Poisson}(130)  & \qquad \text{(high count spillover)} \\
 ( Y \mid Z = 1 ) & \overset{d}{=} S           & \qquad \text{(spillover)}.
 \end{aligned}
 $$
