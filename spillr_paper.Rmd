@@ -585,50 +585,15 @@ The color code of the two-dimensional histograms counts the absolute number of c
 
 # Discussion
 
-\textcolor{red}{TODO: I find this first paragraph odd. It presents this as a weakness - perhaps we should focus on the conceptual difference this highlights:
-Chevralier can compare true-count-vs-real-count for each data point.
-Since we do not alter counts, but we "mask" some counts, such a comparison would not even make sense in our case, so what we have is:
-- n observed counts
-- n true counts
-- n-k counts that we retain (after masking k counts as spillover)
-and we somehow need to assess, whether our n-k counts are in some sense closer and a better representation of the n true counts than using all of the n observed counts - one way to do that is to compare the distributions, a choice here is the Wasserstein distance, which may even be argued is a canonical choice - alternatively, or additionally, we could report "true count average vs observed count average vs corrected count average" and we would hope that the latter, after removing some spillover observations, is closer to the first :-)}
+The experiment for [(A1)](#assumption1) shows that the mean count after `spillR` correction is closer to the true mean over a wide range of bead shifts. This indicates that our methods works for even low quality bead experiments. The experiment for [(A2)](#assumption2) shows that our methods is robust to model misspecification. Moreover, misspecification should not be a major issue as we can add all channels if necessary. The increase in computational cost is relatively minor as our method scales linearly in the number of spillover markers. The experiment for [(A3)](#assumption3) shows that the mean count after correction is still closer to the true mean even with clear violation of this assumption. This justifies our strong parametric assumption on the spillover probability even when the assumption is violated.
 
-Relating the Wasserstein distance to a biological meaningful quantity is challenging. But the overall trends of the distance curves are still helpful to assess the sensitivity of our method with respect to modeling violations. 
-
-The experiment for [(A1)](#assumption1) shows the performance of our method in settings that are present in the real data. The main challenge is when the distribution in the bead experiment has higher mean than in the real experiment. We observe such patterns in the `CATALYST` example data for protein CD68 with the metal label Eu153Di. In that case, assumption [(A1)](#assumption1) does not hold. For other markers, such as CD45 with metal label Gd160Di, the second mode of the observed marker distribution overlaps with the bead experiment. In that case, assumption [(A1)](#assumption1) holds. 
-
-The experiment for [(A2)](#assumption2) shows that our methods is robust to model misspecification. Moreover, misspecification should not be a major issue as we can add all channels if necessary. The increase in computational cost is relatively minor as our method scales linearly in the number of spillover markers. 
-
-Both experiments that test for bimodal distribution show potential instabilities of our method. The bimodal bead experiment displays large standard errors over the repeated experiment when the second bead mode is equal or larger than the true signal. As expected, our method performs worse when the true signal overlaps with the spillover. This behavior is not surprising as it is impossible to identify true from spillover signal when they overlap. Naturally, any method is prone to guess work due to the lack of evidence from data.
-
-\textcolor{red}{TODO: what Chevralier write about "spillover is linear" to motivate a linear 
-shrinkage (the linearity they establish is essentially saying that a fixed 
-fraction of a marker will spill over, so if the count is double as high what 
-will be spilled over into another channel is also double as high – but counts 
-in their figure are in the order of 200–500 and spillover < 10, so imho this 
-linearity is not really important when correcting a marker count that may have 
-received spillover, whether the spilling-over count was 200 or 500 the 
-correction is in the order of ~10 either way).
-But they appear to focus on correlation that can be seen in those pair-wise 
-scatter plots – in bead experiments we know that there is no correlation, so 
-good correction is if there is no correlation. But they also transfer this to 
-the real experiments – perhaps this is something to highlight, take the left 
-middle plot of your Figure 4:
-spillR-correction does not remove the positive correlation between HLA-ABC and 
-CD3 while CATALYST does – this could hugely affect downstream analysis.
-While in single-stained beads experiments, there can be no correlation,
-why would we enforce this on multi-stained real cells? Perhaps aiming to 
-reduce correlation in real cells is actually removing meaningful biological 
-signal namely that certain expression levels correlated in cells?
-}
-
-Comparisons between methods on real data are challenging because there is no ground truth available. Overall, our method compensates more for spillover than `CATALYST`. Our spillover correction is consistent with the bead distribution. In some of the channels, the distribution of the real cells is less than in the bead experiment. This could indicate that we overcorrect in such situations. But we could also still be within the stable bead shift regime. So, it is not possible to make final conclusions based on real experiments. The best way to avoid overcorrections with our method is to design bead experiments with a similar distribution for the real cells. `CATALYST` assumes that spillover is linear up to counts of 5,000. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment.
+In our comparison to `CATALYST` on real data, we observe two difference correction strategies. `CATALYST` essentially shrinks counts towards zero by minimizing a non-negative least squares objective. `CATALYST` assumes that spillover is linear up to counts of 5,000. `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment. The applied shrinkage is the same for low counts (e.g., below 10) and high counts (e.g., more than 100). `spillR` does not really on this linearity assumption. If counts are not on the spillover range, then they are not correction no matter how low their values are. If counts are in the spillover range, then we aggressively mask them. But even with this aggressive masking, we do not remove correlations between markers. The marker correlation between HLA-ABC (Yb172Di) and CD3 (Yb173Di) illustrated this point. `CATALYST` removes the positive correlation, whereas `spillR` keeps the correlation for the higher counts. Compensation methods should try to remove spillover while keeping biological meaningful signal. If not, then downstream analysis that rely on these correlations be biased.
 
 We estimate bead and real distributions using their empirical distributions from the bead experiment. From histograms, we observe that these estimates are noisy. Reducing the noise by fitting a parametric model or by smoothing seems promising. We conducted extensive experiments comparing different post-processing methods. We fit a polynomial poisson regression, a smoother, and a local polynomial regression to the bead and real cell distributions. All methods were unstable. They worked on some markers, but failed on others. This could be due to the small sample sizes for the bead experiments---around 100 cells per bead experiment. To leverage these methods we will need bead experiments with larger cell sample sizes.
 
 # Conclusion
 
-The advantage of our method is the diagnostics plot of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation. Therefore, we recommend to use `spillR` whenever high quality bead experiments are available.
+The main advantage of our method is the diagnostics plot of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation.
 
 # Acknowledgments {-}
 
