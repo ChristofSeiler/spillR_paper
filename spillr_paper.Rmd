@@ -1,7 +1,7 @@
 ---
 title: "`spillR`: Spillover Compensation in Mass Cytometry Data"
-author: "Marco Guazzini$^{1}$, Alexander G. Reisach$^{3}$, Sebastian Weichwald$^{4}$, and Christof Seiler$^{1,2}$"
-date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n $^3$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^4$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n \\\n `r gsub(' 0', ' ', format(Sys.time(), '%B %d, %Y'))`"
+author: "Marco Guazzini$^{1}$, Alexander G. Reisach$^{2}$, Sebastian Weichwald$^{3}$, and Christof Seiler$^{1,4}$"
+date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^3$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n $^4$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n \\\n `r gsub(' 0', ' ', format(Sys.time(), '%B %d, %Y'))`"
 output:
   bookdown::pdf_document2: 
     toc: false
