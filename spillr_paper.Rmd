@@ -11,7 +11,7 @@ bibliography: spillr_paper.bib
 csl: style.csl
 link-citations: true
 abstract: |
-  Channel interference in mass cytometry can cause spillover and may result in miscounting of protein markers. @catalyst introduce an experimental and computational procedure to estimate and compensate for spillover. Their R package `CATALYST` implements this using non-negative least squares. They assume spillover can be approximated by a spillover matrix that encodes proportions of true counts over total observed counts. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in an R package `spillR` using expectation-maximization and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates low counts accurately and avoids overcompensating high counts. Intuitively, this makes sense because we use only localized information from beads to estimate compensation. This is in contrast to non-negative least squares methods that use proportions estimated over the full signal range.
+  Channel interference in mass cytometry can cause spillover and may result in miscounting of protein markers. @catalyst introduce an experimental and computational procedure to estimate and compensate for spillover. Their R package `CATALYST` implements this using non-negative least squares. They assume spillover can be approximated by a spillover matrix that encodes proportions of true counts over total observed counts. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in an R package `spillR` using expectation-maximization and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates low counts accurately, avoids overcompensating high counts, and preserves correlations between markers that might be due to a biological meaningful signal.
 ---
 
 ```{r setup, include=FALSE}
@@ -97,7 +97,7 @@ ggplot(combo, aes(x = tfm(Nd144Di), y = tfm(Nd145Di))) +
   ylab("CD4 (Nd145Di)")
 ```
 
-To illustrate the main idea of our work, we consider an example with only two markers (Figure \@ref(fig:intro-example)). The left panel depicts an experiment using beads stained only for CD36 (Nd144Di). Without any spillover, all beads would have zero cell counts for CD4 (ND145Di). Yet, there are many positive CD4 (ND145Di) bead counts. The blue shaded area provides a reasonable estimate for spillover. The right panel shows an experiment conducted with real cells. Some of the values in the blue shaded area could in principle be real, low counts, but one would expect real counts to be higher and low counts more likely to be spillover. While it is not known how many of the low counts are due to spillover, an estimate can be obtained using the bead experiment. We propose to carry over a weighted version of the blue shaded area to the real experiment using finite mixtures. The blue shaded area plays the role of the spillover component and the non-shaded area is the component representing the true marker signal. Our objective is to separate the true signal from the spillover in this mixture. 
+To illustrate the main idea of our work, we consider an example with only two markers (Figure \@ref(fig:intro-example)). The left panel depicts an experiment using beads stained only for CD36 (Nd144Di). In this example, the protein CD36 is conjugated with Nd144Di (Nd is the metal and 144 is the number of neutrons of the isotope). Without any spillover, all beads would have zero cell counts for CD4 (ND145Di). Yet, there are many positive CD4 (ND145Di) bead counts. The blue shaded area provides a reasonable estimate for spillover. The right panel shows an experiment conducted with real cells. Some of the values in the blue shaded area could in principle be real, low counts, but one would expect real counts to be higher and low counts more likely to be spillover. While it is not known how many of the low counts are due to spillover, an estimate can be obtained using the bead experiment. We propose to carry over a weighted version of the blue shaded area to the real experiment using finite mixtures. The blue shaded area plays the role of the spillover component and the non-shaded area is the component representing the true marker signal. Our objective is to separate the true signal from the spillover in this mixture. 
 
 This example highlights the main difference between our method and @catalyst. After masking cell marker CD4 (ND145Di) counts that are likely due to spillover, the average of the remaining CD4 (ND145Di) counts will be larger than that of all CD4 (ND145Di) counts. So, in this example, our spillover correction method increases the average count. In contrast, @catalyst will shrink all the counts towards zero. As a consequence, the average count will be lower after correction.
 
@@ -142,7 +142,7 @@ plot_grid(
   )
 ```
 
-Figure \@ref(fig:method-example) illustrates our procedure using a dataset from the `CATALYST` package as an example. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). We have bead experiments on all the spillover markers. The panel on the left displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method masks some counts in the range between zero to four. Larger counts are not affected by the correction as both curves overlap. 
+Figure \@ref(fig:method-example) illustrates our procedure using a dataset from the `CATALYST` package as an example. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). The markers have two names: the first name is the protein name and second name in brackets is the conjugated metal. We have bead experiments on all the spillover markers. The panel on the left displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method masks some counts in the range between zero to four. Larger counts are not affected by the correction as both curves overlap. 
 
 The panel on the right depicts the marker distributions from the beads experiment. We see that for this marker the bead experiments are high-quality as the target marker Yb173Di is concentrated around six, similarly to the experiment with real cells. This suggests that the spillover markers can be transferred to the real experiments. Marker Yb172Di shows large spillover into Yb173Di, and suggests that much of the first mode of the distribution may be attributed to that marker. Spillover results in low counts for the other markers, making it justifiable to set all the low counts to zero.
 
@@ -156,17 +156,17 @@ P(Y_i = y) = \sum_{k = 1}^{K+1} \pi_k \, P(Y_i = y \mid Z_i = k).
 $$
 The first mixing probability is the proportion of true signal in the observed counts. The other $K$ mixing probabilities are the proportions of spillover. The total sum of mixing probabilities equals to one, $\sum_k \pi_k = 1$. The total number of markers in mass cytometry panels is between 30 and 40 [@bendall2011single], but only a small subset of three to four markers spill over into the target marker [@catalyst]. So, typically $K = 3$ or $K = 4$.
 
-Experimentally, we only measure a sample from the distribution of $Y_i$. The probabilities $\pi_k$ and true distributions $P(Y_i = y \mid Z_i = k)$ are unobserved, and we need to estimate them from data. In many applications, the mixture components are in a parametric family, for example, the negative binomial distribution. Here we propose to fit nonparametric mixture components. We make three assumptions that render the components and mixture probabilities identifiable:
+Experimentally, we only measure a sample from the distribution of $Y_i$. The probabilities $\pi_k$ and true distributions $P(Y_i = y \mid Z_i = k)$ are unobserved, and we need to estimate them from data. In many applications, the mixture components are in a parametric family, for example, the negative binomial distribution. As spillover correction is a pre-processing step followed by downstream analyses, choosing the wrong model can introduce biases in the next analysis step. To mitigate such biases, we propose to fit nonparametric mixture components. We make three assumptions that render the components and mixture probabilities identifiable:
 
 * <div id='assumption1'>(A1) Spillover distributions are the same in bead and real experiments.</div>
 
-The distribution of $Y_i \mid Z_i = k$ for all $k > 1$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_i \mid Z_i = k$ for all $k > 1$ from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
+The distribution of $Y_i \mid Z_i = k$ for all $k > 1$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_i \mid Z_i = k$ for all $k > 1$ from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality single stained bead experiments that measure spillover in the same range as the target biological experiment.
 
 * <div id='assumption2'>(A2) For each cell $i$, the observed count $Y_i$ can only be due to one distribution.</div>
 
 This assumption is already implied by the statement of the mixture model. It allows us to calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from markers $k > 1$,
 $$
-P(\text{spillover} \mid Y_i = y) = 
+P(\text{spillover} \mid Y_i = y) = P(Z_i > 1 \mid Y_i = y) = 
 1 - P(Z_i = 1 \mid Y_i = y) = 
 1 - \frac{\pi_1 \, P(Y_i = y \mid Z_i = 1)}{P(Y_i = y)}.
 $$
@@ -186,7 +186,7 @@ We initialize the conditional probability mass function using a nonparametric es
 $$
 P(Y_i = y \mid Z_i = k) = \frac{\sum_{i = 1}^{n_x} \mathbf{1} \left( x_{ik} = y \right)}{\sum_{i = 1}^{n_x} x_{ik}} \quad \text{for all} \quad k > 1,
 $$
-where $\mathbf{1}(\cdot)$ is the indicator function, $n_x$ is the total number of cells measured in the beads experiment, and $k$ is a specific spillover marker.
+where $\mathbf{1}(\cdot)$ is the indicator function, $n_x$ is the total number of cells measured in the beads experiment, and $k$ is a specific spillover marker. Recall that the $k$th column of $\mathbf{X}$ contains marker counts for the $k$th spillover marker, which represents the empirical spillover distribution of marker $k$ into the target marker.
 
 ### Step 2: EM Algorithm Updating Target Mixture Component and Mixture Probabilities {-}
 
@@ -450,7 +450,8 @@ df <- bind_rows(df_a1, df_a2, df_a3) %>%
       "Bead Shift (A1)", 
       "Model Misspecification (A2)", 
       "High Count Spillover (A3)"
-    )))
+    ))) %>%
+  mutate(tau = factor(tau, levels = c(0, 0.05, 0.1, 0.5, 1, -15, -30)))
 
 p_critical <- ggplot(df, aes(count, color = variable, linetype = type)) + 
   geom_density(key_glyph="path") + 
