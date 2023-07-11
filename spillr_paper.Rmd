@@ -142,7 +142,7 @@ plot_grid(
   )
 ```
 
-Figure \@ref(fig:method-example) illustrates our procedure using an exemplary dataset from the `CATALYST` package. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). We have bead experiments on all the spillover markers. The panel on the left displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method masks some counts in the range between zero to four. Larger counts are not affected by the correction as both curves overlap. 
+Figure \@ref(fig:method-example) illustrates our procedure using a dataset from the `CATALYST` package as an example. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). We have bead experiments on all the spillover markers. The panel on the left displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method masks some counts in the range between zero to four. Larger counts are not affected by the correction as both curves overlap. 
 
 The panel on the right depicts the marker distributions from the beads experiment. We see that for this marker the bead experiments are high-quality as the target marker Yb173Di is concentrated around six, similarly to the experiment with real cells. This suggests that the spillover markers can be transferred to the real experiments. Marker Yb172Di shows large spillover into Yb173Di, and suggests that much of the first mode of the distribution may be attributed to that marker. Spillover results in low counts for the other markers, making it justifiable to set all the low counts to zero.
 
@@ -160,7 +160,7 @@ Experimentally, we only measure a sample from the distribution of $Y_i$. The pro
 
 * <div id='assumption1'>(A1) Spillover distributions are the same in bead and real experiments.</div>
 
-The distribution of $Y_i \mid Z_i = k$ for all $k > 1$ that spills over into the true marker is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_i \mid Z_i = k$ for all $k > 1$ from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
+The distribution of $Y_i \mid Z_i = k$ for all $k > 1$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_i \mid Z_i = k$ for all $k > 1$ from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality bead experiments that measure spillover in the same range as the target biological experiment.
 
 * <div id='assumption2'>(A2) For each cell $i$, the observed count $Y_i$ can only be due to one distribution.</div>
 
@@ -174,11 +174,11 @@ To parse this calculation, recall that in mixture models the $\pi_1$ is the prio
 
 * <div id='assumption3'>(A3) Spillover probability curves are logistic functions.</div>
 
-The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Larger $y$ will not have any spillover and only have true signal. In contrast, smaller $y$ are more likely a result of another marker spilling over. Although it is biologically possible that spillover happens at higher counts, this assumption makes our statistical procedure more stable. We choose the logistic function as it is the standard option for logistic regression.
+The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Sufficiently large $y$ are not due to spillover and only carry the true signal. In contrast, smaller $y$ are more likely a result of another marker spilling over. Although it is biologically possible that spillover happens at higher counts, this assumption makes our statistical procedure more stable. We choose the logistic function as it is the standard option for logistic regression.
 
 ## Estimation of Spillover Probability
 
-We propose a three step procedure for estimating the spillover probability. In step 1, we estimate spillover marker distributions from beads experimental data, denoted by the $n_x \times K$ count matrix $\mathbf{X} = (x_{ij})$. In step 2, we estimate the target mixture component and mixture probabilities from real cells experimental data, denoted by the $n_y \times 1$ count vector $\mathbf{y} = (y_{i})$. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 3, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use the smooth probability estimates to assign counts to spillover or signal.
+We propose a three step procedure for estimating the spillover probability. In step 1, we estimate spillover marker distributions from beads experimental data, denoted by the $n_x \times K$ count matrix $\mathbf{X} = (x_{ij})$. In step 2, we estimate the target mixture component and mixture probabilities from real cells experimental data, denoted by the $n_y \times 1$ count vector $\mathbf{y} = (y_{i})$. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 3, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use smooth probability estimates to assign counts to spillover or signal.
 
 ### Step 1: Estimate Non-Target Mixture Components From Beads Experimental Data {-}
 
@@ -222,7 +222,7 @@ $$
 \frac{1}{n_x} \sum_{i = 1}^{n_x} P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right), & k > 1,
 \end{cases}
 $$ 
-assign counts to the marker with the largest posterior probability, mask counts that belong to the spillover components, and re-estimate the distribution for the target marker with the newly assigned counts,
+re-assign counts to the marker with the largest posterior probability, re-mask counts that belong to the spillover components, and re-estimate the distribution for the target marker with the newly assigned counts,
 $$
 P^{(t+1)}(Y_i = y \mid Z_i = 1) = \frac{\sum_{i = 1}^{n_y^{(t+1)}} \mathbf{1}\left(y_i^{(t+1)} = y\right)}{\sum_{i = 1}^{n_y^{(t+1)}} y_i^{(t+1)}}.
 $$
