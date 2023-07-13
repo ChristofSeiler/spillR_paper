@@ -154,7 +154,7 @@ We observe a count $Y_i$ of a target marker in cell $i$. We model the observed $
 $$
 P(Y_i = y) = \sum_{k = 1}^{K+1} \pi_k \, P(Y_i = y \mid Z_i = k).
 $$
-The first mixing probability is the proportion of true signal in the observed counts. The other $K$ mixing probabilities are the proportions of spillover. The total sum of mixing probabilities equals to one, $\sum_k \pi_k = 1$. The total number of markers in mass cytometry panels is between 30 and 40 [@bendall2011single], but only a small subset of three to four markers spill over into the target marker [@catalyst]. So, typically $K = 3$ or $K = 4$.
+The first mixing probability is the proportion of true signal in the observed counts. The other $K$ mixing probabilities are the proportions of spillover. The total sum of mixing probabilities equals one, $\sum_k \pi_k = 1$. The total number of markers in mass cytometry panels is between 30 and 40 [@bendall2011single], but only a small subset of three to four markers spill over into the target marker [@catalyst]. So, typically $K = 3$ or $K = 4$.
 
 Experimentally, we only measure a sample from the distribution of $Y_i$. The probabilities $\pi_k$ and true distributions $P(Y_i = y \mid Z_i = k)$ are unobserved, and we need to estimate them from data. In many applications, the mixture components are in a parametric family, for example, the negative binomial distribution. As spillover correction is a pre-processing step followed by downstream analyses, choosing the wrong model can introduce biases in the next analysis step. To mitigate such biases, we propose to fit nonparametric mixture components. We make three assumptions that render the components and mixture probabilities identifiable:
 
@@ -174,7 +174,7 @@ To parse this calculation, recall that in mixture models the $\pi_1$ is the prio
 
 * <div id='assumption3'>(A3) Spillover probability curves are logistic functions.</div>
 
-The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Sufficiently large $y$ are not due to spillover and only carry the true signal. In contrast, smaller $y$ are more likely a result of another marker spilling over. Although it is biologically possible that spillover happens at higher counts, this assumption makes our statistical procedure more stable. We choose the logistic function as it is the standard option for logistic regression.
+The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Under (A3), smaller $y$ are more likely a result of another marker spilling over whereas sufficiently large $y$ are not due to spillover and only carry the true signal. Although it is biologically possible that spillover results in high counts, this may be considered unlikely and the assumption makes our statistical procedure more stable. We choose the logistic function as it is the standard option for logistic regression.
 
 ## Estimation of Spillover Probability
 
@@ -248,7 +248,7 @@ $$
 $$
 The $\widetilde{P}(\text{spillover} \mid Y_i = y)$ is a smooth version of the noisy estimate from step 2, $\widehat{P}(\text{spillover} \mid Y_i = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. 
 
-To compensate, we use the spillover probability to flip a biased coin and declare the current count as spillover if the coin comes up heads, otherwise we keep the count. We consider spillover counts as counts that have no clear biological interpretation and mask them from our dataset. In our implementation, we choose to set them to `NA` values instead of zeros to avoid zero-inflated distributions. 
+To perform the spillover compensation, we draw from a Bernoulli distribution with the spillover probability as parameter to decide whether or not to assign a given count to spillover. We consider spillover counts as having no clear biological interpretation and mask them from our dataset while keeping all other counts. In our implementation, we choose to set spillover counts to `NA` instead of zero to avoid zero-inflated distributions. 
 
 <!-- 
 
@@ -260,7 +260,7 @@ To compensate, we use the spillover probability to flip a biased coin and declar
 
 # Results
 
-We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its shortcomings. Then, we compare `spillR` to the non-negative least squares method implemented in R package `CATALYST` on real data from the same package. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd`^[https://github.com/ChristofSeiler/spillR_paper]. In our experiments, setting $T = 10$ was enough to reach convergence with many different initial values.
+We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its shortcomings. Then, we compare `spillR` to the non-negative least squares method implemented in the R package `CATALYST` on real data from the same package. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd`^[https://github.com/ChristofSeiler/spillR_paper]. In our experiments, setting $T = 10$ is sufficient to reach convergence with many different initial values.
 
 ## Simulated Data
 
@@ -592,7 +592,7 @@ The experiment for [(A1)](#assumption1) shows that the mean count after `spillR`
 In our comparison to `CATALYST` on real data, we observe the effect of the two different correction strategies. `CATALYST` essentially shrinks counts towards zero by minimizing a non-negative least squares objective. It assumes that spillover is linear up to counts of 5,000. The applied shrinkage is the same for low counts (e.g., below 10) and high counts (e.g., more than 100). By contrast, `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment. If counts are in the spillover range (which mostly applies to low counts), they are corrected strongly by masking. If counts are not in the spillover range, then they are left unchanged. Despite the masking, correlations between markers persist. The marker correlation between HLA-ABC (Yb172Di) and CD3 (Yb173Di) illustrated this point. `CATALYST` removes the positive correlation, whereas `spillR` keeps the correlation for the higher counts. Compensation methods should try to remove spillover while keeping biological meaningful signal for unbiased downstream analyses.
 Another advantage of our method is the diagnostic plot of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation.
 
-Reducing the noise of the estimated marker count distributions may be a promising extension of our method. `spillR` estimates bead and cell marker count distributions using the observations from bead experiments. In histograms we observe that these estimates are noisy. Post-processing methods such as polynomial poisson regression, smoothing, or local polynomial regression may be able to improve the estimates. For the data used in our empirical analysis with sample sizes of around 100 for the bead experiments, these approaches are unstable, but bead experiments with larger sample sizes may allow leveraging these methods.
+Reducing the noise of the estimated marker count distributions may be a promising extension of our method. `spillR` estimates bead and cell marker count distributions using the observations from bead experiments. In histograms we observe that these estimates are noisy. Post-processing methods such as polynomial poisson regression, smoothing, or local polynomial regression may be able to improve the estimates. For the data used in our empirical analysis (with sample sizes of around 100 for the bead experiments) these methods are unstable, but bead experiments with larger sample sizes may allow leveraging such an approach.
 
 # Acknowledgments {-}
 
