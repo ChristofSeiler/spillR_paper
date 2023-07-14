@@ -174,11 +174,11 @@ To parse this calculation, recall that in mixture models the $\pi_1$ is the prio
 
 * <div id='assumption3'>(A3) Spillover probability curves are logistic functions.</div>
 
-The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Under (A3), smaller $y$ are more likely a result of another marker spilling over whereas sufficiently large $y$ are not due to spillover and only carry the true signal. Although it is biologically possible that spillover results in high counts, this may be considered unlikely and the assumption makes our statistical procedure more stable. We choose the logistic function as it is the standard option for logistic regression.
+The spillover probability is the probability that the counts are not due to the marker of interest but result of another marker spilling over into $Y_i$. The spillover probability is a function of $y$. Under (A3), smaller $y$ are more likely a result of another marker spilling over whereas sufficiently large $y$ are not due to spillover and only carry the true signal. Although it is biologically possible that spillover results in high counts, this may be considered unlikely and the assumption makes our statistical procedure more stable. We model the spillover probabilities using logistic regression.
 
 ## Estimation of Spillover Probability
 
-We propose a three step procedure for estimating the spillover probability. In step 1, we estimate spillover marker distributions from beads experimental data, denoted by the $n_x \times K$ count matrix $\mathbf{X} = (x_{ij})$. In step 2, we estimate the target mixture component and mixture probabilities from real cells experimental data, denoted by the $n_y \times 1$ count vector $\mathbf{y} = (y_{i})$. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 3, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use smooth probability estimates to assign counts to spillover or signal.
+We propose a three step procedure for estimating the spillover probability. In step 1, we estimate spillover marker distributions from beads experimental data, denoted by the $n_x \times K$ count matrix $\mathbf{X} = (x_{ij})$, where $x_{ij}$ is an individual element at position $(i,j)$. In step 2, we estimate the target mixture component and mixture probabilities from real cells experimental data, denoted by the $n_y \times 1$ count vector $\mathbf{y} = (y_{i})$. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 3, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use smooth probability estimates to assign counts to spillover or signal.
 
 ### Step 1: Estimate Non-Target Mixture Components From Beads Experimental Data {-}
 
@@ -608,7 +608,7 @@ We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a pr
 
 # EM Algorithm Example
 
-Here we illustrate the procedure using a numerical example that includes one target and one spillover marker. We have data vectors $\mathbf{y}$ and $\mathbf{X}$,
+Here we illustrate the procedure using a numerical example that includes one target and one spillover marker. We have two data vectors $\mathbf{y}$ and $\mathbf{X}$. Vector $\mathbf{y}$ contains real cell counts recorded for marker 1. Vector $\mathbf{X}$ contains bead counts for marker 1 when the true marker was marker 2. In practice, $\mathbf{X}$ is usually a matrix with multiple columns representing multiple spillover markers. The index $i$ is a specific cell in beads and real cells experiment, respectively. Let's assume the following counts,
 $$
 \mathbf{y}^{(0)} = \left(y_i^{(0)}\right) = 
 \begin{bmatrix}
@@ -620,14 +620,13 @@ $$
 2 
 \end{bmatrix}
 \qquad
-\mathbf{X} = (x_{ij}) = 
+\mathbf{X} = (x_{i2}) = 
 \begin{bmatrix}
 2 \\ 
 3 \\ 
 2 
 \end{bmatrix}.
 $$
-The first vector represents the counts for the target marker measured in the experiment with real cells, and the second vector contains counts from the beads experiment. In practice, the second vector is usually a matrix with multiple columns representing multiple spillover markers.
 
 We initialize our EM algorithm by estimating the conditional probability of observing $y$ given that it belongs to the target marker, and another conditional probability given that it belongs to the spillover marker,
 $$
@@ -687,12 +686,13 @@ This is the end of iteration $t = 1$.
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
-Z            & \sim \text{Bernoulli}(0.1)   & \qquad \text{(pick spillover)} \\
-(Y \mid Z = 0) & \sim \text{Poisson}(100)     & \qquad \text{(true signal)} \\
-(Y \mid Z = 1) & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover with shift } \tau \text{)}.
+S              & \sim \text{Bernoulli}(0.1)   & \\
+Z              & = S + 1                      & \qquad \text{(pick spillover)} \\
+(Y \mid Z = 1) & \sim \text{Poisson}(100)     & \qquad \text{(true signal)} \\
+(Y \mid Z = 2) & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover with shift } \tau \text{)}.
 \end{aligned}
 $$
-The generative model for beads is an independent copy of the unshifted $Y \mid Z = 1$ at $\tau = 0$.
+The generative model for beads is an independent copy of the unshifted $Y \mid Z = 2$ at $\tau = 0$.
 
 ## Model Misspecification (A2) {-}
 
@@ -700,24 +700,25 @@ The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
 Z              & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with probability } \tau \text{)} \\
-(Y \mid Z = 0) & \sim \text{Poisson}(100)                             & \qquad \text{(true signal)} \\
-(Y \mid Z = 1) & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
-(Y \mid Z = 2) & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)} \\
+(Y \mid Z = 1) & \sim \text{Poisson}(100)                             & \qquad \text{(true signal)} \\
+(Y \mid Z = 2) & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
+(Y \mid Z = 3) & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)} \\
 \end{aligned}
 $$
-The generative model for beads is an independent copy of $Y \mid Z > 0$.
+The generative model for beads is an independent copy of $Y \mid Z > 1$.
 
 ## High Count Spillover (A3) {-}
 
 The generative model for real cells $Y$ of this experiment is,
 $$
 \begin{aligned}
-Z                & \sim \text{Bernoulli}(0.1) & \qquad \text{(pick spillover)} \\
-(Y \mid Z = 0)   & \sim \text{Poisson}(100)   & \qquad \text{(true signal)} \\
-M                & \sim \text{Bernoulli}(\tau) & \qquad \text{(pick mode with probability } \tau \text{)} \\
-(S \mid M = 0)   & \sim \text{Poisson}(70)    & \qquad \text{(spillover)} \\
-(S \mid M = 1)   & \sim \text{Poisson}(130)  & \qquad \text{(high count spillover)} \\
-( Y \mid Z = 1 ) & \overset{d}{=} S           & \qquad \text{(spillover)}.
+S                & \sim \text{Bernoulli}(0.1)  & \\
+Z                & = S + 1                     & \qquad \text{(pick spillover)} \\
+(Y \mid Z = 1)   & \sim \text{Poisson}(100)    & \qquad \text{(true signal)} \\
+H                & \sim \text{Bernoulli}(\tau) & \qquad \text{(pick mode with probability } \tau \text{)} \\
+(S \mid H = 0)   & \sim \text{Poisson}(70)     & \qquad \text{(spillover)} \\
+(S \mid H = 1)   & \sim \text{Poisson}(130)    & \qquad \text{(high count spillover)} \\
+( Y \mid Z = 2)  & \overset{d}{=} S            & \qquad \text{(spillover)}.
 \end{aligned}
 $$
-We use $\overset{d}{=}$ to denote that both random variables follow the same distribution. The generative model for beads is an independent copy of $Y \mid Z = 1$.
+We use $\overset{d}{=}$ to denote that both random variables follow the same distribution. The random variable $S$ is the marginal distribution of the bimodal spillover distribution with high counts. The generative model for beads is an independent copy of $Y \mid Z = 2$.
