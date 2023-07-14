@@ -702,7 +702,7 @@ $$
 Z              & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with probability } \tau \text{)} \\
 (Y \mid Z = 1) & \sim \text{Poisson}(100)                             & \qquad \text{(true signal)} \\
 (Y \mid Z = 2) & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
-(Y \mid Z = 3) & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)} \\
+(Y \mid Z = 3) & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)}. \\
 \end{aligned}
 $$
 The generative model for beads is an independent copy of $Y \mid Z > 1$.
