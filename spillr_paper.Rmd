@@ -221,8 +221,8 @@ $$
 \frac{1}{n_y^{(t)}} \sum_{i = 1}^{n_y^{(t)}} P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right), & k = 1, \\
 \frac{1}{n_x} \sum_{i = 1}^{n_x} P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right), & k > 1,
 \end{cases}
-$$ 
-re-assign counts to the marker with the largest posterior probability, re-mask counts that belong to the spillover components, and re-estimate the distribution for the target marker with the newly assigned counts,
+$$
+mask counts in vector $\mathbf{y}$ whose posterior probability of belonging to any non-target spillover component is larger than to the target component, and re-estimate the distribution for the target marker with the newly masked counts,
 $$
 P^{(t+1)}(Y_i = y \mid Z_i = 1) = \frac{\sum_{i = 1}^{n_y^{(t+1)}} \mathbf{1}\left(y_i^{(t+1)} = y\right)}{\sum_{i = 1}^{n_y^{(t+1)}} y_i^{(t+1)}}.
 $$
@@ -643,20 +643,20 @@ $$
 $$ 
 Now, we update these initial values using the E and M steps.
 
-* The E step: Calculate the posterior probability for the true marker, and the spillover marker,
+* E step: Calculate the posterior probability for the true marker, and the spillover marker,
 $$
 \begin{aligned}
-& P^{(1)}(Z_i = 1 \mid Y_i = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 1/3} = 1/3 \qquad & P^{(1)}Z_i = 1 \mid Y_i = 2) = 1 - 1/3 = 2/3 \\
-& P^{(1)}(Z_i = 1 \mid Y_i = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 2/3} = 1/3 \qquad & P^{(1)}(Z_i = 1 \mid Y_i = 3) = 1 - 1/3 = 2/3 \\
+& P^{(1)}(Z_i = 1 \mid Y_i = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 1/3} = 1/3 \qquad & P^{(1)}Z_i = 2 \mid Y_i = 2) = 1 - 1/3 = 2/3 \\
+& P^{(1)}(Z_i = 1 \mid Y_i = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 2/3} = 1/3 \qquad & P^{(1)}(Z_i = 2 \mid Y_i = 3) = 1 - 1/3 = 2/3 \\
 & P^{(1)}(Z_i = 1 \mid Y_i = 5)  = 1 \\
 & P^{(1)}(Z_i = 1 \mid Y_i = 17) = 1.
 \end{aligned}
 $$
-* The M step: Update the mixing probability vector,
+* M step: Update the mixing probability vector,
 $$
 \pi_1^{(1)} = \frac{1/3 + 1/3 + 1 + 1}{4} = 2/3 \qquad \pi_2^{(1)} = \frac{2/3 + 2/3 + 0 + 0}{4} = 1/3,
 $$
-and re-assign counts to the marker with largest posterior probability,
+and mask (indicated by an $\times$) elements in vector $\mathbf{y}$ whose posterior probability of belonging to marker 2 is larger than to marker 1,
 $$
 \mathbf{y}^{(1)} = \left(y_i^{(1)}\right) = 
 \begin{bmatrix}
@@ -668,7 +668,7 @@ $$
 \times
 \end{bmatrix}.
 $$
-The crosses indicate which elements are re-assigned to the other component based on the posterior probability computed in the E step. Finally, re-estimate the distribution for the target marker and calculate the spillover probability estimate, 
+Finally, re-estimate the distribution for the target marker and calculate the spillover probability estimate, 
 $$
 \begin{aligned}
 & P^{(1)}(Y_i = 2 \mid Z_i = 1)  =  0 \qquad & \widehat{P}(\text{spillover} \mid Y_i = 2) = 1 \\
