@@ -11,7 +11,7 @@ bibliography: spillr_paper.bib
 csl: style.csl
 link-citations: true
 abstract: |
-  Channel interference in mass cytometry can cause spillover and may result in miscounting of protein markers. @catalyst introduce an experimental and computational procedure to estimate and compensate for spillover. Their R package `CATALYST` implements this using non-negative least squares. They assume spillover can be approximated by a spillover matrix that encodes proportions of true counts over total observed counts. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in an R package `spillR` using expectation-maximization and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates low counts accurately, avoids overcompensating high counts, and preserves correlations between markers that may be biologically meaningful.
+  Channel interference in mass cytometry can cause spillover and may result in miscounting of protein markers. @catalyst introduce an experimental and computational procedure to estimate and compensate for spillover implemented in their R package `CATALYST`. They assume spillover can be approximated by a spillover matrix that encodes proportions of true counts over total observed counts. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. We implement this in an R package `spillR` using expectation-maximization to fit the mixture model and logistic regression. We test our procedure on synthetic and real data from `CATALYST`. We find that our method compensates low counts accurately, avoids overcompensating high counts, and preserves correlations between markers that may be biologically meaningful.
 ---
 
 ```{r setup, include=FALSE}
@@ -222,7 +222,7 @@ $$
 \frac{1}{n_x} \sum_{i = 1}^{n_x} P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right), & k > 1,
 \end{cases}
 $$
-mask counts in vector $\mathbf{y}$ whose posterior probability of belonging to any non-target spillover component is larger than to the target component, and re-estimate the distribution for the target marker with the newly masked counts,
+mask counts in vector $\mathbf{y}$ whose posterior probability of belonging to any non-target spillover component is larger than that of belonging to the target component, and re-estimate the distribution for the target marker with the newly masked counts,
 $$
 P^{(t+1)}(Y_i = y \mid Z_i = 1) = \frac{\sum_{i = 1}^{n_y^{(t+1)}} \mathbf{1}\left(y_i^{(t+1)} = y\right)}{\sum_{i = 1}^{n_y^{(t+1)}} y_i^{(t+1)}}.
 $$
@@ -238,9 +238,9 @@ We rely on assumption [(A1)](#assumption1) to justify updating only the distribu
 
 This step is a post-processing step of $\widehat{P}(\text{spillover} \mid Y_i = y)$. Until now, the procedure is fully nonparametric. We apply no regularization to $y$'s that are close to one another. As a result, the spillover probability estimates benefit from regularization using our assumption [(A3)](#assumption3).
 
-The logistic regression model is,
+The logistic regression model is
 $$
-\log\left(\frac{P(\text{spillover} \mid Y_i = y)}{1-P(\text{spillover} \mid Y_i = y)}\right) = \beta_0 + \beta_1 y,
+\log\left(\frac{\widehat{P}(\text{spillover} \mid Y_i = y)}{1-\widehat{P}(\text{spillover} \mid Y_i = y)}\right) = \beta_0 + \beta_1 y,
 $$
 with $y$ transformed using the inverse hyperbolic sine (arcsinh) transformation with the cofactor set to five to stabilize the variance and account for heteroskedasticity [@bendall2011single]. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability for $Y_i = y$ is,
 $$
@@ -646,7 +646,7 @@ Now, we update these initial values using the E and M steps.
 * E step: Calculate the posterior probability for the true marker, and the spillover marker,
 $$
 \begin{aligned}
-& P^{(1)}(Z_i = 1 \mid Y_i = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 1/3} = 1/3 \qquad & P^{(1)}Z_i = 2 \mid Y_i = 2) = 1 - 1/3 = 2/3 \\
+& P^{(1)}(Z_i = 1 \mid Y_i = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 1/3} = 1/3 \qquad & P^{(1)}(Z_i = 2 \mid Y_i = 2) = 1 - 1/3 = 2/3 \\
 & P^{(1)}(Z_i = 1 \mid Y_i = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 2/3} = 1/3 \qquad & P^{(1)}(Z_i = 2 \mid Y_i = 3) = 1 - 1/3 = 2/3 \\
 & P^{(1)}(Z_i = 1 \mid Y_i = 5)  = 1 \\
 & P^{(1)}(Z_i = 1 \mid Y_i = 17) = 1.
@@ -656,7 +656,7 @@ $$
 $$
 \pi_1^{(1)} = \frac{1/3 + 1/3 + 1 + 1}{4} = 2/3 \qquad \pi_2^{(1)} = \frac{2/3 + 2/3 + 0 + 0}{4} = 1/3,
 $$
-and mask (indicated by an $\times$) elements in vector $\mathbf{y}$ whose posterior probability of belonging to marker 2 is larger than to marker 1,
+and mask (indicated by an $\times$) elements in vector $\mathbf{y}$ whose posterior probability of belonging to marker 2 is larger than that of belonging to marker 1,
 $$
 \mathbf{y}^{(1)} = \left(y_i^{(1)}\right) = 
 \begin{bmatrix}
