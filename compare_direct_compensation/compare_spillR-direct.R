@@ -7,6 +7,8 @@ library(ggplot2)
 source('compensate.R')
 source('compCytof.R')
 source('compDirect.R')
+source('plotDiagnostics.R')
+source('plotDiagnosticsDirect.R')
 
 # --------- experiment with beads ---------
 bc_key <- c(139, 141:156, 158:176)
@@ -57,3 +59,14 @@ grid
 ggsave("comparison.pdf", grid, device = "pdf")
 
 # TODO need to make sure we really have the same assays in our return object!
+
+# --------- call compensate from compCytof package ---------
+p_list <- plotDiagnostics(sce_spillr, "Yb173Di")
+p_direct <- plotDiagnosticsDirect(sce_direct, "Yb173Di")
+plot_grid(
+  p_direct + xlab("CD3 (Yb173Di)") + ggtitle("Direct Method"),
+  p_list[[1]] + xlab("CD3 (Yb173Di)") + ggtitle("spillR"),
+  p_list[[2]] + xlab("CD3 (Yb173Di)"),
+  rel_widths = c(0.33, 0.33, 0.33), nrow = 1
+)
+ggsave("diagnostics.pdf", width = 15, height = 4)

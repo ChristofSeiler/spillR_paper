@@ -242,7 +242,7 @@ The logistic regression model is
 $$
 \log\left(\frac{\widehat{P}(\text{spillover} \mid Y_i = y)}{1-\widehat{P}(\text{spillover} \mid Y_i = y)}\right) = \beta_0 + \beta_1 y,
 $$
-with $y$ transformed using the inverse hyperbolic sine (arcsinh) transformation with the cofactor set to five to stabilize the variance and account for heteroskedasticity [@bendall2011single]. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability for $Y_i = y$ is,
+with $y$ transformed using the inverse hyperbolic sine (arcsinh) transformation with the cofactor set to five to stabilize the variance and account for heteroskedasticity [@bendall2011single]. We fit the logistic regression model using maximum likelihood (MLE) estimation and obtain estimates for the intercept $\hat{\beta}_0$ and slope $\hat{\beta}_1$. The post-processed spillover probability for $Y_i = y$ is
 $$
 \widetilde{P}(\text{spillover} \mid Y_i = y) = \left(1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)}\right)^{-1}.
 $$
@@ -683,7 +683,7 @@ This is the end of iteration $t = 1$.
 
 ## Bead Shift (A1) {-}
 
-The generative model for real cells $Y$ of this experiment is,
+Generative model for real cells $Y$ of this experiment:
 $$
 \begin{aligned}
 S              & \sim \text{Bernoulli}(0.1)   & \\
@@ -696,7 +696,7 @@ The generative model for beads is an independent copy of the unshifted $Y \mid Z
 
 ## Model Misspecification (A2) {-}
 
-The generative model for real cells $Y$ of this experiment is,
+Generative model for real cells $Y$ of this experiment:
 $$
 \begin{aligned}
 Z              & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(pick spillover with probability } \tau \text{)} \\
@@ -709,7 +709,7 @@ The generative model for beads is an independent copy of $Y \mid Z > 1$.
 
 ## High Count Spillover (A3) {-}
 
-The generative model for real cells $Y$ of this experiment is,
+Generative model for real cells $Y$ of this experiment:
 $$
 \begin{aligned}
 S                & \sim \text{Bernoulli}(0.1)  & \\
