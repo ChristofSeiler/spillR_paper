@@ -184,7 +184,7 @@ We propose a three step procedure for estimating the spillover probability. In s
 
 We initialize the conditional probability mass function using a nonparametric estimate by counting the proportion of $x_{ij}$ that take the value $y$,
 $$
-P(Y_i = y \mid Z_i = k) = \frac{\sum_{i = 1}^{n_x} \mathbf{1} \left( x_{ik} = y \right)}{\sum_{i = 1}^{n_x} x_{ik}} \quad \text{for all} \quad k > 1,
+P(Y_i = y \mid Z_i = k) = \frac{1}{n_x} \sum_{i = 1}^{n_x} \mathbf{1} \left( x_{ik} = y \right) \quad \text{for all} \quad k > 1,
 $$
 where $\mathbf{1}(\cdot)$ is the indicator function, $n_x$ is the total number of cells measured in the beads experiment, and $k$ is a specific spillover marker. Recall that the $k$th column of $\mathbf{X}$ contains marker counts for the $k$th spillover marker, which represents the empirical spillover distribution of marker $k$ into the target marker.
 
@@ -196,7 +196,7 @@ $$
 $$ 
 and estimate the target mixture component $Z_i = 1$ from the experimental data with real cells,
 $$
-P^{(0)}(Y_i = y \mid Z_i = 1) = \frac{\sum_{i = 1}^{n_y^{(0)}} \mathbf{1}\left(y_i^{(0)} = y\right)}{\sum_{i = 1}^{n_y^{(0)}} y_i^{(0)}}.
+P^{(0)}(Y_i = y \mid Z_i = 1) = \frac{1}{n_y^{(0)}} \sum_{i = 1}^{n_y^{(0)}} \mathbf{1}\left(y_i^{(0)} = y\right).
 $$
 The superscripts denote quantities that will be updated throughout EM iterations. Note, the count $y_i$ has a superscript because we update the data vector during the M step by masking elements that are due to spillover. We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
 
@@ -217,14 +217,11 @@ Note that the spillover marker distributions $P(Y_i = y_i^{(t)} \mid Z_i = k)$ a
 * M step: We update the mixture probability vector to the next estimate $t+1$, 
 $$
 \pi_k^{(t+1)} = 
-\begin{cases}
-\frac{1}{n_y^{(t)}} \sum_{i = 1}^{n_y^{(t)}} P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right), & k = 1, \\
-\frac{1}{n_x} \sum_{i = 1}^{n_x} P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right), & k > 1,
-\end{cases}
+\frac{1}{n_y^{(t)}} \sum_{i = 1}^{n_y^{(t)}} P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right),
 $$
 mask counts in vector $\mathbf{y}$ whose posterior probability of belonging to any non-target spillover component is larger than that of belonging to the target component, and re-estimate the distribution for the target marker with the newly masked counts,
 $$
-P^{(t+1)}(Y_i = y \mid Z_i = 1) = \frac{\sum_{i = 1}^{n_y^{(t+1)}} \mathbf{1}\left(y_i^{(t+1)} = y\right)}{\sum_{i = 1}^{n_y^{(t+1)}} y_i^{(t+1)}}.
+P^{(t+1)}(Y_i = y \mid Z_i = 1) = \frac{1}{n_y^{(t+1)}} \sum_{i = 1}^{n_y^{(t+1)}} \mathbf{1}\left(y_i^{(t+1)} = y\right).
 $$
 
 After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
@@ -394,18 +391,19 @@ tb_experiment <- bind_rows(d_a1, d_a2, d_a3)
 tb_summary <- tb_experiment %>% 
     group_by(title, tau) %>% 
     summarize(
-      observed = mean(mean_obsv),
-      truth = mean(mean_truth),
+      uncorrected = mean(mean_obsv),
+      signal = mean(mean_truth),
       spillR = mean(mean_comp)
       ) %>% 
     ungroup()
 
 p_overview <- pivot_longer(tb_summary, -c(title, tau), 
              names_to = "mean", values_to = "count") %>%
-  mutate(mean = factor(mean, levels = c("observed", "truth", "spillR"))) %>%
+  mutate(mean = factor(mean, levels = c("signal", "uncorrected", "spillR"))) %>%
   ggplot(aes(tau, count, color = mean)) +
   geom_line() + 
-  facet_wrap(~title, scales = "free_x", nrow = 1)
+  facet_wrap(~title, scales = "free_x", nrow = 1) +
+  scale_color_manual(values = c("#000000", "#E69F00", "#56B4E9"))
 ```
 
 ```{r simulated-experiments-critical-values, echo = FALSE, warning = FALSE, message = FALSE}
@@ -454,8 +452,9 @@ df <- bind_rows(df_a1, df_a2, df_a3) %>%
   mutate(tau = factor(tau, levels = c(0, 0.05, 0.1, 0.5, 1, -15, -30)))
 
 p_critical <- ggplot(df, aes(count, color = variable, linetype = type)) + 
-  geom_density(key_glyph="path") + 
-  facet_wrap(~title + tau, dir = "v")
+  geom_density(key_glyph = "path") + 
+  facet_wrap(~title + tau, dir = "v") +
+  scale_color_manual(values = c("#000000", "#009E73"))
 ```
 
 ```{r simulated-experiments-plot, fig.height = 7, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our three assumptions (A1), (A2), and (A3). Top row: mean values over the entire range of the experimental setups. Rows two to four: density plots for three parameter settings to illustrate the generated distributions."}
@@ -463,15 +462,13 @@ plot_grid(p_overview, p_critical,
           ncol = 1, rel_heights = c(0.3, 0.7), align = "v")
 ```
 
-We choose three different experiments to test how robust `spillR` is when one of our three assumptions are violated. We explore a wide range of possible parameter settings. To visualize the different experiments, we summarize the full distributions with the mean of the observed, true, and `spillR` compensated distributions.
-
-Figure \@ref(fig:simulated-experiments-plot) has three columns, each representing one experimental setup. The first column tests our assumptions [(A1)](#assumption1), the second [(A2)](#assumption2), and the third [(A3)](#assumption3). For all three experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are given in Appendix \@ref(generative-models). We repeat each simulation five times and report averages over the five replications. Figure \@ref(fig:simulated-experiments-plot) has four rows. The first row represents the summary of the means for each experimental setup as a function of their respective parameter $\tau$. This parameter has a different meaning in each setup. 
+We choose three different experiments to test how robust `spillR` is when one of our three assumptions are violated. We explore a wide range of possible parameter settings. Figure \@ref(fig:simulated-experiments-plot) has three columns, each representing one experimental setup. The first column tests our assumptions [(A1)](#assumption1), the second [(A2)](#assumption2), and the third [(A3)](#assumption3). For all three experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are given in Appendix \@ref(generative-models). We repeat each simulation five times and report averages over the five replications. Figure \@ref(fig:simulated-experiments-plot) has four rows. The first row represents the summary of the means for each experimental setup as a function of their respective parameter $\tau$. This parameter has a different meaning in each setup. To visualize the different experiments, we summarize the full distributions with the true simulated signal mean (black), the uncorrected mean (orange), and the `spillR` corrected mean (blue). Rows two to four illustrate the simulated data distributions for three parameter settings. The solid curves are the what we can measure with experiments and the dashed curves are the true but unmeasured signal. We know the signal here because we simulate this data ourselves with the models in Appendix \@ref(generative-models).
 
 <!--
 ### Bead Shift (A1)
 -->
 
-For [(A1)](#assumption1), $\tau$ is the shift of the measured beads spillover away from the true bead spillover. The solid curve is the measured data and the dashed curves is the true but unmeasured data. In our experiments, we test a wide range of bead shifts from $\tau = -30$ to no shift at $\tau = 0$. We observe this shift in the density plots in row two to four. At $\tau = -30$, the true spillover distribution is well separated from the actual observed spillover. Such low-quality beads cause both the observed and compensated mean to be below the true mean. As the the beads quality improves, the compensated signal move closer to the true mean, and at around $\tau = -13$ intersects with the true mean. At $\tau = 0$, we overestimate the mean by about one count.
+In the first experiment (column one), we shift the measured beads spillover away from the true bead spillover to probe [(A1)](#assumption1). We test a wide range of bead shifts from $\tau = -30$ to no shift at $\tau = 0$. We observe this shift in the density plots in row two to four, where the dashed green curve is the true but unobserved density and the solid green curve is the shifted observed density. At $\tau = -30$, the true spillover distribution is well separated from the actual observed spillover. Such low-quality beads cause both the observed and compensated mean to be below the true mean. As the the beads quality improves, the compensated signal move closer to the true mean, and at around $\tau = -13$ intersects with the true mean. At $\tau = 0$, we overestimate the mean by about one count.
 
 <!--
 ### Model Misspecification (A2)
@@ -646,24 +643,24 @@ Now, we update these initial values using the E and M steps.
 * E step: Calculate the posterior probability for the true marker, and the spillover marker,
 $$
 \begin{aligned}
-& P^{(1)}(Z_i = 1 \mid Y_i = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 1/3} = 1/3 \qquad & P^{(1)}(Z_i = 2 \mid Y_i = 2) = 1 - 1/3 = 2/3 \\
-& P^{(1)}(Z_i = 1 \mid Y_i = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 2/3} = 1/3 \qquad & P^{(1)}(Z_i = 2 \mid Y_i = 3) = 1 - 1/3 = 2/3 \\
+& P^{(1)}(Z_i = 1 \mid Y_i = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 2/3} = 1/5 \qquad & P^{(1)}(Z_i = 2 \mid Y_i = 2) = 1 - 1/5 = 4/5 \\
+& P^{(1)}(Z_i = 1 \mid Y_i = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 1/3} = 1/2 \qquad & P^{(1)}(Z_i = 2 \mid Y_i = 3) = 1 - 1/2 = 1/2 \\
 & P^{(1)}(Z_i = 1 \mid Y_i = 5)  = 1 \\
 & P^{(1)}(Z_i = 1 \mid Y_i = 17) = 1.
 \end{aligned}
 $$
 * M step: Update the mixing probability vector,
 $$
-\pi_1^{(1)} = \frac{1/3 + 1/3 + 1 + 1}{4} = 2/3 \qquad \pi_2^{(1)} = \frac{2/3 + 2/3 + 0 + 0}{4} = 1/3,
+\pi_1^{(1)} = \frac{1/2 + 1 + 1 + 1/2 + 1 + 1/5}{6} = 7/10 \qquad \pi_2^{(1)} = 1 - \pi_1^{(1)} = 3/10,
 $$
-and mask (indicated by an $\times$) elements in vector $\mathbf{y}$ whose posterior probability of belonging to marker 2 is larger than that of belonging to marker 1,
+and mask (indicated by an $\times$) elements in vector $\mathbf{y}$ whose posterior probability of belonging to marker 2 is larger than that of belonging to marker 1 (in case of ties, we keep elements assigned to marker 1),
 $$
 \mathbf{y}^{(1)} = \left(y_i^{(1)}\right) = 
 \begin{bmatrix}
-\times \\ 
+3 \\ 
 5      \\ 
 17     \\ 
-\times \\ 
+3 \\ 
 17     \\ 
 \times
 \end{bmatrix}.
@@ -672,9 +669,9 @@ Finally, re-estimate the distribution for the target marker and calculate the sp
 $$
 \begin{aligned}
 & P^{(1)}(Y_i = 2 \mid Z_i = 1)  =  0 \qquad & \widehat{P}(\text{spillover} \mid Y_i = 2) = 1 \\
-& P^{(1)}(Y_i = 3 \mid Z_i = 1)  =  0       & \widehat{P}(\text{spillover} \mid Y_i = 3) = 1 \\
-& P^{(1)}(Y_i = 5 \mid Z_i = 1)  =  1/3     & \widehat{P}(\text{spillover} \mid Y_i = 5) = 2/3 \\
-& P^{(1)}(Y_i = 17 \mid Z_i = 1) =  2/3     & \widehat{P}(\text{spillover} \mid Y_i = 17) = 1/3.
+& P^{(1)}(Y_i = 3 \mid Z_i = 1)  =  2/5       & \widehat{P}(\text{spillover} \mid Y_i = 3) = 3/5 \\
+& P^{(1)}(Y_i = 5 \mid Z_i = 1)  =  1/5     & \widehat{P}(\text{spillover} \mid Y_i = 5) = 4/5 \\
+& P^{(1)}(Y_i = 17 \mid Z_i = 1) =  2/5     & \widehat{P}(\text{spillover} \mid Y_i = 17) = 3/5.
 \end{aligned}
 $$
 This is the end of iteration $t = 1$.
