@@ -677,10 +677,10 @@ $$
 and calculate the spillover probability estimate,
 $$
 \begin{aligned}
-\widehat{P}(\text{spillover} \mid Y_i = 2)  & = 1 - \frac{7/10 \cdot 0}{7/10 \cdot 0 + 3/10 \cdot 2/3} = 1 \\
-\widehat{P}(\text{spillover} \mid Y_i = 3)  & = 1 - \frac{7/10 \cdot 2/5}{7/10 \cdot 2/5 + 3/10 \cdot 1/3} = 0.74 \\
-\widehat{P}(\text{spillover} \mid Y_i = 5)  & = 1 - \frac{7/10 \cdot 1/5}{7/10 \cdot 1/5 + 3/10 \cdot 0} = 0 \\
-\widehat{P}(\text{spillover} \mid Y_i = 17) & = 1 - \frac{7/10 \cdot 2/5}{7/10 \cdot 2/5 + 3/10 \cdot 0} = 0.
+& \widehat{P}(\text{spillover} \mid Y_i = 2) = 1 - \frac{7/10 \cdot 0}{7/10 \cdot 0 + 3/10 \cdot 2/3} = 1 \\
+& \widehat{P}(\text{spillover} \mid Y_i = 3) = 1 - \frac{7/10 \cdot 2/5}{7/10 \cdot 2/5 + 3/10 \cdot 1/3} = 0.26 \\
+& \widehat{P}(\text{spillover} \mid Y_i = 5) = 1 - \frac{7/10 \cdot 1/5}{7/10 \cdot 1/5 + 3/10 \cdot 0} = 0 \\
+& \widehat{P}(\text{spillover} \mid Y_i = 17) = 1 - \frac{7/10 \cdot 2/5}{7/10 \cdot 2/5 + 3/10 \cdot 0} = 0.
 \end{aligned}
 $$
 This is the end of iteration $t = 1$.
