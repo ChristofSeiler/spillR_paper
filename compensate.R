@@ -85,7 +85,7 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
   # --------- step 2: iterate ---------
   
-  n_iter <- 10
+  n_iter <- 1
   convergence <- matrix(nrow = n_iter, ncol = length(pi)+1)
   colnames(convergence) <- c("iteration", names(pi))
   
