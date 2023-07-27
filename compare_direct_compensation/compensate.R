@@ -107,25 +107,42 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     # M-step
     
     # update prior probability
-    pi <- colSums(post_M)/nrow(post_M)
     
+    # bug: pi <- colSums(post_M)/nrow(post_M)
+    # bug fix
+    y_pi <- bind_cols(y = tb_pmf$y, post_M)
+    y_obsv <- tb_real %>% select(y = all_of(target_marker))
+    y_obsv <- left_join(y_obsv, y_pi, by = "y")
+    pi <- y_obsv %>% select(-y)
+    pi <- colSums(pi)/nrow(pi)
+
     # stochastic EM: 
     # assigns each observation to a class with the highest posterior probability
     #class <- apply(post_M, 1, function(Mi) sample(colnames(post_M), size = 1, prob = Mi))
     # categorical EM:
     # assigns each observation randomly based on posterior probabilities
-    class <- all_markers[apply(post_M, 1, which.max)]
-    
+    # bug: class <- all_markers[apply(post_M, 1, which.max)]
+    # bug fix
+    class <- all_markers[apply(select(y_obsv, -y), 1, which.max)]
+      
     # update pmf from real cells
     if(sum(class == target_marker) > 0) {
       
-      ys <- tb_pmf[class == target_marker, ] %>% pull(y)
-      tb_real_pmf <- tb_real %>% 
-        dplyr::filter(.data[[target_marker]] %in% ys) %>%
-        pull(all_of(target_marker)) %>% 
-        denoise(y_min = y_min, y_max = y_max) %>% 
+      # bug:
+      # ys <- tb_pmf[class == target_marker, ] %>% pull(y)
+      # tb_real_pmf <- tb_real %>% 
+      #   dplyr::filter(.data[[target_marker]] %in% ys) %>%
+      #   pull(all_of(target_marker)) %>% 
+      #   denoise(y_min = y_min, y_max = y_max) %>% 
+      #   dplyr::select(y, pmf)
+      # bug fix
+      tb_real_pmf <- y_obsv %>% 
+        mutate(masked = class != target_marker) %>%
+        filter(!masked) %>% 
+        pull(y) %>%
+        denoise(y_min = y_min, y_max = y_max) %>%
         dplyr::select(y, pmf)
-      
+  
     } else {
       
       # if no signal, then use uniform distribution  
