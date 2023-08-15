@@ -102,9 +102,6 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     # M-step
     
     # update prior probability
-    
-    # bug: pi <- colSums(post_M)/nrow(post_M)
-    # bug fix
     y_pi <- bind_cols(y = tb_pmf$y, post_M)
     y_obsv <- tb_real %>% select(y = all_of(target_marker))
     y_obsv <- left_join(y_obsv, y_pi, by = "y")
