@@ -36,34 +36,13 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     y_min <= .data[[target_marker]] & .data[[target_marker]] <= y_max
     )
   
-  # denoise <- function(y, y_min = min(y), y_max = max(y)) {
-  #   
-  #   # frequency table
-  #   tb_obsv <- tibble(y) %>% group_by(y) %>% tally()
-  #   y_min_obsv <- min(tb_obsv$y)
-  #   y_max_obsv <- max(tb_obsv$y)
-  #   tb_pred <- tibble(y = y_min:y_max)
-  #   tb_pred %<>% left_join(tb_obsv, by = "y")
-  #   
-  #   # padding with zero outside of data support
-  #   tb_pred %<>% mutate(n = ifelse(y > y_max_obsv | y < y_min_obsv, 0, n))
-  #   
-  #   # nonparametric density estimate
-  #   tb_pred$n[is.na(tb_pred$n)] <- 0
-  #   tb_pred %>% mutate(pmf = n/sum(tb_pred$n))
-  #   
-  # }
-  
   # support for target marker
   tb_beads_pmf <- tibble(y = y_min:y_max)
   
   # collect pmf from beads
   for(marker in spillover_markers) {
-    
      n <- nrow(dplyr::filter(tb_bead, barcode == marker))
-     
      if(n > 0) {
-       
        Fn <- tb_bead %>% 
          dplyr::filter(barcode == marker) %>% 
          pull(all_of(target_marker)) %>%
@@ -73,15 +52,11 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
          dplyr::select(y, pmf)
        names(tb) <- c("y", marker)
        tb_beads_pmf %<>% left_join(tb, by = "y")
-       
      } else {
-       
        tb <- tibble(y = y_min:y_max, pmf = 1/nrow(tb_beads_pmf))
        names(tb) <- c("y", marker)
        tb_beads_pmf %<>% left_join(tb, by = "y")
-       
      }
-    
   }
   
   # --------- step 1: initialize ---------
@@ -136,42 +111,6 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     pi <- y_obsv %>% select(-y)
     pi <- colSums(pi)/nrow(pi)
 
-    # # stochastic EM: 
-    # # assigns each observation to a class with the highest posterior probability
-    # #class <- apply(post_M, 1, function(Mi) sample(colnames(post_M), size = 1, prob = Mi))
-    # # categorical EM:
-    # # assigns each observation randomly based on posterior probabilities
-    # # bug: class <- all_markers[apply(post_M, 1, which.max)]
-    # # bug fix
-    # class <- all_markers[apply(select(y_obsv, -y), 1, which.max)]
-    #   
-    # # update pmf from real cells
-    # if(sum(class == target_marker) > 0) {
-    #   
-    #   # bug:
-    #   # ys <- tb_pmf[class == target_marker, ] %>% pull(y)
-    #   # tb_real_pmf <- tb_real %>% 
-    #   #   dplyr::filter(.data[[target_marker]] %in% ys) %>%
-    #   #   pull(all_of(target_marker)) %>% 
-    #   #   denoise(y_min = y_min, y_max = y_max) %>% 
-    #   #   dplyr::select(y, pmf)
-    #   # bug fix
-    #   Fn <- y_obsv %>% 
-    #     mutate(masked = class != target_marker) %>%
-    #     filter(!masked) %>% 
-    #     pull(y) %>%
-    #     ecdf()
-    #   tb_real_pmf <- tibble(y = y_min:y_max) %>% mutate(pmf = Fn(y) - Fn(y-1))
-    #   
-    # } else {
-    #   
-    #   # if no signal, then use uniform distribution  
-    #   tb_real_pmf <- tb_beads_pmf %>% 
-    #     dplyr::select(y) %>% 
-    #     mutate(pmf = 1/nrow(tb_beads_pmf))
-    #   
-    # }
-
     # new weighted empirical density estimate
     Fn <- ewcdf(pull(y_obsv, y), weights = pull(y_obsv, all_of(target_marker)))
     tb_real_pmf <- tibble(y = y_min:y_max) %>% mutate(pmf = Fn(y) - Fn(y-1))
@@ -208,7 +147,7 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     mutate(corrected = ifelse(spill == 1, NA, .data[[target_marker]]))
   names(tb_compensate)[1] = "uncorrected"
   
-  # postprocess spillover probabilities
+  # post-process spillover probabilities
   tb_spill_prob %<>% mutate(y_tfm = tfm(.data[[target_marker]]))
   fit <- glm(spill_prob ~ y_tfm, family = binomial, data = tb_spill_prob)
   inverse_logit <- function(fit, x) {
