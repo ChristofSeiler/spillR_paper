@@ -2,6 +2,7 @@
 #'
 #' @import magrittr
 #' @import dplyr
+#' @import spatstat.geom
 #'
 #' @param tb_real Data frame or tibble with proteins counts of real experiment
 #' @param tb_bead Data frame or tibble with proteins counts of bead experiment
@@ -32,23 +33,23 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   y_min <- min(y_target)
   y_max <- max(y_target)
   
-  denoise <- function(y, y_min = min(y), y_max = max(y)) {
-    
-    # frequency table
-    tb_obsv <- tibble(y) %>% group_by(y) %>% tally()
-    y_min_obsv <- min(tb_obsv$y)
-    y_max_obsv <- max(tb_obsv$y)
-    tb_pred <- tibble(y = y_min:y_max)
-    tb_pred %<>% left_join(tb_obsv, by = "y")
-    
-    # padding with zero outside of data support
-    tb_pred %<>% mutate(n = ifelse(y > y_max_obsv | y < y_min_obsv, 0, n))
-    
-    # nonparametric density estimate
-    tb_pred$n[is.na(tb_pred$n)] <- 0
-    tb_pred %>% mutate(pmf = n/sum(tb_pred$n))
-    
-  }
+  # denoise <- function(y, y_min = min(y), y_max = max(y)) {
+  #   
+  #   # frequency table
+  #   tb_obsv <- tibble(y) %>% group_by(y) %>% tally()
+  #   y_min_obsv <- min(tb_obsv$y)
+  #   y_max_obsv <- max(tb_obsv$y)
+  #   tb_pred <- tibble(y = y_min:y_max)
+  #   tb_pred %<>% left_join(tb_obsv, by = "y")
+  #   
+  #   # padding with zero outside of data support
+  #   tb_pred %<>% mutate(n = ifelse(y > y_max_obsv | y < y_min_obsv, 0, n))
+  #   
+  #   # nonparametric density estimate
+  #   tb_pred$n[is.na(tb_pred$n)] <- 0
+  #   tb_pred %>% mutate(pmf = n/sum(tb_pred$n))
+  #   
+  # }
   
   # support for target marker
   tb_beads_pmf <- tibble(y = y_min:y_max)
@@ -56,10 +57,12 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   # collect pmf from beads
   for(marker in spillover_markers) {
     
-    tb <- tb_bead %>% 
+    Fn <- tb_bead %>% 
       dplyr::filter(barcode == marker) %>% 
-      pull(all_of(target_marker)) %>% 
-      denoise(y_min = y_min, y_max = y_max) %>% 
+      pull(all_of(target_marker)) %>%
+      ecdf()
+    tb <- tb_beads_pmf %>% 
+      mutate(pmf = Fn(y) - Fn(y-1)) %>% 
       dplyr::select(y, pmf)
     names(tb) <- c("y", marker)
     tb_beads_pmf %<>% left_join(tb, by = "y")
@@ -74,9 +77,11 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   names(pi) <- all_markers
   
   # add pmf from real cells
-  tb_real_pmf <- tb_real %>% 
+  Fn <- tb_real %>% 
     pull(all_of(target_marker)) %>% 
-    denoise(y_min = y_min, y_max = y_max) %>% 
+    ecdf()
+  tb_real_pmf <- tibble(y = y_min:y_max) %>% 
+    mutate(pmf = Fn(y) - Fn(y-1)) %>%
     dplyr::select(y, pmf)
   names(tb_real_pmf) <- c("y", target_marker)
   
@@ -85,7 +90,7 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
   # --------- step 2: iterate ---------
   
-  n_iter <- 1
+  n_iter <- 10
   convergence <- matrix(nrow = n_iter, ncol = length(pi)+1)
   colnames(convergence) <- c("iteration", names(pi))
   
@@ -116,41 +121,45 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     pi <- y_obsv %>% select(-y)
     pi <- colSums(pi)/nrow(pi)
 
-    # stochastic EM: 
-    # assigns each observation to a class with the highest posterior probability
-    #class <- apply(post_M, 1, function(Mi) sample(colnames(post_M), size = 1, prob = Mi))
-    # categorical EM:
-    # assigns each observation randomly based on posterior probabilities
-    # bug: class <- all_markers[apply(post_M, 1, which.max)]
-    # bug fix
-    class <- all_markers[apply(select(y_obsv, -y), 1, which.max)]
-      
-    # update pmf from real cells
-    if(sum(class == target_marker) > 0) {
-      
-      # bug:
-      # ys <- tb_pmf[class == target_marker, ] %>% pull(y)
-      # tb_real_pmf <- tb_real %>% 
-      #   dplyr::filter(.data[[target_marker]] %in% ys) %>%
-      #   pull(all_of(target_marker)) %>% 
-      #   denoise(y_min = y_min, y_max = y_max) %>% 
-      #   dplyr::select(y, pmf)
-      # bug fix
-      tb_real_pmf <- y_obsv %>% 
-        mutate(masked = class != target_marker) %>%
-        filter(!masked) %>% 
-        pull(y) %>%
-        denoise(y_min = y_min, y_max = y_max) %>%
-        dplyr::select(y, pmf)
-  
-    } else {
-      
-      # if no signal, then use uniform distribution  
-      tb_real_pmf <- tb_beads_pmf %>% 
-        dplyr::select(y) %>% 
-        mutate(pmf = 1/nrow(tb_beads_pmf))
-      
-    }
+    # # stochastic EM: 
+    # # assigns each observation to a class with the highest posterior probability
+    # #class <- apply(post_M, 1, function(Mi) sample(colnames(post_M), size = 1, prob = Mi))
+    # # categorical EM:
+    # # assigns each observation randomly based on posterior probabilities
+    # # bug: class <- all_markers[apply(post_M, 1, which.max)]
+    # # bug fix
+    # class <- all_markers[apply(select(y_obsv, -y), 1, which.max)]
+    #   
+    # # update pmf from real cells
+    # if(sum(class == target_marker) > 0) {
+    #   
+    #   # bug:
+    #   # ys <- tb_pmf[class == target_marker, ] %>% pull(y)
+    #   # tb_real_pmf <- tb_real %>% 
+    #   #   dplyr::filter(.data[[target_marker]] %in% ys) %>%
+    #   #   pull(all_of(target_marker)) %>% 
+    #   #   denoise(y_min = y_min, y_max = y_max) %>% 
+    #   #   dplyr::select(y, pmf)
+    #   # bug fix
+    #   Fn <- y_obsv %>% 
+    #     mutate(masked = class != target_marker) %>%
+    #     filter(!masked) %>% 
+    #     pull(y) %>%
+    #     ecdf()
+    #   tb_real_pmf <- tibble(y = y_min:y_max) %>% mutate(pmf = Fn(y) - Fn(y-1))
+    #   
+    # } else {
+    #   
+    #   # if no signal, then use uniform distribution  
+    #   tb_real_pmf <- tb_beads_pmf %>% 
+    #     dplyr::select(y) %>% 
+    #     mutate(pmf = 1/nrow(tb_beads_pmf))
+    #   
+    # }
+
+    # new weighted empirical density estimate
+    Fn <- ewcdf(pull(y_obsv, y), weights = pull(y_obsv, all_of(target_marker)))
+    tb_real_pmf <- tibble(y = y_min:y_max) %>% mutate(pmf = Fn(y) - Fn(y-1))
     names(tb_real_pmf) <- c("y", target_marker)
     
     # update join
