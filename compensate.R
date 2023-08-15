@@ -60,15 +60,27 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   # collect pmf from beads
   for(marker in spillover_markers) {
     
-    Fn <- tb_bead %>% 
-      dplyr::filter(barcode == marker) %>% 
-      pull(all_of(target_marker)) %>%
-      ecdf()
-    tb <- tb_beads_pmf %>% 
-      mutate(pmf = Fn(y) - Fn(y-1)) %>% 
-      dplyr::select(y, pmf)
-    names(tb) <- c("y", marker)
-    tb_beads_pmf %<>% left_join(tb, by = "y")
+     n <- nrow(dplyr::filter(tb_bead, barcode == marker))
+     
+     if(n > 0) {
+       
+       Fn <- tb_bead %>% 
+         dplyr::filter(barcode == marker) %>% 
+         pull(all_of(target_marker)) %>%
+         ecdf()
+       tb <- tb_beads_pmf %>% 
+         mutate(pmf = Fn(y) - Fn(y-1)) %>% 
+         dplyr::select(y, pmf)
+       names(tb) <- c("y", marker)
+       tb_beads_pmf %<>% left_join(tb, by = "y")
+       
+     } else {
+       
+       tb <- tibble(y = y_min:y_max, pmf = 1/nrow(tb_beads_pmf))
+       names(tb) <- c("y", marker)
+       tb_beads_pmf %<>% left_join(tb, by = "y")
+       
+     }
     
   }
   
