@@ -32,6 +32,9 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   y_target <- tb_real %>% pull(.data[[target_marker]])
   y_min <- min(y_target)
   y_max <- max(y_target)
+  tb_bead %<>% filter(
+    y_min <= .data[[target_marker]] & .data[[target_marker]] <= y_max
+    )
   
   # denoise <- function(y, y_min = min(y), y_max = max(y)) {
   #   
@@ -189,8 +192,8 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
                    size = 1, 
                    prob = tb_compensate$spill_prob)
   )
-  tb_compensate %<>% mutate(corrected = ifelse(spill == 1, NA, .data[[target_marker]]))
-  
+  tb_compensate %<>% 
+    mutate(corrected = ifelse(spill == 1, NA, .data[[target_marker]]))
   names(tb_compensate)[1] = "uncorrected"
   
   # postprocess spillover probabilities
