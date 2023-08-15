@@ -197,13 +197,13 @@ $$
 $$ 
 and estimate the target mixture component $Z_i = 1$ from the experimental data with real cells,
 $$
-P^{(0)}(Y_i = y \mid Z_i = 1) = \frac{1}{n_y^{(0)}} \sum_{i = 1}^{n_y^{(0)}} \mathbf{1}\left(y_i^{(0)} = y\right).
+P^{(0)}(Y_i = y \mid Z_i = 1) = \frac{1}{n_y} \sum_{i = 1}^{n_y} \mathbf{1}\left(y_i = y\right).
 $$
-The superscripts denote quantities that will be updated throughout EM iterations. Note, the count $y_i$ has a superscript because we update the data vector during the M step by masking elements that are due to spillover. We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
+The superscripts denote quantities that will be updated throughout EM iterations. We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
 
 * E step: We calculate the probability of a count $Y_i = y_i$ spilling over at the current estimate $t$ of the marker distributions and mixture probability vector,
 $$
-P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right) = 
+P^{(t)}\left(Z_i = k \mid Y_i = y_i \right) = 
 \begin{cases}
 \frac{1}{p^{(t)}} \pi_k^{(t)} \, P^{(t)}(Y_i = y_i^{(t)} \mid Z_i = k), & k = 1, \\
 \frac{1}{p^{(t)}} \pi_k^{(t)} \, P(Y_i = y_i^{(t)} \mid Z_i = k),             & k > 1,
@@ -211,18 +211,18 @@ P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right) =
 $$
 with the marginal probabilities for spillover components from step 1,
 $$
-p^{(t)} = \pi_1^{(t)} \, P^{(t)}(Y_i = y^{(t)}_i \mid Z_i = 1) + \sum_{k = 2}^{K+1} \pi_{k}^{(t)} \, P(Y_i = y_i^{(t)} \mid Z_i = k).
+p^{(t)} = \pi_1^{(t)} \, P^{(t)}(Y_i = y_i \mid Z_i = 1) + \sum_{k = 2}^{K+1} \pi_{k}^{(t)} \, P(Y_i = y_i \mid Z_i = k).
 $$
-Note that the spillover marker distributions $P(Y_i = y_i^{(t)} \mid Z_i = k)$ are not updated.
+Note that the spillover marker distributions $P(Y_i = y_i \mid Z_i = k)$ are not updated.
 
 * M step: We update the mixture probability vector to the next estimate $t+1$, 
 $$
 \pi_k^{(t+1)} = 
-\frac{1}{n_y^{(t)}} \sum_{i = 1}^{n_y^{(t)}} P^{(t)}\left(Z_i = k \mid Y_i = y_i^{(t)}\right),
+\frac{1}{n_y} \sum_{i = 1}^{n_y} P^{(t)}\left(Z_i = k \mid Y_i = y_i \right),
 $$
-mask counts in vector $\mathbf{y}$ whose posterior probability of belonging to any non-target spillover component is larger than that of belonging to the target component, and re-estimate the distribution for the target marker with the newly masked counts,
+and re-estimate the distribution for the target marker with the newly masked counts using posterior probabilities as weights,
 $$
-P^{(t+1)}(Y_i = y \mid Z_i = 1) = \frac{1}{n_y^{(t+1)}} \sum_{i = 1}^{n_y^{(t+1)}} \mathbf{1}\left(y_i^{(t+1)} = y\right).
+P^{(t+1)}(Y_i = y \mid Z_i = 1) = \frac{1}{n_y} \sum_{i = 1}^{n_y} \mathbf{1}\left(y_i = y\right).
 $$
 
 After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
