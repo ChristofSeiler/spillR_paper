@@ -179,59 +179,49 @@ The spillover probability is the probability that the counts are not due to the 
 
 ## Estimation of Spillover Probability
 
-We propose a three step procedure for estimating the spillover probability. In step 1, we estimate spillover marker distributions from beads experimental data. In step 2, we estimate the target mixture component and mixture probabilities from real cells experimental data. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 3, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use smooth probability estimates to assign counts to spillover or signal.
+We propose a two step procedure for estimating the spillover probability. In step 1, we estimate mixture components and mixture probabilities. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 2, we fit a logistic function to the noisy probability estimates from step 1 using logistic regression. We use smooth probability estimates to assign counts to spillover or signal.
 
-Denote the $n \times K$ count matrix as $\mathbf{Y} = (y_{i})$ with real cells in the first column and the beads in columns two and higher. To simplify mathematical notation but without loss of generality, we assume that the number of cells form the real and bead experiment are the same $n$. In practice, the number of cells from beads experiments is much smaller than from real experiments.
+Let's denote the $n \times K$ count matrix as $\mathbf{Y} = (y_{ik})$ with real cells in the first column and beads in columns two and higher. To simplify mathematical notation but without loss of generality, we assume that the number of cells from real and bead experiments have the same $n$. In practice, the number of cells from bead experiments is much smaller than from real experiments. The $k$th column of $\mathbf{Y}$ contains marker counts for the $k$th spillover marker, which represents the empirical spillover distribution of marker $k$ into the target marker, that is, the marker in the first column of $\mathbf{Y}$.
 
-### Step 1: Estimate Non-Target Mixture Components From Beads Experimental Data {-}
+We use the empirical weighted cumulative distribution function (CDF) with non-negative weights $w_i$ at each data point to model the marker distributions $F$ for a specific marker $k$,
+$$
+\widehat{F}_k(y) = \frac{\sum_{i = 1}^n w_i \, \mathbf{1} \left( y_{ik} \le y \right)}{\sum_{i = 1}^n w_i},
+$$
+where $\mathbf{1}(\cdot)$ is the indicator function.
 
-We use the empirical cumulative distribution function (CDF) that puts mass $w_i = 1/n$ at each data point, 
-$$
-\widehat{F}_k(y) = \frac{\sum_{i = 1}^n w_i \, \mathbf{1} \left( y_{ik} \le y \right)}{\sum_{i = 1}^n w_i} \quad \text{with } w_i = 1/n,
-$$
-and estimate the conditional probability mass function by evaluating the empirical CDF,
-$$
-\widehat{P}^{(0)}(Y_i = y \mid Z_i = k) = \widehat{F}_k(y) - \widehat{F}_k(y-1) \quad \text{for all} \quad k > 1,
-$$
-where $\mathbf{1}(\cdot)$ is the indicator function, $n$ is the total number of cells measured in the beads experiment, and $k$ is a specific spillover marker. The $k$th column of $\mathbf{Y}$ contains marker counts for the $k$th spillover marker, which represents the empirical spillover distribution of marker $k$ into the target marker, that is, the marker in the first column of $\mathbf{Y}$.
+### Step 1: EM Algorithm {-}
 
-### Step 2: EM Algorithm Updating Target Mixture Component and Mixture Probabilities {-}
-
-We initialize the mixture probability vector to the discrete uniform, 
+* Initialization step: We set the mixture probability vector to the discrete uniform, 
 $$
-\hat{\pi}_{1}^{(0)}, \dots, \hat{\pi}_{K}^{(0)} = 1/K,
+\hat{\pi}_{1}, \dots, \hat{\pi}_{K} = 1/K,
 $$ 
-estimate the target mixture component $Z_i = 1$ from the experimental data with real cells that puts mass $w_i = 1/n$ at each data point, and evaluate its empirical CDF to obtain conditional probabilities,
+and evaluate the $k$th mixture component using its empirical CDF with equal weights for all data points,
 $$
-\widehat{P}^{(0)}(Y_i = y \mid Z_i = 1) = \widehat{F}_1(y) - \widehat{F}_1(y-1).
+\widehat{P}(Y_i = y \mid Z_i = k) = \widehat{F}_k(y) - \widehat{F}_k(y-1) \text{ with } w_i = 1/n.
 $$
-The superscripts denote quantities that will be updated throughout EM iterations. We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the EM algorithm.
 
-* E step: We calculate the probability of a count $Y_i = y_i$ spilling over at the current estimate $t$ of the marker distributions and mixture probability vector,
+* E step: We evaluate the posterior probability of a count $y$ belonging to marker $k$,
 $$
-\widehat{P}^{(t)}\left(Z_i = k \mid Y_i = y_i \right) = 
+\widehat{P}\left(Z_i = k \mid Y_i = y \right) = 
 \frac
-{ \hat{\pi}_k^{(t)} \, \widehat{P}^{(t)}(Y_i = y_i \mid Z_i = k)          }
-{ \sum_{k = 1}^K \hat{\pi}_k^{(t)} \, \widehat{P}^{(t)}(Y_i = y_i \mid Z_i = k) },
-$$
-Note that we keep the spillover marker distributions at the initial value,
-$$
-\widehat{P}^{(t)}(Y_i = y_i \mid Z_i = k) = \widehat{P}^{(0)}(Y_i = y_i \mid Z_i = k) \quad \text{for all} \quad k > 1.
+{ \hat{\pi}_k \, \widehat{P}(Y_i = y \mid Z_i = k) }
+{ \sum_{k = 1}^K \hat{\pi}_k \, \widehat{P}(Y_i = y \mid Z_i = k) }.
 $$
 
-* M step: We update the mixture probability vector to the next estimate $t+1$, 
+* M step: We estimate the new mixture probability vector based on posterior probabilities, 
 $$
-\hat{\pi}_k^{(t+1)} = 
-\frac{1}{n} \sum_{i = 1}^n \widehat{P}^{(t)}\left(Z_i = k \mid Y_i = y_i \right),
+\hat{\pi}_k^{(\text{new})} = 
+\frac{1}{n} \sum_{i = 1}^n \widehat{P}\left(Z_i = k \mid Y_i = y \right),
 $$
-and re-estimate the distribution for the target marker with the new posterior probabilities as weights,
+and estimate the new target marker distribution using its empirical CDF with weights set to posterior probabilities,
 $$
-\widehat{F}_1^{(t+1)}(y) = \frac{\sum_{i = 1}^n w_i \, \mathbf{1} \left( y_{ik} \le y \right)}{\sum_{i = 1}^n w_i} \quad \text{with } w_i = \widehat{P}^{(t)}\left(Z_i = k \mid Y_i = y_i \right).
+\widehat{P}^{(\text{new})}(Y_i = y \mid Z_i = 1) = \widehat{F}_1(y) - \widehat{F}_1(y-1) \text{ with } w_i = \widehat{P} \left(Z_i = 1 \mid Y_i = y \right).
 $$
+We keep the bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
 
-After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
+To refine our estimates, we iterate over the E and M steps until estimates stabilize. The final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
-\widehat{P}(\text{spillover} \mid Y_i = y) = 1 - P^{(T)}(Z_i = 1 \mid Y_i = y).
+\widehat{P}(\text{spillover} \mid Y_i = y) = 1 - \widehat{P}(Z_i = 1 \mid Y_i = y).
 $$
 
 We rely on assumption [(A1)](#assumption1) to justify updating only the distribution of the target marker. We rely on assumption [(A2)](#assumption2) to justify calculating the spillover probability from the mixture model. We refer to Appendix \@ref(em-algorithm-example) for a numerical example of our EM algorithm. 
@@ -248,7 +238,7 @@ with $y$ transformed using the inverse hyperbolic sine (arcsinh) transformation 
 $$
 \widetilde{P}(\text{spillover} \mid Y_i = y) = \left(1 + e^{-(\hat{\beta}_0 + \hat{\beta}_1 y)}\right)^{-1}.
 $$
-The $\widetilde{P}(\text{spillover} \mid Y_i = y)$ is a smooth version of the noisy estimate from step 2, $\widehat{P}(\text{spillover} \mid Y_i = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. 
+The $\widetilde{P}(\text{spillover} \mid Y_i = y)$ is a smooth version of the noisy estimate from step 1, $\widehat{P}(\text{spillover} \mid Y_i = y)$. We obtain the last equation by solving the logistic regression model for the spillover probability and plugging in the MLE estimate. 
 
 To perform the spillover compensation, we draw from a Bernoulli distribution with the spillover probability as parameter to decide whether or not to assign a given count to spillover. We consider spillover counts as having no clear biological interpretation and mask them from our dataset while keeping all other counts. In our implementation, we choose to set spillover counts to `NA` instead of zero to avoid zero-inflated distributions. 
 
