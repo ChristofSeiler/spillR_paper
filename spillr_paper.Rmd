@@ -640,7 +640,7 @@ $$
 
 * M-step: Update the mixing probability vector,
 $$
-\hat{\pi}_1 = \frac{1/2 + 1 + 1 + 1/2 + 1 + 1/5}{6} = 7/10 \qquad \hat{\pi}_2^{(1)} = 1 - \hat{\pi}_1 = 3/10,
+\hat{\pi}_1 = \frac{1/2 + 1 + 1 + 1/2 + 1 + 1/5}{6} = 7/10 \qquad \hat{\pi}_2 = 1 - \hat{\pi}_1 = 3/10,
 $$
 and re-estimate the distribution for the target marker using the posterior probabilities as weights, keep the non-target marker at its initial value, 
 $$
