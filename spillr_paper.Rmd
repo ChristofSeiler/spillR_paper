@@ -151,11 +151,11 @@ The dashed black curve is our estimated spillover probability. We can see that a
 
 ## Definition of Spillover Probability and Assumptions
 
-We observe a count $Y_i$ of a target marker in cell $i$. We model the observed $Y_i$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Y_i \mid Z_i = 1$ and spillover markers counts $Y_i \mid Z_i = 2, \dots, Y_i \mid Z_i = K+1$ with mixing probabilities $\pi_{k} = P(Z_i = k)$ for $k = 1, \dots, K+1$, 
+We observe a count $Y_i$ of a target marker in cell $i$. We model the observed $Y_i$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Y_i \mid Z_i = 1$ and spillover markers counts $Y_i \mid Z_i = 2, \dots, Y_i \mid Z_i = K$ with mixing probabilities $\pi_{k} = P(Z_i = k)$ for $k = 1, \dots, K$, 
 $$
-P(Y_i = y) = \sum_{k = 1}^{K+1} \pi_k \, P(Y_i = y \mid Z_i = k).
+P(Y_i = y) = \sum_{k = 1}^K \pi_k \, P(Y_i = y \mid Z_i = k).
 $$
-The first mixing probability is the proportion of true signal in the observed counts. The other $K$ mixing probabilities are the proportions of spillover. The total sum of mixing probabilities equals one, $\sum_k \pi_k = 1$. The total number of markers in mass cytometry panels is between 30 and 40 [@bendall2011single], but only a small subset of three to four markers spill over into the target marker [@catalyst]. So, typically $K = 3$ or $K = 4$.
+The first mixing probability is the proportion of true signal in the observed counts. The other $K$ mixing probabilities are the proportions of spillover. The total sum of mixing probabilities equals one, $\sum_k \pi_k = 1$. The total number of markers in mass cytometry panels is between 30 and 40 [@bendall2011single], but only a small subset of three to four markers spill over into the target marker [@catalyst]. So, typically $K = 1+3$ or $K = 1+4$.
 
 Experimentally, we only measure a sample from the distribution of $Y_i$. The probabilities $\pi_k$ and true distributions $P(Y_i = y \mid Z_i = k)$ are unobserved, and we need to estimate them from data. In many applications, the mixture components are in a parametric family, for example, the negative binomial distribution. As spillover correction is a pre-processing step followed by downstream analyses, choosing the wrong model can introduce biases in the next analysis step. To mitigate such biases, we propose to fit nonparametric mixture components. We make three assumptions that render the components and mixture probabilities identifiable:
 
@@ -179,50 +179,54 @@ The spillover probability is the probability that the counts are not due to the 
 
 ## Estimation of Spillover Probability
 
-We propose a three step procedure for estimating the spillover probability. In step 1, we estimate spillover marker distributions from beads experimental data, denoted by the $n_x \times K$ count matrix $\mathbf{X} = (x_{ij})$, where $x_{ij}$ is an individual element at position $(i,j)$. In step 2, we estimate the target mixture component and mixture probabilities from real cells experimental data, denoted by the $n_y \times 1$ count vector $\mathbf{y} = (y_{i})$. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 3, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use smooth probability estimates to assign counts to spillover or signal.
+We propose a three step procedure for estimating the spillover probability. In step 1, we estimate spillover marker distributions from beads experimental data. In step 2, we estimate the target mixture component and mixture probabilities from real cells experimental data. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 3, we fit a logistic function to the noisy probability estimates from step 2 using logistic regression. We use smooth probability estimates to assign counts to spillover or signal.
+
+Denote the $n \times K$ count matrix as $\mathbf{Y} = (y_{i})$ with real cells in the first column and the beads in columns two and higher. To simplify mathematical notation but without loss of generality, we assume that the number of cells form the real and bead experiment are the same $n$. In practice, the number of cells from beads experiments is much smaller than from real experiments.
 
 ### Step 1: Estimate Non-Target Mixture Components From Beads Experimental Data {-}
 
-We initialize the conditional probability mass function using a nonparametric estimate by counting the proportion of $x_{ij}$ that take the value $y$,
+We use the empirical cumulative distribution function (CDF) that puts mass $w_i = 1/n$ at each data point, 
 $$
-P(Y_i = y \mid Z_i = k) = \frac{1}{n_x} \sum_{i = 1}^{n_x} \mathbf{1} \left( x_{ik} = y \right) \quad \text{for all} \quad k > 1,
+\widehat{F}_k(y) = \frac{\sum_{i = 1}^n w_i \, \mathbf{1} \left( y_{ik} \le y \right)}{\sum_{i = 1}^n w_i} \quad \text{with } w_i = 1/n,
 $$
-where $\mathbf{1}(\cdot)$ is the indicator function, $n_x$ is the total number of cells measured in the beads experiment, and $k$ is a specific spillover marker. Recall that the $k$th column of $\mathbf{X}$ contains marker counts for the $k$th spillover marker, which represents the empirical spillover distribution of marker $k$ into the target marker.
+and estimate the conditional probability mass function by evaluating the empirical CDF,
+$$
+\widehat{P}^{(0)}(Y_i = y \mid Z_i = k) = \widehat{F}_k(y) - \widehat{F}_k(y-1) \quad \text{for all} \quad k > 1,
+$$
+where $\mathbf{1}(\cdot)$ is the indicator function, $n$ is the total number of cells measured in the beads experiment, and $k$ is a specific spillover marker. The $k$th column of $\mathbf{Y}$ contains marker counts for the $k$th spillover marker, which represents the empirical spillover distribution of marker $k$ into the target marker, that is, the marker in the first column of $\mathbf{Y}$.
 
 ### Step 2: EM Algorithm Updating Target Mixture Component and Mixture Probabilities {-}
 
 We initialize the mixture probability vector to the discrete uniform, 
 $$
-\pi_{1}^{(0)}, \dots, \pi_{K+1}^{(0)} = 1/(K+1).
+\hat{\pi}_{1}^{(0)}, \dots, \hat{\pi}_{K}^{(0)} = 1/K,
 $$ 
-and estimate the target mixture component $Z_i = 1$ from the experimental data with real cells,
+estimate the target mixture component $Z_i = 1$ from the experimental data with real cells that puts mass $w_i = 1/n$ at each data point, and evaluate its empirical CDF to obtain conditional probabilities,
 $$
-P^{(0)}(Y_i = y \mid Z_i = 1) = \frac{1}{n_y} \sum_{i = 1}^{n_y} \mathbf{1}\left(y_i = y\right).
+\widehat{P}^{(0)}(Y_i = y \mid Z_i = 1) = \widehat{F}_1(y) - \widehat{F}_1(y-1).
 $$
-The superscripts denote quantities that will be updated throughout EM iterations. We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the hard-assignment EM algorithm:
+The superscripts denote quantities that will be updated throughout EM iterations. We update---going from current estimate $t$ to the next $t+1$---the target distribution and the mixture probability vector using the EM algorithm.
 
 * E step: We calculate the probability of a count $Y_i = y_i$ spilling over at the current estimate $t$ of the marker distributions and mixture probability vector,
 $$
-P^{(t)}\left(Z_i = k \mid Y_i = y_i \right) = 
-\begin{cases}
-\frac{1}{p^{(t)}} \pi_k^{(t)} \, P^{(t)}(Y_i = y_i^{(t)} \mid Z_i = k), & k = 1, \\
-\frac{1}{p^{(t)}} \pi_k^{(t)} \, P(Y_i = y_i^{(t)} \mid Z_i = k),             & k > 1,
-\end{cases}
+\widehat{P}^{(t)}\left(Z_i = k \mid Y_i = y_i \right) = 
+\frac
+{ \hat{\pi}_k^{(t)} \, \widehat{P}^{(t)}(Y_i = y_i \mid Z_i = k)          }
+{ \sum_{k = 1}^K \hat{\pi}_k^{(t)} \, \widehat{P}^{(t)}(Y_i = y_i \mid Z_i = k) },
 $$
-with the marginal probabilities for spillover components from step 1,
+Note that we keep the spillover marker distributions at the initial value,
 $$
-p^{(t)} = \pi_1^{(t)} \, P^{(t)}(Y_i = y_i \mid Z_i = 1) + \sum_{k = 2}^{K+1} \pi_{k}^{(t)} \, P(Y_i = y_i \mid Z_i = k).
+\widehat{P}^{(t)}(Y_i = y_i \mid Z_i = k) = \widehat{P}^{(0)}(Y_i = y_i \mid Z_i = k) \quad \text{for all} \quad k > 1.
 $$
-Note that the spillover marker distributions $P(Y_i = y_i \mid Z_i = k)$ are not updated.
 
 * M step: We update the mixture probability vector to the next estimate $t+1$, 
 $$
-\pi_k^{(t+1)} = 
-\frac{1}{n_y} \sum_{i = 1}^{n_y} P^{(t)}\left(Z_i = k \mid Y_i = y_i \right),
+\hat{\pi}_k^{(t+1)} = 
+\frac{1}{n} \sum_{i = 1}^n \widehat{P}^{(t)}\left(Z_i = k \mid Y_i = y_i \right),
 $$
-and re-estimate the distribution for the target marker with the newly masked counts using posterior probabilities as weights,
+and re-estimate the distribution for the target marker with the new posterior probabilities as weights,
 $$
-P^{(t+1)}(Y_i = y \mid Z_i = 1) = \frac{1}{n_y} \sum_{i = 1}^{n_y} \mathbf{1}\left(y_i = y\right).
+\widehat{F}_1^{(t+1)}(y) = \frac{\sum_{i = 1}^n w_i \, \mathbf{1} \left( y_{ik} \le y \right)}{\sum_{i = 1}^n w_i} \quad \text{with } w_i = \widehat{P}^{(t)}\left(Z_i = k \mid Y_i = y_i \right).
 $$
 
 After $T$ iterations, the final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
@@ -606,22 +610,15 @@ We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a pr
 
 # EM Algorithm Example
 
-Here we illustrate the procedure using a numerical example that includes one target and one spillover marker. We have two data vectors $\mathbf{y}$ and $\mathbf{X}$. Vector $\mathbf{y}$ contains real cell counts recorded for marker 1. Vector $\mathbf{X}$ contains bead counts for marker 1 when the true marker was marker 2. In practice, $\mathbf{X}$ is usually a matrix with multiple columns representing multiple spillover markers. The index $i$ is a specific cell in beads and real cells experiment, respectively. Let's assume the following counts,
+Here we illustrate the procedure using a numerical example that includes one target and one spillover marker. We have one data matrix $\mathbf{Y}$ that contains real cell counts recorded for marker 1 (column 1) and the bead counts for marker 1 when the true marker was marker 2 (column 2). In practice, $\mathbf{Y}$ is usually a matrix with more than two columns representing multiple spillover markers. The index $i$ is a specific cell in beads and real cells experiment, respectively. Let's assume the following counts,
 $$
-\mathbf{y} = \left(y_i\right) = 
+\mathbf{Y} = (y_{ij}) = 
 \begin{bmatrix}
-3  \\ 
-5  \\ 
-17 \\ 
+3 & 2 \\ 
+5 & 3 \\ 
+17 & 2 \\ 
 3   \\ 
 17 \\ 
-2 
-\end{bmatrix}
-\qquad
-\mathbf{X} = (x_{i2}) = 
-\begin{bmatrix}
-2 \\ 
-3 \\ 
 2 
 \end{bmatrix}.
 $$
@@ -629,38 +626,38 @@ $$
 We initialize our EM algorithm by estimating the conditional probability of observing $y$ given that it belongs to the target marker, and another conditional probability given that it belongs to the spillover marker,
 $$
 \begin{aligned}
-& P^{(0)}(Y_i = 2 \mid Z_i = 1)  =  1/6 \qquad & P(Y_i = 2 \mid Z_i = 2) = 2/3 \\
-& P^{(0)}(Y_i = 3 \mid Z_i = 1)  =  2/6 \qquad & P(Y_i = 3 \mid Z_i = 2) = 1/3 \\
-& P^{(0)}(Y_i = 5 \mid Z_i = 1)  =  1/6 \\
-& P^{(0)}(Y_i = 17 \mid Z_i = 1) =  2/6.
+& \widehat{P}^{(0)}(Y_i = 2 \mid Z_i = 1)  =  1/6 \qquad & \widehat{P}(Y_i = 2 \mid Z_i = 2) = 2/3 \\
+& \widehat{P}^{(0)}(Y_i = 3 \mid Z_i = 1)  =  2/6 \qquad & \widehat{P}(Y_i = 3 \mid Z_i = 2) = 1/3 \\
+& \widehat{P}^{(0)}(Y_i = 5 \mid Z_i = 1)  =  1/6 \\
+& \widehat{P}^{(0)}(Y_i = 17 \mid Z_i = 1) =  2/6.
 \end{aligned}
 $$
 We initialize the mixture probabilities with the discrete uniform, 
 $$
-\pi_1^{(0)} = 1/2 \qquad \pi_2^{(0)} = 1/2.
+\hat{\pi}_1^{(0)} = 1/2 \qquad \hat{\pi}_2^{(0)} = 1/2.
 $$ 
 Now, we update these initial values using the E and M steps.
 
 * E step: Calculate the posterior probability for the true marker, and the spillover marker,
 $$
 \begin{aligned}
-& P^{(1)}(Z_i = 1 \mid Y_i = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 2/3} = 1/5 \qquad & P^{(1)}(Z_i = 2 \mid Y_i = 2) = 1 - 1/5 = 4/5 \\
-& P^{(1)}(Z_i = 1 \mid Y_i = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 1/3} = 1/2 \qquad & P^{(1)}(Z_i = 2 \mid Y_i = 3) = 1 - 1/2 = 1/2 \\
-& P^{(1)}(Z_i = 1 \mid Y_i = 5)  = 1 \\
-& P^{(1)}(Z_i = 1 \mid Y_i = 17) = 1.
+& \widehat{P}^{(1)}(Z_i = 1 \mid Y_i = 2)  = \frac{1/2 \cdot 1/6}{1/2 \cdot 1/6 + 1/2 \cdot 2/3} = 1/5 \qquad & \widehat{P}^{(1)}(Z_i = 2 \mid Y_i = 2) = 1 - 1/5 = 4/5 \\
+& \widehat{P}^{(1)}(Z_i = 1 \mid Y_i = 3)  = \frac{1/2 \cdot 2/6}{1/2 \cdot 2/6 + 1/2 \cdot 1/3} = 1/2 \qquad & \widehat{P}^{(1)}(Z_i = 2 \mid Y_i = 3) = 1 - 1/2 = 1/2 \\
+& \widehat{P}^{(1)}(Z_i = 1 \mid Y_i = 5)  = 1 \\
+& \widehat{P}^{(1)}(Z_i = 1 \mid Y_i = 17) = 1.
 \end{aligned}
 $$
 * M step: Update the mixing probability vector,
 $$
-\pi_1^{(1)} = \frac{1/2 + 1 + 1 + 1/2 + 1 + 1/5}{6} = 7/10 \qquad \pi_2^{(1)} = 1 - \pi_1^{(1)} = 3/10,
+\hat{\pi}_1^{(1)} = \frac{1/2 + 1 + 1 + 1/2 + 1 + 1/5}{6} = 7/10 \qquad \hat{\pi}_2^{(1)} = 1 - \hat{\pi}_1^{(1)} = 3/10,
 $$
 and re-estimate the distribution for the target marker using the posterior probabilities as weights, keep the non-target marker at its initial value, 
 $$
 \begin{aligned}
-& P^{(1)}(Y_i = 2 \mid Z_i = 1)  =  0.0476 \qquad & P(Y_i = 2 \mid Z_i = 2) =  2/3 \\
-& P^{(1)}(Y_i = 3 \mid Z_i = 1)  =  0.238 & P(Y_i = 3 \mid Z_i = 2) = 1/3 \\
-& P^{(1)}(Y_i = 5 \mid Z_i = 1)  =  0.238 & \\
-& P^{(1)}(Y_i = 17 \mid Z_i = 1) =  0.476 &
+& \widehat{P}^{(1)}(Y_i = 2 \mid Z_i = 1)  =  0.0476 \qquad & \widehat{P}(Y_i = 2 \mid Z_i = 2) =  2/3 \\
+& \widehat{P}^{(1)}(Y_i = 3 \mid Z_i = 1)  =  0.238 & \widehat{P}(Y_i = 3 \mid Z_i = 2) = 1/3 \\
+& \widehat{P}^{(1)}(Y_i = 5 \mid Z_i = 1)  =  0.238 & \\
+& \widehat{P}^{(1)}(Y_i = 17 \mid Z_i = 1) =  0.476 &
 \end{aligned}
 $$
 and calculate the spillover probability estimate,
