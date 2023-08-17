@@ -32,9 +32,9 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   y_target <- tb_real %>% pull(.data[[target_marker]])
   y_min <- min(y_target)
   y_max <- max(y_target)
-  tb_bead %<>% filter(
-    y_min <= .data[[target_marker]] & .data[[target_marker]] <= y_max
-    )
+  #tb_bead %<>% filter(
+  #  y_min <= .data[[target_marker]] & .data[[target_marker]] <= y_max
+  #  )
   
   # support for target marker
   tb_beads_pmf <- tibble(y = y_min:y_max)
