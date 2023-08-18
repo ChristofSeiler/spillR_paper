@@ -64,12 +64,17 @@ plotDiagnostics <- function(sce, ch) {
               color = "black", 
               linetype = "longdash", 
               linewidth = 0.8) + 
+    geom_point(data = tb_spill_prob, 
+              aes(tfm(.data[[ch]]), spill_prob), 
+              color = "black", 
+              size = 0.5,
+              alpha = 0.4) + 
     ylab("density") + 
     ggtitle("Beads Experiment")
 
   list(
-    p_before_after = p_before_after, 
-    p_spill = p_spill
+    p_spill = p_spill,
+    p_before_after = p_before_after
     )
   
 }

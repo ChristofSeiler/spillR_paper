@@ -128,9 +128,45 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   post_M <- PI * M
   post_M <- post_M/rowSums(post_M)
   spill_prob <- 1-post_M[,target_marker]
-  tb_spill_prob <- dplyr::select(tb_pmf, y) %>% 
-    mutate(spill_prob = if_else(is.na(spill_prob), 0, spill_prob))
+  tb_spill_prob <- tibble(y = y_min:y_max, spill_prob)
   names(tb_spill_prob) <- c(target_marker, "spill_prob")
+  
+  # count number of cells per y for weights
+  tb_tally <- left_join(
+    tb_real %>% group_by(.data[[target_marker]]) %>% tally(name = "cells"),
+    tb_bead %>% group_by(.data[[target_marker]]) %>% tally(name = "beads"),
+    by = target_marker
+  ) 
+  tb_tally[is.na(tb_tally)] <- 0
+  tb_tally %<>% mutate(n = cells + beads) %>% select(target_marker, n)
+  
+  # post-process spillover probabilities
+  tb_spill_prob %<>% mutate(y_tfm = tfm(.data[[target_marker]]))
+  tb_spill_prob %<>% left_join(tb_tally, by = target_marker)
+  
+  # binomial smoothing
+  # fit <- glm(spill_prob ~ y_tfm, family = binomial, weights = n,
+  #            data = tb_spill_prob)
+  # inverse_logit <- function(fit, x) {
+  #   hat <- coef(fit)[1] + coef(fit)[2]*x
+  #   1/(1+exp(-hat))
+  # }
+  # tb_spill_prob %<>% mutate(spill_prob_smooth = inverse_logit(fit, y_tfm))
+  
+  # moving average
+  width <- 5
+  window <- cbind(
+    sapply(rev(seq(width)), function(i) lag(tb_spill_prob$spill_prob, n = i)),
+    tb_spill_prob$spill_prob,
+    sapply(seq(width), function(i) lead(tb_spill_prob$spill_prob, n = i))
+  )
+  weight <- cbind(
+    sapply(rev(seq(width)), function(i) lag(tb_spill_prob$n, n = i)),
+    tb_spill_prob$n,
+    sapply(seq(width), function(i) lead(tb_spill_prob$n, n = i))
+  )
+  tb_spill_prob$spill_prob_smooth <-
+    rowSums(window*weight, na.rm = T)/rowSums(weight, na.rm = T)
   
   # compensate
   tb_compensate <- tb_real
@@ -138,20 +174,11 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   tb_compensate %<>% mutate(
     spill = rbinom(n = nrow(tb_compensate), 
                    size = 1, 
-                   prob = tb_compensate$spill_prob)
+                   prob = tb_compensate$spill_prob_smooth)
   )
   tb_compensate %<>% 
     mutate(corrected = ifelse(spill == 1, NA, .data[[target_marker]]))
   names(tb_compensate)[1] = "uncorrected"
-  
-  # post-process spillover probabilities
-  tb_spill_prob %<>% mutate(y_tfm = tfm(.data[[target_marker]]))
-  fit <- glm(spill_prob ~ y_tfm, family = binomial, data = tb_spill_prob)
-  inverse_logit <- function(fit, x) {
-    hat <- coef(fit)[1] + coef(fit)[2]*x
-    1/(1+exp(-hat))
-  }
-  tb_spill_prob %<>% mutate(spill_prob_smooth = inverse_logit(fit, y_tfm))
   
   # return spillr object
   res <- NULL
