@@ -62,7 +62,7 @@ plotDiagnostics <- function(sce, ch) {
     geom_line(data = tb_spill_prob, 
               aes(tfm(.data[[ch]]), spill_prob_smooth), 
               color = "black", 
-              linetype = "longdash", 
+              #linetype = "longdash", 
               linewidth = 0.8) + 
     geom_point(data = tb_spill_prob, 
               aes(tfm(.data[[ch]]), spill_prob), 

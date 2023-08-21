@@ -28,6 +28,9 @@
 compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
   tfm <- function(x) asinh(x/5)
+  runmed_k <- 10
+  n_iter <- 10
+  
   all_markers <- c(target_marker, spillover_markers)
   y_target <- tb_real %>% pull(.data[[target_marker]])
   y_min <- min(y_target)
@@ -80,7 +83,6 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
   # --------- step 2: iterate ---------
   
-  n_iter <- 10
   convergence <- matrix(nrow = n_iter, ncol = length(pi)+1)
   colnames(convergence) <- c("iteration", names(pi))
   
@@ -154,19 +156,39 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   # tb_spill_prob %<>% mutate(spill_prob_smooth = inverse_logit(fit, y_tfm))
   
   # moving average
-  width <- 5
-  window <- cbind(
-    sapply(rev(seq(width)), function(i) lag(tb_spill_prob$spill_prob, n = i)),
-    tb_spill_prob$spill_prob,
-    sapply(seq(width), function(i) lead(tb_spill_prob$spill_prob, n = i))
-  )
-  weight <- cbind(
-    sapply(rev(seq(width)), function(i) lag(tb_spill_prob$n, n = i)),
-    tb_spill_prob$n,
-    sapply(seq(width), function(i) lead(tb_spill_prob$n, n = i))
-  )
-  tb_spill_prob$spill_prob_smooth <-
-    rowSums(window*weight, na.rm = T)/rowSums(weight, na.rm = T)
+  # width <- 5
+  # window <- cbind(
+  #   sapply(rev(seq(width)), function(i) lag(tb_spill_prob$spill_prob, n = i)),
+  #   tb_spill_prob$spill_prob,
+  #   sapply(seq(width), function(i) lead(tb_spill_prob$spill_prob, n = i))
+  # )
+  # weight <- cbind(
+  #   sapply(rev(seq(width)), function(i) lag(tb_spill_prob$n, n = i)),
+  #   tb_spill_prob$n,
+  #   sapply(seq(width), function(i) lead(tb_spill_prob$n, n = i))
+  # )
+  # tb_spill_prob$spill_prob_smooth <-
+  #   rowSums(window*weight, na.rm = T)/rowSums(weight, na.rm = T)
+  
+  # loess smoothing
+  # spill_var <- var(tb_spill_prob$spill_prob, na.rm = T)
+  # spill_n <- sum(!is.na(tb_spill_prob$spill_prob))
+  # if(spill_var > 0 & spill_n > 50) {
+  #   span <- 0.05
+  # } else {
+  #   span <- 1.0
+  # }
+  # fit <- loess(spill_prob ~ y_tfm,
+  #              span = span, 
+  #              weights = n, 
+  #              data = tb_spill_prob)
+  # tb_spill_prob %<>% mutate(spill_prob_smooth = predict(fit, tb_spill_prob))
+  
+  # running median
+  #plot(tb_spill_prob$y_tfm, tb_spill_prob$spill_prob, main = target_marker)
+  fitted <- runmed(tb_spill_prob$spill_prob, k = runmed_k)
+  #lines(tb_spill_prob$y_tfm, fitted)
+  tb_spill_prob %<>% mutate(spill_prob_smooth = fitted)
   
   # compensate
   tb_compensate <- tb_real
