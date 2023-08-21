@@ -28,7 +28,7 @@
 compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
   tfm <- function(x) asinh(x/5)
-  runmed_k <- 10
+  runmed_k <- 11
   n_iter <- 10
   
   all_markers <- c(target_marker, spillover_markers)
