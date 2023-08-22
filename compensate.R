@@ -29,15 +29,16 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
   tfm <- function(x) asinh(x/5)
   runmed_k <- 11
-  n_iter <- 10
+  n_iter <- 1000
+  epsilon <- 1/10^6
   
   all_markers <- c(target_marker, spillover_markers)
   y_target <- tb_real %>% pull(.data[[target_marker]])
   y_min <- min(y_target)
   y_max <- max(y_target)
-  #tb_bead %<>% filter(
-  #  y_min <= .data[[target_marker]] & .data[[target_marker]] <= y_max
-  #  )
+  tb_bead %<>% filter(
+    y_min <= .data[[target_marker]] & .data[[target_marker]] <= y_max
+    )
   
   # support for target marker
   tb_beads_pmf <- tibble(y = y_min:y_max)
@@ -85,8 +86,9 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
   convergence <- matrix(nrow = n_iter, ncol = length(pi)+1)
   colnames(convergence) <- c("iteration", names(pi))
+  convergence[1,] <- c(1, pi)
   
-  for(i in 1:n_iter) {
+  for(i in 2:n_iter) {
     # remove counts without any signal
     total <- rowSums(dplyr::select(tb_pmf, all_of(all_markers)))
     tb_pmf %<>% mutate(total = total)
@@ -120,7 +122,18 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     
     # keep track
     convergence[i,] <- c(i, pi)
+    
+    prev <- convergence[i-1, target_marker]
+    curr <- convergence[i, target_marker]
+    if(abs(prev - curr) < epsilon) 
+      break
   }
+  
+  convergence <- na.omit(convergence)
+  
+  #as_tibble(convergence) %>% 
+  #  ggplot(aes(iteration, .data[[target_marker]])) + 
+  #  geom_line()
   
   # --------- spillover probability curve ---------
   
