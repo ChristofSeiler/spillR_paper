@@ -470,7 +470,7 @@ simulated <- lapply(tau, generate_data_a3)
 p_a3 <- plot_critical(experiment, tau, simulated)
 ```
 
-```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our three assumptions (A1), (A2), and (A3). For each experiment the top row are mean values over the entire range of the experimental setups, and the bottom row are density plots for three parameter settings to illustrate the generated distributions."}
+```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our three assumptions (A1), (A2), and (A3). For each experiment the top row are mean values over the entire range of the experimental setups, and the bottom row are density plots for three parameter settings to illustrate the generated distributions."}
 plot_grid(p_a1, p_a2, p_a3, ncol = 1, align = "v", axis = "lr")
 ```
 
