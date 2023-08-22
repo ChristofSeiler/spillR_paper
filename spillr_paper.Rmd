@@ -311,7 +311,7 @@ generate_data_a1 <- function(shift) {
 d_a1 <- expand.grid(
   tau = seq(-30, 0, length.out = 30), 
   replicate = 1:n_rep,
-  title = "Bead Shift (A1)"
+  title = "(A1) Bead Shift"
   ) %>%
   rowwise() %>% 
   mutate(unnest(compute_average(generate_data_a1, tau)))
@@ -345,7 +345,7 @@ generate_data_a2 <- function(spill_hidden) {
 d_a2 <- expand.grid(
   tau = seq(from = 0, to = 0.1, length.out = 30), 
   replicate = 1:n_rep,
-  title = "Model Misspecification (A2)"
+  title = "(A2) Model Misspecification"
   ) %>%
   rowwise() %>% 
   mutate(unnest(compute_average(generate_data_a2, tau)))
@@ -378,89 +378,100 @@ generate_data_a3 <- function(mode_prob) {
 d_a3 <- expand.grid(
   tau = seq(from = 0, to = 1, length.out = 30), 
   replicate = 1:n_rep,
-  title = "High Count Spillover (A3)"
+  title = "(A3) High Count Spillover"
   ) %>%
   rowwise() %>% 
   mutate(unnest(compute_average(generate_data_a3, tau)))
 
-# --------- combined plot ---------
+# --------- combined data frame ---------
 
 tb_experiment <- bind_rows(d_a1, d_a2, d_a3)
 tb_summary <- tb_experiment %>% 
     group_by(title, tau) %>% 
     summarize(
-      uncorrected = mean(mean_obsv),
-      target = mean(mean_truth),
-      `spillR corrected` = mean(mean_comp)
+      `E(Y)` = mean(mean_obsv),
+      `E(Y | Z = 1)` = mean(mean_truth),
+      `spillR E(Y)` = mean(mean_comp)
       ) %>% 
     ungroup()
 
-p_overview <- pivot_longer(tb_summary, -c(title, tau), 
-             names_to = "mean", values_to = "count") %>%
-  mutate(mean = factor(mean, levels = c("target", 
-                                        "uncorrected", 
-                                        "spillR corrected"))) %>%
-  ggplot(aes(tau, count, color = mean)) +
-  geom_line() + 
-  facet_wrap(~title, scales = "free_x", nrow = 1) +
-  scale_color_manual(values = c("#000000", "#E69F00", "#56B4E9")) +
-  ylab("mean count")
+tb_summary_long <- pivot_longer(
+  tb_summary, -c(title, tau), names_to = "mean", values_to = "count"
+  ) %>%
+  mutate(mean = factor(mean, levels = c("E(Y)",
+                                        "E(Y | Z = 1)", 
+                                        "spillR E(Y)")))
 ```
 
 ```{r simulated-experiments-critical-values, echo = FALSE, warning = FALSE, message = FALSE}
-generate_critical <- function(fn, tau) {
-  data <- fn(tau)
-  bind_rows(
-    tibble(count = data$Z_target, variable = "target", type = "truth"),
-    tibble(count = data$Z_spill, variable = "spillover", type = "truth"),
-    tibble(count = data$df_real$Y, variable = "target", type = "observed"),
-    tibble(count = data$df_bead$Y, variable = "spillover", type = "observed")
+# --------- helper function ---------
+plot_critical <- function(experiment, tau, simulated) {
+  
+  var_names <- c(
+    "Y",
+    "Y | Z = 1",
+    "Y | Z = 2"
+    )
+  
+  simulated <- lapply(simulated, function(data) {
+    bind_rows(
+      tibble(count = data$df_real$Y, variable = var_names[1]),
+      tibble(count = data$Z_target,  variable = var_names[2]),
+      tibble(count = data$df_bead$Y, variable = var_names[3])
+    )})
+  
+  df_simulated <- lapply(
+    seq(tau), function(i) mutate(simulated[[i]], tau = tau[i])
     ) %>% 
-    mutate(tau = tau) %>%
-    mutate(type = factor(type, levels = c("observed", "truth")))
+    bind_rows() %>%
+    mutate(variable = factor(variable, levels = var_names))
+  
+  g_overview <- tb_summary_long %>% 
+    filter(title == experiment) %>%
+    ggplot(aes(tau, count, color = mean)) +
+    geom_line() + 
+    scale_color_manual(values = c("#E69F00", "#000000", "#009E73")) +
+    ylab("mean")
+  
+  g_critical <- df_simulated %>%
+    ggplot(aes(count, color = variable)) + 
+    geom_density(key_glyph = "path") +
+    facet_wrap(~tau, labeller = label_both) +
+    scale_color_manual(values = c("#E69F00", "#000000", "#56B4E9", "#0072B2"))
+  
+  plot_grid(
+    ggdraw() + 
+      draw_label(experiment, fontface = "bold", x = 0, hjust = 0) + 
+      theme(plot.margin = margin(0, 0, 0, 7)), 
+    plot_grid(g_overview, g_critical, 
+              ncol = 1, rel_heights = c(0.45, 0.55), align = "v", axis = "lr"),
+    ncol = 1, rel_heights = c(0.1, 1)
+    )
 }
 
-df_a1 <- lapply(
-  c(-30, -15, 0), 
-  function(x) generate_critical(generate_data_a1, x)
-  ) %>% 
-  bind_rows() %>% 
-  mutate(title = "Bead Shift (A1)")
+# --------- A1 ---------
 
-df_a2 <- lapply(
-  c(0, 0.05, 0.1), 
-  function(x) 
-    generate_critical(generate_data_a2, x)
-  ) %>% 
-  bind_rows() %>%
-  mutate(title = "Model Misspecification (A2)")
+experiment <- "(A1) Bead Shift"
+tau <- c(-30, -15, 0)
+simulated <- lapply(tau, generate_data_a1)
+p_a1 <- plot_critical(experiment, tau, simulated)
 
-df_a3 <- lapply(
-  c(0, 0.5, 1.0), 
-  function(x) 
-    generate_critical(generate_data_a3, x)
-  ) %>% 
-  bind_rows() %>%
-  mutate(title = "High Count Spillover (A3)")
+# --------- A2 ---------
 
-df <- bind_rows(df_a1, df_a2, df_a3) %>%
-  mutate(title = factor(
-    title, levels = c(
-      "Bead Shift (A1)", 
-      "Model Misspecification (A2)", 
-      "High Count Spillover (A3)"
-    ))) %>%
-  mutate(tau = factor(tau, levels = c(0, 0.05, 0.1, 0.5, 1, -15, -30)))
+experiment <- "(A2) Model Misspecification"
+tau <- c(0, 0.05, 0.1)
+simulated <- lapply(tau, generate_data_a2)
+p_a2 <- plot_critical(experiment, tau, simulated)
 
-p_critical <- ggplot(df, aes(count, color = variable, linetype = type)) + 
-  geom_density(key_glyph = "path") + 
-  facet_wrap(~title + tau, dir = "v") +
-  scale_color_manual(values = c("#000000", "#009E73"))
+# --------- A3 ---------
+experiment <- "(A3) High Count Spillover"
+tau <- c(0, 0.5, 1.0)
+simulated <- lapply(tau, generate_data_a3)
+p_a3 <- plot_critical(experiment, tau, simulated)
 ```
 
-```{r simulated-experiments-plot, fig.height = 7, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our three assumptions (A1), (A2), and (A3). Top row: mean values over the entire range of the experimental setups. Rows two to four: density plots for three parameter settings to illustrate the generated distributions."}
-plot_grid(p_overview, p_critical, 
-          ncol = 1, rel_heights = c(0.3, 0.7), align = "v")
+```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our three assumptions (A1), (A2), and (A3). For each experiment the top row are mean values over the entire range of the experimental setups, and the bottom row are density plots for three parameter settings to illustrate the generated distributions."}
+plot_grid(p_a1, p_a2, p_a3, ncol = 1, align = "v", axis = "lr")
 ```
 
 We choose three different experiments to test how robust `spillR` is when one of our three assumptions is violated. We explore a wide range of possible parameter settings. Figure \@ref(fig:simulated-experiments-plot) has three columns, each representing one experimental setup. The first column tests our assumptions [(A1)](#assumption1), the second [(A2)](#assumption2), and the third [(A3)](#assumption3). For all three experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are given in Appendix \@ref(generative-models). We repeat each simulation five times and report averages over the five replications. Figure \@ref(fig:simulated-experiments-plot) has four rows. The first row represents the summary of the means for each experimental setup as a function of their respective parameter $\tau$. This parameter has a different meaning in each setup. To visualize the different experiments, we summarize the full distributions with the true simulated signal mean (black), the uncorrected mean (orange), and the `spillR` corrected mean (blue). Rows two to four illustrate the simulated data distributions for three parameter settings. The solid curves are what we can measure with experiments and the dashed curves are the true but unmeasured signal. We know the signal here because we simulate this data ourselves with the models in Appendix \@ref(generative-models).
@@ -743,7 +754,7 @@ This is the result after one iteration.
 
 # Generative Models
 
-## Bead Shift (A1) {-}
+## (A1) Bead Shift {-}
 
 Generative model for real cells $Y$ of this experiment:
 $$
@@ -756,7 +767,7 @@ Z              & = S + 1                      & \qquad \text{(pick spillover)} \
 $$
 The generative model for beads is an independent copy of the unshifted $Y \mid Z = 2$ at $\tau = 0$.
 
-## Model Misspecification (A2) {-}
+## (A2) Model Misspecification {-}
 
 Generative model for real cells $Y$ of this experiment:
 $$
@@ -769,7 +780,7 @@ Z              & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \
 $$
 The generative model for beads is an independent copy of $Y \mid Z > 1$.
 
-## High Count Spillover (A3) {-}
+## (A3) High Count Spillover {-}
 
 Generative model for real cells $Y$ of this experiment:
 $$
