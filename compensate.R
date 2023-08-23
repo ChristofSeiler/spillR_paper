@@ -38,9 +38,9 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   # check if real and bead overlap
   y_min_real <- min(tb_real[,target_marker])
   y_max_real <- max(tb_real[,target_marker])
-  y_min <- min(tb_bead[,target_marker])
-  y_max <- max(tb_bead[,target_marker])
-  set <- intersect(y_min_real:y_max_real, y_min:y_max)
+  y_min_bead <- min(tb_bead[,target_marker])
+  y_max_bead <- max(tb_bead[,target_marker])
+  set <- intersect(y_min_real:y_max_real, y_min_bead:y_max_bead)
   if(length(set) == 0) {
     warning("no overlap between real cells and beads")
     return(NULL)
@@ -50,13 +50,12 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   tfm <- function(x) asinh(x/5)
   runmed_k <- 11
   n_iter <- 1000
-  epsilon <- 1/10^6
+  epsilon <- 1/10^5
   all_markers <- c(target_marker, spillover_markers)
+  y_min <- y_min_real
+  y_max <- y_max_real
   
   # support for target marker
-  tb_real_truncated <- tb_real %>% filter(
-    y_min <= .data[[target_marker]] & .data[[target_marker]] <= y_max
-    )
   tb_beads_pmf <- tibble(y = y_min:y_max)
   
   # collect pmf from beads
@@ -89,7 +88,7 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   names(pi) <- all_markers
   
   # add pmf from real cells
-  Fn <- tb_real_truncated %>% 
+  Fn <- tb_real %>% 
     pull(all_of(target_marker)) %>% 
     ecdf()
   tb_real_pmf <- tibble(y = y_min:y_max) %>% 
@@ -123,7 +122,7 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     
     # update prior probability
     y_pi <- bind_cols(y = tb_pmf$y, post_M)
-    y_obsv <- tb_real_truncated %>% select(y = all_of(target_marker))
+    y_obsv <- tb_real %>% select(y = all_of(target_marker))
     y_obsv <- left_join(y_obsv, y_pi, by = "y")
     pi <- y_obsv %>% select(-y)
     pi <- colSums(pi)/nrow(pi)
@@ -148,10 +147,6 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   }
   
   convergence <- convergence[seq(i),]
-  
-  #as_tibble(convergence) %>% 
-  #  ggplot(aes(iteration, .data[[target_marker]])) + 
-  #  geom_line()
   
   # --------- spillover probability curve ---------
   
