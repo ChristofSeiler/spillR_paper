@@ -57,6 +57,7 @@ compCytof <- function(sce, sce_bead, marker_to_barc, overwrite = FALSE){
         dplyr::filter(marker %in% spillover_markers) %>%
         dplyr::select("barcode")%>%
         pull()
+      
       tb_bead <- counts_bead %>% 
         dplyr::filter(barcode %in% spillover_barcodes) %>% 
         dplyr::select(all_of(c(target_marker, "barcode"))) %>% 
@@ -76,8 +77,8 @@ compCytof <- function(sce, sce_bead, marker_to_barc, overwrite = FALSE){
       spillover_markers <- setdiff(spillover_markers, target_marker)
       compensate(tb_real, tb_bead, target_marker, spillover_markers)
       
-      }
-    )
+    }
+  )
   names(fit_list) <- rownames(sm)
   
   # --------- save results in SingleCellExperiment class ---------
@@ -85,6 +86,8 @@ compCytof <- function(sce, sce_bead, marker_to_barc, overwrite = FALSE){
   # find inactive channels
   used_channel <- rowData(sce_bead)$is_bc
   channels_out <- channel_names[used_channel == FALSE]
+  channels_null <- names(which(sapply(fit_list, is.null)))
+  channels_out <- union(channels_out, channels_null)
 
   # prepare new assay matrices
   data <- matrix(NA, nrow = nrow(counts_real), ncol = length(channel_names))
@@ -97,7 +100,7 @@ compCytof <- function(sce, sce_bead, marker_to_barc, overwrite = FALSE){
   for(i in 1:length(channel_names)){
     if(channel_names[i] %in% channels_out){
       
-      # no correct
+      # no correction
       data[,i] <- counts_real[,channel_names[i]]
       
     }

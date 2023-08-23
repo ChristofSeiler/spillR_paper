@@ -27,20 +27,36 @@
 #' spillR::compensate(tb_real, tb_bead, "A", "B")
 compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
+  # check if any beads
+  tb_bead_keep <- tb_bead
+  tb_bead <- tb_bead %>% filter(barcode != all_of(target_marker))
+  if(nrow(tb_bead) == 0) {
+    warning("no beads")
+    return(NULL)
+  }
+
+  # check if real and bead overlap
+  y_min_real <- min(tb_real[,target_marker])
+  y_max_real <- max(tb_real[,target_marker])
+  y_min <- min(tb_bead[,target_marker])
+  y_max <- max(tb_bead[,target_marker])
+  set <- intersect(y_min_real:y_max_real, y_min:y_max)
+  if(length(set) == 0) {
+    warning("no overlap between real cells and beads")
+    return(NULL)
+  }
+  
+  # parameters
   tfm <- function(x) asinh(x/5)
   runmed_k <- 11
   n_iter <- 1000
   epsilon <- 1/10^6
-  
   all_markers <- c(target_marker, spillover_markers)
-  y_target <- tb_real %>% pull(.data[[target_marker]])
-  y_min <- min(y_target)
-  y_max <- max(y_target)
-  tb_bead %<>% filter(
-    y_min <= .data[[target_marker]] & .data[[target_marker]] <= y_max
-    )
   
   # support for target marker
+  tb_real_truncated <- tb_real %>% filter(
+    y_min <= .data[[target_marker]] & .data[[target_marker]] <= y_max
+    )
   tb_beads_pmf <- tibble(y = y_min:y_max)
   
   # collect pmf from beads
@@ -71,7 +87,7 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   names(pi) <- all_markers
   
   # add pmf from real cells
-  Fn <- tb_real %>% 
+  Fn <- tb_real_truncated %>% 
     pull(all_of(target_marker)) %>% 
     ecdf()
   tb_real_pmf <- tibble(y = y_min:y_max) %>% 
@@ -107,7 +123,7 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     
     # update prior probability
     y_pi <- bind_cols(y = tb_pmf$y, post_M)
-    y_obsv <- tb_real %>% select(y = all_of(target_marker))
+    y_obsv <- tb_real_truncated %>% select(y = all_of(target_marker))
     y_obsv <- left_join(y_obsv, y_pi, by = "y")
     pi <- y_obsv %>% select(-y)
     pi <- colSums(pi)/nrow(pi)
@@ -129,7 +145,7 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
       break
   }
   
-  convergence <- na.omit(convergence)
+  convergence <- convergence[seq(i),]
   
   #as_tibble(convergence) %>% 
   #  ggplot(aes(iteration, .data[[target_marker]])) + 
@@ -148,8 +164,12 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   
   # count number of cells per y for weights
   tb_tally <- left_join(
-    tb_real %>% group_by(.data[[target_marker]]) %>% tally(name = "cells"),
-    tb_bead %>% group_by(.data[[target_marker]]) %>% tally(name = "beads"),
+    tb_real_truncated %>% 
+      group_by(.data[[target_marker]]) %>% 
+      tally(name = "cells"),
+    tb_bead %>% 
+      group_by(.data[[target_marker]]) %>% 
+      tally(name = "beads"),
     by = target_marker
   ) 
   tb_tally[is.na(tb_tally)] <- 0
@@ -198,14 +218,20 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   # tb_spill_prob %<>% mutate(spill_prob_smooth = predict(fit, tb_spill_prob))
   
   # running median
-  #plot(tb_spill_prob$y_tfm, tb_spill_prob$spill_prob, main = target_marker)
+  plot(tb_spill_prob$y_tfm, tb_spill_prob$spill_prob, main = target_marker)
   fitted <- runmed(tb_spill_prob$spill_prob, k = runmed_k)
-  #lines(tb_spill_prob$y_tfm, fitted)
+  lines(tb_spill_prob$y_tfm, fitted)
   tb_spill_prob %<>% mutate(spill_prob_smooth = fitted)
+  tb_spill_prob %<>% mutate(
+    spill_prob_smooth = ifelse(is.na(spill_prob_smooth), 0, spill_prob_smooth)
+    )
   
   # compensate
   tb_compensate <- tb_real
   tb_compensate %<>% left_join(tb_spill_prob, by = target_marker)
+  tb_compensate %<>% mutate(
+    spill_prob_smooth = ifelse(is.na(spill_prob_smooth), 0, spill_prob_smooth)
+  )
   tb_compensate %<>% mutate(
     spill = rbinom(n = nrow(tb_compensate), 
                    size = 1, 
@@ -221,7 +247,7 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   res$tb_spill_prob <- tb_spill_prob
   res$convergence <- convergence
   res$tb_real <- tb_real
-  res$tb_bead <- tb_bead
+  res$tb_bead <- tb_bead_keep
   res$target_marker <- target_marker
   res$spillover_markers <- spillover_markers
   class(res) <- "spillr"
