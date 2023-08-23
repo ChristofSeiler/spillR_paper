@@ -60,15 +60,10 @@ plotDiagnostics <- function(sce, ch) {
     ggplot(aes(tfm(.data[[ch]]), color = barcode)) +
     geom_density(adjust = 1, linewidth = 0.8) +
     geom_line(data = tb_spill_prob, 
-              aes(tfm(.data[[ch]]), spill_prob_smooth), 
+              aes(tfm(.data[[ch]]), spill_prob), 
               color = "black", 
               #linetype = "longdash", 
               linewidth = 0.8) + 
-    geom_point(data = tb_spill_prob, 
-              aes(tfm(.data[[ch]]), spill_prob), 
-              color = "black", 
-              size = 0.5,
-              alpha = 0.4) + 
     ylab("density") + 
     ggtitle("Beads Experiment")
 

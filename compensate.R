@@ -70,6 +70,8 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
        tb <- tb_beads_pmf %>% 
          mutate(pmf = Fn(y) - Fn(y-1)) %>% 
          dplyr::select(y, pmf)
+       tb$pmf <- runmed(tb$pmf, k = runmed_k)
+       tb$pmf <- tb$pmf/sum(tb$pmf)
        names(tb) <- c("y", marker)
        tb_beads_pmf %<>% left_join(tb, by = "y")
      } else {
@@ -93,6 +95,8 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   tb_real_pmf <- tibble(y = y_min:y_max) %>% 
     mutate(pmf = Fn(y) - Fn(y-1)) %>%
     dplyr::select(y, pmf)
+  tb_real_pmf$pmf <- runmed(tb_real_pmf$pmf, k = runmed_k)
+  tb_real_pmf$pmf <- tb_real_pmf$pmf/sum(tb_real_pmf$pmf)
   names(tb_real_pmf) <- c("y", target_marker)
   
   # join beads and real
@@ -105,12 +109,6 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   convergence[1,] <- c(1, pi)
   
   for(i in 2:n_iter) {
-    # remove counts without any signal
-    total <- rowSums(dplyr::select(tb_pmf, all_of(all_markers)))
-    tb_pmf %<>% mutate(total = total)
-    tb_pmf %<>% dplyr::filter(total > 0)
-    tb_pmf %<>% dplyr::select(-total)
-    
     # E-step
     
     # membership probabilities
@@ -118,6 +116,8 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     PI <- matrix(rep(pi, each = nrow(M)), ncol = ncol(M))
     post_M <- PI * M
     post_M <- post_M/rowSums(post_M)
+    # assign equal probability to counts without any signal
+    post_M[is.nan(post_M)] <- 1/ncol(post_M)
     
     # M-step
     
@@ -131,6 +131,8 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     # new weighted empirical density estimate
     Fn <- ewcdf(pull(y_obsv, y), weights = pull(y_obsv, all_of(target_marker)))
     tb_real_pmf <- tibble(y = y_min:y_max) %>% mutate(pmf = Fn(y) - Fn(y-1))
+    tb_real_pmf$pmf <- runmed(tb_real_pmf$pmf, k = runmed_k)
+    tb_real_pmf$pmf <- tb_real_pmf$pmf/sum(tb_real_pmf$pmf)
     names(tb_real_pmf) <- c("y", target_marker)
     
     # update join
@@ -162,80 +164,16 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
   tb_spill_prob <- tibble(y = y_min:y_max, spill_prob)
   names(tb_spill_prob) <- c(target_marker, "spill_prob")
   
-  # count number of cells per y for weights
-  tb_tally <- left_join(
-    tb_real_truncated %>% 
-      group_by(.data[[target_marker]]) %>% 
-      tally(name = "cells"),
-    tb_bead %>% 
-      group_by(.data[[target_marker]]) %>% 
-      tally(name = "beads"),
-    by = target_marker
-  ) 
-  tb_tally[is.na(tb_tally)] <- 0
-  tb_tally %<>% mutate(n = cells + beads) %>% select(target_marker, n)
-  
-  # post-process spillover probabilities
-  tb_spill_prob %<>% mutate(y_tfm = tfm(.data[[target_marker]]))
-  tb_spill_prob %<>% left_join(tb_tally, by = target_marker)
-  
-  # binomial smoothing
-  # fit <- glm(spill_prob ~ y_tfm, family = binomial, weights = n,
-  #            data = tb_spill_prob)
-  # inverse_logit <- function(fit, x) {
-  #   hat <- coef(fit)[1] + coef(fit)[2]*x
-  #   1/(1+exp(-hat))
-  # }
-  # tb_spill_prob %<>% mutate(spill_prob_smooth = inverse_logit(fit, y_tfm))
-  
-  # moving average
-  # width <- 5
-  # window <- cbind(
-  #   sapply(rev(seq(width)), function(i) lag(tb_spill_prob$spill_prob, n = i)),
-  #   tb_spill_prob$spill_prob,
-  #   sapply(seq(width), function(i) lead(tb_spill_prob$spill_prob, n = i))
-  # )
-  # weight <- cbind(
-  #   sapply(rev(seq(width)), function(i) lag(tb_spill_prob$n, n = i)),
-  #   tb_spill_prob$n,
-  #   sapply(seq(width), function(i) lead(tb_spill_prob$n, n = i))
-  # )
-  # tb_spill_prob$spill_prob_smooth <-
-  #   rowSums(window*weight, na.rm = T)/rowSums(weight, na.rm = T)
-  
-  # loess smoothing
-  # spill_var <- var(tb_spill_prob$spill_prob, na.rm = T)
-  # spill_n <- sum(!is.na(tb_spill_prob$spill_prob))
-  # if(spill_var > 0 & spill_n > 50) {
-  #   span <- 0.05
-  # } else {
-  #   span <- 1.0
-  # }
-  # fit <- loess(spill_prob ~ y_tfm,
-  #              span = span, 
-  #              weights = n, 
-  #              data = tb_spill_prob)
-  # tb_spill_prob %<>% mutate(spill_prob_smooth = predict(fit, tb_spill_prob))
-  
-  # running median
-  plot(tb_spill_prob$y_tfm, tb_spill_prob$spill_prob, main = target_marker)
-  fitted <- runmed(tb_spill_prob$spill_prob, k = runmed_k)
-  lines(tb_spill_prob$y_tfm, fitted)
-  tb_spill_prob %<>% mutate(spill_prob_smooth = fitted)
-  tb_spill_prob %<>% mutate(
-    spill_prob_smooth = ifelse(is.na(spill_prob_smooth), 0, spill_prob_smooth)
-    )
-  
   # compensate
   tb_compensate <- tb_real
   tb_compensate %<>% left_join(tb_spill_prob, by = target_marker)
   tb_compensate %<>% mutate(
-    spill_prob_smooth = ifelse(is.na(spill_prob_smooth), 0, spill_prob_smooth)
+    spill_prob = ifelse(is.na(spill_prob), 0, spill_prob)
   )
   tb_compensate %<>% mutate(
     spill = rbinom(n = nrow(tb_compensate), 
                    size = 1, 
-                   prob = tb_compensate$spill_prob_smooth)
+                   prob = tb_compensate$spill_prob)
   )
   tb_compensate %<>% 
     mutate(corrected = ifelse(spill == 1, NA, .data[[target_marker]]))
