@@ -7,9 +7,13 @@
 #' @import tidyr
 #' @export
 #'
-#' @param sce \code{\link[SingleCellExperiment]{SingleCellExperiment}} for the real cells
-#' @param sce_bead \code{\link[SingleCellExperiment]{SingleCellExperiment}} for the bead experiment
-#' @param marker_to_barc Table that maps the marker to the barcode in the beads experiment
+#' @param sce \code{\link[SingleCellExperiment]{SingleCellExperiment}} for the 
+#'   real cells
+#' @param sce_bead \code{\link[SingleCellExperiment]{SingleCellExperiment}} for 
+#'   the bead experiment
+#' @param marker_to_barc Table that maps the marker to the barcode in the beads 
+#'   experiment
+#' @param runmed_k Integer width of median window for smoothing the ECDF
 #'
 #' @return A \code{\link[SingleCellExperiment]{SingleCellExperiment}} object
 #'
@@ -17,7 +21,8 @@
 #' sce <- prepData(mp_cells)    # real cells
 #' sce_bead <- prepData(ss_exp) # beads
 #' sce <- spillR::compCytof(sce, sce_bead, overwrite = FALSE)
-compCytof <- function(sce, sce_bead, marker_to_barc, overwrite = FALSE){
+compCytof <- function(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                      runmed_k = 11) {
   
   if(!("marker" %in% colnames(marker_to_barc)))
     stop("marker_to_barc needs to have column marker")
@@ -75,7 +80,7 @@ compCytof <- function(sce, sce_bead, marker_to_barc, overwrite = FALSE){
       }
       
       spillover_markers <- setdiff(spillover_markers, target_marker)
-      compensate(tb_real, tb_bead, target_marker, spillover_markers)
+      compensate(tb_real, tb_bead, target_marker, spillover_markers, runmed_k)
       
     }
   )

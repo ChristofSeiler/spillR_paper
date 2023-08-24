@@ -8,6 +8,7 @@
 #' @param tb_bead Data frame or tibble with proteins counts of bead experiment
 #' @param target_marker Marker name in real experiment
 #' @param spillover_markers Marker names in bead experiment
+#' @param runmed_k Integer width of median window for smoothing the ECDF
 #'
 #' @return A list of class \code{spillr} containing
 #'   \item{tb_compensate}{corrected real cells}
@@ -25,7 +26,8 @@
 #' target_marker <- "A"
 #' spillover_marker <- "B"
 #' spillR::compensate(tb_real, tb_bead, "A", "B")
-compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
+compensate <- function(tb_real, tb_bead, target_marker, spillover_markers, 
+                       runmed_k) {
   
   # check if any beads
   tb_bead_keep <- tb_bead
@@ -46,9 +48,12 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     return(NULL)
   }
   
-  # parameters
+  # parameters and helper functions
   tfm <- function(x) asinh(x/5)
-  runmed_k <- 11
+  smoothing <- function(pmf) {
+    pmf_smooth <- runmed(pmf, k = runmed_k)
+    pmf_smooth/sum(pmf_smooth)
+  }
   n_iter <- 1000
   epsilon <- 1/10^5
   all_markers <- c(target_marker, spillover_markers)
@@ -68,9 +73,8 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
          ecdf()
        tb <- tb_beads_pmf %>% 
          mutate(pmf = Fn(y) - Fn(y-1)) %>% 
+         mutate(pmf = smoothing(pmf)) %>%
          dplyr::select(y, pmf)
-       tb$pmf <- runmed(tb$pmf, k = runmed_k)
-       tb$pmf <- tb$pmf/sum(tb$pmf)
        names(tb) <- c("y", marker)
        tb_beads_pmf %<>% left_join(tb, by = "y")
      } else {
@@ -93,9 +97,8 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
     ecdf()
   tb_real_pmf <- tibble(y = y_min:y_max) %>% 
     mutate(pmf = Fn(y) - Fn(y-1)) %>%
+    mutate(pmf = smoothing(pmf)) %>%
     dplyr::select(y, pmf)
-  tb_real_pmf$pmf <- runmed(tb_real_pmf$pmf, k = runmed_k)
-  tb_real_pmf$pmf <- tb_real_pmf$pmf/sum(tb_real_pmf$pmf)
   names(tb_real_pmf) <- c("y", target_marker)
   
   # join beads and real
@@ -129,9 +132,9 @@ compensate <- function(tb_real, tb_bead, target_marker, spillover_markers) {
 
     # new weighted empirical density estimate
     Fn <- ewcdf(pull(y_obsv, y), weights = pull(y_obsv, all_of(target_marker)))
-    tb_real_pmf <- tibble(y = y_min:y_max) %>% mutate(pmf = Fn(y) - Fn(y-1))
-    tb_real_pmf$pmf <- runmed(tb_real_pmf$pmf, k = runmed_k)
-    tb_real_pmf$pmf <- tb_real_pmf$pmf/sum(tb_real_pmf$pmf)
+    tb_real_pmf <- tibble(y = y_min:y_max) %>% 
+      mutate(pmf = Fn(y) - Fn(y-1)) %>%
+      mutate(pmf = smoothing(pmf))
     names(tb_real_pmf) <- c("y", target_marker)
     
     # update join
