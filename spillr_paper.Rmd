@@ -43,7 +43,7 @@ Mass cytometry makes it possible to count a large number of proteins simultaneou
 
 @catalyst propose a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single type of antibody. The slope of the regression line between target antibody and non-target antibodies represents the spillover proportion between channels. @miao2021ab attempt to solve spillover by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous versions rely on an estimate for the spillover matrix. The spillover matrix encodes the pairwise spillover proportion between channels. We avoid estimating a spillover matrix and instead model spillover by fitting a mixture model to the observed counts. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we transfer the spillover distribution to the real experiment instead of just the spillover proportion encoded in the spillover matrix.
 
-```{r intro-example, fig.height=3, fig.width=6, out.width="65%", fig.align="center", fig.cap="Two-dimensional histograms of cell counts. The blue shaded rectangle is an estimate of spillover from CD36 (Nd144Di) into CD4 (Nd145Di). Our method compensates for some counts that fall inside this rectangle. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", echo=FALSE, warning=FALSE, message=FALSE}
+```{r intro-example, fig.height=3, fig.width=6, out.width="75%", fig.align="center", fig.cap="Two-dimensional histograms of cell counts. The blue shaded rectangle is an estimate of spillover from CD36 (Nd144Di) into CD4 (Nd145Di). Our method compensates for some counts that fall inside this rectangle. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 
@@ -108,13 +108,16 @@ In Section \@ref(methods), we present our mixture model and link it to calculati
 
 fig.height = 12, fig.width = 9
 
-```{r method-example, fig.height=12, fig.width=5, out.width="100%", fig.align="center", fig.cap='Left panel: Frequency polygons of marker CD3 (Yb173Di) before and after spillover compensation. Right panel: Gaussian kernel density plot of spillover markers. The solid black curve represents the spillover probability estimated with our method from the black points. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
+```{r method-example, fig.height=7, fig.width=7, out.width="65%", fig.align="center", fig.cap='Left panel: Frequency polygons of marker CD3 (Yb173Di) before and after spillover compensation. Right panel: Gaussian kernel density plot of spillover markers. The solid black curve represents the spillover probability estimated with our method from the black points. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 ch <- "CD3.2"
 ch_metal <- "Yb173Di"
 ch_name <- "CD3 (Yb173Di)"
-runmed_k <- 7
+runmed_ks <- c(3, 11)
+select_k_ind <- which(runmed_ks == 11)
+runmed_colors <- c("gray", "gray")
+runmed_colors[select_k_ind] <- "black"
 x_lim <- c(0, 7)
 
 # --------- experiment with beads ---------
@@ -140,16 +143,19 @@ marker_to_barc <-
 
 # --------- call compensate from compCytof package ---------
 
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
-                        runmed_k = runmed_k)
+sce_spillr_list <- lapply(runmed_ks, function(runmed_k) {
+  compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
+            runmed_k = runmed_k)
+})
 
 # --------- run CATALYST ---------
+
 sm <- metadata(sce_bead)$spillover_matrix
 sce_catalyst <- CATALYST::compCytof(sce, sm, overwrite = FALSE)
 
 # --------- beads experiment ---------
 
-tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
+tb_bead <- metadata(sce_spillr_list[[1]])$beads_distr[[ch_metal]]
 tb_bead <- mutate(
   tb_bead, 
   barcode = ifelse(barcode == ch, paste(ch, "(target)"), barcode)
@@ -158,18 +164,35 @@ tb_bead <- mutate(
 p_beads <- tb_bead %>%
   ggplot(aes(tfm(.data[[ch_metal]]), color = barcode)) +
   geom_density(adjust = 1, linewidth = 0.8) +
+  xlim(x_lim) +
+  xlab(ch_name) +
   ylab("density") + 
-  ggtitle("Beads Experiment") +
-  xlim(x_lim)
+  ggtitle("Beads Experiment")
+
+# --------- spillover probability curves ---------
+
+tb_spill_prob <- lapply(seq(runmed_ks), function(i) {
+  metadata(sce_spillr_list[[i]])$spillover_est[[ch_metal]] %>%
+    mutate(k = as.factor(runmed_ks[i]))
+}) %>% bind_rows()
+
+p_spill <- tb_spill_prob %>%
+  ggplot(aes(tfm(.data[[ch_metal]]), spill_prob, color = k)) +
+  geom_line(linewidth = 0.8) +
+  scale_color_manual(values = runmed_colors) +
+  xlim(x_lim) +
+  xlab(ch_name) +
+  ylab("probability") +
+  ggtitle("Estimated Spillover")
 
 # --------- before and after ---------
 
-exprs_spillr <- sce_spillr %>% 
+exprs_spillr <- sce_spillr_list[[select_k_ind]] %>% 
   assay("exprs") %>%
   t() %>%
   as_tibble() %>%
   mutate(method = "uncorrected")
-compexprs_spillr <- sce_spillr %>% 
+compexprs_spillr <- sce_spillr_list[[select_k_ind]] %>% 
   assay("compexprs") %>%
   t() %>%
   as_tibble() %>%
@@ -184,29 +207,21 @@ combo <- combo %>% select(all_of(c(ch, "method")))
 combo$method <- factor(combo$method, 
                        levels = c("uncorrected", "CATALYST", "spillR"))
 
+str <- paste0("Spillover Compensation on Real Cells (k = ", 
+              runmed_ks[select_k_ind], ")")
 p_before_after <- combo %>% 
   filter(.data[[ch]] > 0) %>%
   ggplot(aes(.data[[ch]], color = method, linetype = method)) + 
   geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
+  xlim(x_lim) +
   xlab(ch_name) +
-  ggtitle("Spillover Compensation on Real Cells (Only Positive Counts)") +
-  xlim(x_lim)
-
-# --------- spillover probability curves ---------
-
-tb_spill_prob <- metadata(sce_spillr)$spillover_est[[ch_metal]]
-tb_spill_prob$k <- as.factor(runmed_k)
-  
-p_spill <- tb_spill_prob %>%
-  ggplot(aes(tfm(.data[[ch_metal]]), spill_prob, color = k)) +
-  geom_line(linewidth = 0.8) +
-  ylab("probability") + 
-  ggtitle("Estimated Spillover") + 
-  xlim(x_lim)
+  ggtitle(str)
 
 # --------- combine everything ---------
 plot_grid(
-  p_beads, p_before_after, p_spill, 
+  p_beads + theme(legend.justification = c(0,1)),
+  p_spill + theme(legend.justification = c(0,1)), 
+  p_before_after + theme(legend.justification = c(0,1)), 
   ncol = 1, align = "v", labels = c("A", "B", "C")
 )
 ```
@@ -570,6 +585,7 @@ In the third experiment (column three), we model spillover with a bimodal distri
 ```{r spillr-vignette, fig.height = 6, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011})."}
  # constants
 bc_key <- c(139, 141:156, 158:176)
+runmed_k <- 11
 
 # helper functions
 colorscale = scale_fill_gradientn(
@@ -598,7 +614,8 @@ marker_to_barc <-
   dplyr::select(marker = channel_name, barcode)
 
 # --------- call compensate from compCytof package ---------
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
+sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                        runmed_k = runmed_k)
 
 # --------- 2d histogram from spillR (for vignette, not for paper) ---------
 # as <- c("counts", "exprs", "compcounts", "compexprs")
