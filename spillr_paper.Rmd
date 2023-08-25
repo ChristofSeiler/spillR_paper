@@ -106,9 +106,16 @@ In Section \@ref(methods), we present our mixture model and link it to calculati
 
 ## Example
 
-```{r method-example, fig.height=5, fig.width=12, out.width="100%", fig.align="center", fig.cap='Left panel: Frequency polygons of marker CD3 (Yb173Di) before and after spillover compensation. Right panel: Gaussian kernel density plot of spillover markers. The solid black curve represents the spillover probability estimated with our method from the black points. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
+fig.height = 12, fig.width = 9
+
+```{r method-example, fig.height=12, fig.width=5, out.width="100%", fig.align="center", fig.cap='Left panel: Frequency polygons of marker CD3 (Yb173Di) before and after spillover compensation. Right panel: Gaussian kernel density plot of spillover markers. The solid black curve represents the spillover probability estimated with our method from the black points. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
+ch <- "CD3.2"
+ch_metal <- "Yb173Di"
+ch_name <- "CD3 (Yb173Di)"
+runmed_k <- 7
+x_lim <- c(0, 7)
 
 # --------- experiment with beads ---------
 
@@ -123,6 +130,7 @@ data(mp_cells, package = "CATALYST")
 sce <- prepData(mp_cells)
 
 # --------- table for mapping markers and barcode ---------
+
 marker_to_barc <- 
   rowData(sce_bead)[,c("channel_name", "is_bc")] %>%
   as_tibble %>%
@@ -131,23 +139,75 @@ marker_to_barc <-
   select(marker = channel_name, barcode)
 
 # --------- call compensate from compCytof package ---------
-run_spillr <- function(k) {
-  sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                          runmed_k = k)
-  p_pair <- plotDiagnostics(sce_spillr, "Yb173Di")
-  p_pair <- lapply(p_pair, 
-                   function(p) p + xlab("CD3 (Yb173Di)") + xlim(c(0, 7)))
-  p_pair
-}
-p_pair_k3 <- run_spillr(3)
-p_pair_k7 <- run_spillr(7)
-# remove legend
-#p_pair_k3 <- lapply(p_pair_k3, function(p) p + theme(legend.position="none"))
-# combine everything
+
+sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
+                        runmed_k = runmed_k)
+
+# --------- run CATALYST ---------
+sm <- metadata(sce_bead)$spillover_matrix
+sce_catalyst <- CATALYST::compCytof(sce, sm, overwrite = FALSE)
+
+# --------- beads experiment ---------
+
+tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
+tb_bead <- mutate(
+  tb_bead, 
+  barcode = ifelse(barcode == ch, paste(ch, "(target)"), barcode)
+  )
+
+p_beads <- tb_bead %>%
+  ggplot(aes(tfm(.data[[ch_metal]]), color = barcode)) +
+  geom_density(adjust = 1, linewidth = 0.8) +
+  ylab("density") + 
+  ggtitle("Beads Experiment") +
+  xlim(x_lim)
+
+# --------- before and after ---------
+
+exprs_spillr <- sce_spillr %>% 
+  assay("exprs") %>%
+  t() %>%
+  as_tibble() %>%
+  mutate(method = "uncorrected")
+compexprs_spillr <- sce_spillr %>% 
+  assay("compexprs") %>%
+  t() %>%
+  as_tibble() %>%
+  mutate(method = "spillR")
+compexprs_catalyst <- sce_catalyst %>% 
+  assay("compexprs") %>%
+  t() %>%
+  as_tibble() %>%
+  mutate(method = "CATALYST")
+combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
+combo <- combo %>% select(all_of(c(ch, "method")))
+combo$method <- factor(combo$method, 
+                       levels = c("uncorrected", "CATALYST", "spillR"))
+
+p_before_after <- combo %>% 
+  filter(.data[[ch]] > 0) %>%
+  ggplot(aes(.data[[ch]], color = method, linetype = method)) + 
+  geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
+  xlab(ch_name) +
+  ggtitle("Spillover Compensation on Real Cells (Only Positive Counts)") +
+  xlim(x_lim)
+
+# --------- spillover probability curves ---------
+
+tb_spill_prob <- metadata(sce_spillr)$spillover_est[[ch_metal]]
+tb_spill_prob$k <- as.factor(runmed_k)
+  
+p_spill <- tb_spill_prob %>%
+  ggplot(aes(tfm(.data[[ch_metal]]), spill_prob, color = k)) +
+  geom_line(linewidth = 0.8) +
+  ylab("probability") + 
+  ggtitle("Estimated Spillover") + 
+  xlim(x_lim)
+
+# --------- combine everything ---------
 plot_grid(
-  plot_grid(plotlist = p_pair_k3, nrow = 2, align = "v"),
-  plot_grid(plotlist = p_pair_k7, nrow = 2, align = "v"),
-  nrow = 1, labels = c("A", "B")
+  p_beads, p_before_after, p_spill, 
+  ncol = 1, align = "v", labels = c("A", "B", "C")
 )
 ```
 
@@ -621,7 +681,7 @@ Reducing the noise of the estimated marker count distributions may be a promisin
 
 # Acknowledgments {-}
 
-We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. \textcolor{red}{Alexander, can you check with him if this is OK: We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved our method and the paper}.
+We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. \textcolor{red}{Alexander, can you check with Antoine if this is OK: We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved our method and the paper}.
 
 # References {-}
 
