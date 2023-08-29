@@ -44,7 +44,7 @@ Mass cytometry makes it possible to count a large number of proteins simultaneou
 
 @catalyst propose a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single type of antibody. The slope of the regression line between target antibody and non-target antibodies represents the spillover proportion between channels. @miao2021ab attempt to solve spillover by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous versions rely on an estimate for the spillover matrix. The spillover matrix encodes the pairwise spillover proportion between channels. We avoid estimating a spillover matrix and instead model spillover by fitting a mixture model to the observed counts. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we transfer the spillover distribution to the real experiment instead of just the spillover proportion encoded in the spillover matrix.
 
-```{r intro-example, fig.height=3, fig.width=6, out.width="75%", fig.align="center", fig.cap="Two-dimensional histograms of cell counts. The blue shaded rectangle is an estimate of spillover from CD36 (Nd144Di) into CD4 (Nd145Di). Our method compensates for some counts that fall inside this rectangle. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", echo=FALSE, warning=FALSE, message=FALSE}
+```{r intro-example, fig.height=3, fig.width=6, out.width="70%", fig.align="center", fig.cap="Two-dimensional histograms of cell counts. The blue shaded rectangle is an estimate of spillover from CD36 (Nd144Di) into CD4 (Nd145Di). Our method compensates for some counts that fall inside this rectangle. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 
@@ -271,7 +271,7 @@ where $\mathbf{1}(\cdot)$ is the indicator function.
 
 * Initialization: For the mixture probability vector, we assign probability $0.9$ to the the target marker and divide the probability $0.1$ among the spillover markers, 
 $$
-\hat{\pi}_{1} = 0.9 \text{ and } \hat{\pi}_i = 1/(K-1) \text{ for all } i > 1,
+\hat{\pi}_{1} = 0.9 \text{ and } \hat{\pi}_i = 0.1/(K-1) \text{ for all } i > 1,
 $$ 
 and evaluate the $k$th mixture component using its empirical CDF with equal weights for all data points,
 $$
@@ -746,11 +746,11 @@ P_YZ
 
 We initialize the mixture probabilities with the discrete uniform, 
 $$
-\hat{\pi}_1 = 0.1 \qquad \hat{\pi}_2 = 0.9.
+\hat{\pi}_1 = 0.9 \qquad \hat{\pi}_2 = 0.1.
 $$ 
 
 ```{r}
-pi <- c(9/10, 1/10)
+pi <- c(0.9, 0.1)
 ```
 
 Now, we update these initial values using the E and M-steps.
@@ -758,8 +758,8 @@ Now, we update these initial values using the E and M-steps.
 * E-step: Calculate the posterior probability for the true marker, and the spillover marker,
 $$
 \begin{aligned}
-& \widehat{P}(Z_i = 1 \mid Y_i = 2)  = \frac{9/10 \cdot 1/6}{9/10 \cdot 1/6 + 1/10 \cdot 2/3} = 0.69 \qquad & \widehat{P}(Z_i = 2 \mid Y_i = 2) = 1 - 0.69 = 0.31 \\
-& \widehat{P}(Z_i = 1 \mid Y_i = 3)  = \frac{9/10 \cdot 2/6}{9/10 \cdot 2/6 + 1/10 \cdot 1/3} = 0.9 \qquad & \widehat{P}(Z_i = 2 \mid Y_i = 3) = 1 - 0.9 = 0.1 \\
+& \widehat{P}(Z_i = 1 \mid Y_i = 2)  = \frac{0.9 \cdot 1/6}{0.9 \cdot 1/6 + 0.1 \cdot 2/3} = 0.692 \qquad & \widehat{P}(Z_i = 2 \mid Y_i = 2) = 1 - 0.692 = 0.308 \\
+& \widehat{P}(Z_i = 1 \mid Y_i = 3)  = \frac{0.9 \cdot 2/6}{0.9 \cdot 2/6 + 0.1 \cdot 1/3} = 0.9 \qquad & \widehat{P}(Z_i = 2 \mid Y_i = 3) = 1 - 0.9 = 0.1 \\
 & \widehat{P}(Z_i = 1 \mid Y_i = 5)  = 1 \\
 & \widehat{P}(Z_i = 1 \mid Y_i = 17) = 1.
 \end{aligned}
@@ -776,7 +776,7 @@ P_ZY
 
 * M-step: Update the mixing probability vector,
 $$
-\hat{\pi}_1 = \frac{0.9 + 1 + 1 + 0.9 + 1 + 0.69}{6} = 0.915 \qquad \hat{\pi}_2 = 1 - \hat{\pi}_1 = 0.085,
+\hat{\pi}_1 = \frac{0.9 + 1 + 1 + 0.9 + 1 + 0.692}{6} = 0.915 \qquad \hat{\pi}_2 = 1 - \hat{\pi}_1 = 0.085,
 $$
 
 ```{r}
@@ -790,10 +790,10 @@ pi
 and re-estimate the distribution for the target marker using the posterior probabilities as weights, keep the non-target marker at its initial value, 
 $$
 \begin{aligned}
-& \widehat{P}(Y_i = 2 \mid Z_i = 1)  =  0.0476 \qquad & \widehat{P}(Y_i = 2 \mid Z_i = 2) =  2/3 \\
-& \widehat{P}(Y_i = 3 \mid Z_i = 1)  =  0.238 & \widehat{P}(Y_i = 3 \mid Z_i = 2) = 1/3 \\
-& \widehat{P}(Y_i = 5 \mid Z_i = 1)  =  0.238 & \\
-& \widehat{P}(Y_i = 17 \mid Z_i = 1) =  0.476 &
+& \widehat{P}(Y_i = 2 \mid Z_i = 1)  =  0.126 \qquad & \widehat{P}(Y_i = 2 \mid Z_i = 2) =  2/3 \\
+& \widehat{P}(Y_i = 3 \mid Z_i = 1)  =  0.328 & \widehat{P}(Y_i = 3 \mid Z_i = 2) = 1/3 \\
+& \widehat{P}(Y_i = 5 \mid Z_i = 1)  =  0.182 & \\
+& \widehat{P}(Y_i = 17 \mid Z_i = 1) =  0.364 &
 \end{aligned}
 $$
 
@@ -811,8 +811,8 @@ P_YZ
 and calculate the spillover probability estimate,
 $$
 \begin{aligned}
-& \widehat{P}(\text{spillover} \mid Y_i = 2) = 1 - \frac{7/10 \cdot 0.0476}{7/10 \cdot 0.0476 + 3/10 \cdot 2/3} = 0.857 \\
-& \widehat{P}(\text{spillover} \mid Y_i = 3) = 1 - \frac{7/10 \cdot 0.238}{7/10 \cdot 0.238 + 3/10 \cdot 1/3} = 0.375 \\
+& \widehat{P}(\text{spillover} \mid Y_i = 2) = 1 - \frac{0.915 \cdot 0.126}{0.915 \cdot 0.126 + 0.085 \cdot 2/3} = 0.33 \\
+& \widehat{P}(\text{spillover} \mid Y_i = 3) = 1 - \frac{0.915 \cdot 0.328}{0.915 \cdot 0.328 + 0.085 \cdot 1/3} = 0.09 \\
 & \widehat{P}(\text{spillover} \mid Y_i = 5) = 0 \\
 & \widehat{P}(\text{spillover} \mid Y_i = 17) = 0.
 \end{aligned}
