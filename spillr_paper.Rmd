@@ -5,6 +5,7 @@ date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The
 output:
   bookdown::pdf_document2: 
     toc: false
+    keep_tex: true
 bibliography: spillr_paper.bib
 csl: style.csl
 link-citations: true
@@ -109,7 +110,7 @@ In Section \@ref(methods), we present our mixture model and link it to calculati
 
 ## Example
 
-```{r method-example, fig.height=7, fig.width=7, out.width="75%", fig.align="center", fig.cap='A: Gaussian kernel density plot of target and spillover markers. B: The solid black curve represents the spillover probability estimated with our method with smoothing parameter $k = 11$. The grey curve is the estimate with $k = 3$. Larger values yield smoother spillover probability curves. C: Frequency polygons of marker CD3 (Yb173Di) comparing our method to another method, and no correction. Zero counts are not plotted. See Table 1 for the zero counts and means. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
+```{r method-example, fig.height=7, fig.width=7, out.width="75%", fig.align="center", fig.cap='A: Gaussian kernel density plot of target and spillover markers. B: The solid black curve represents the spillover probability estimated with our method with smoothing parameter $k = 11$. The grey curve is the estimate with $k = 3$. Larger values yield smoother spillover probability curves. C: Frequency polygons of marker CD3 (Yb173Di) comparing no correction, our method, and another method. Zero counts are not plotted. See Table 1 for the zero counts and means. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 ch <- "CD3.2"
@@ -237,18 +238,25 @@ Panel B has a solid black and gray curves representing our spillover probability
 zeros <- combo %>%
   filter(.data[[ch]] == 0 | is.na(.data[[ch]])) %>% 
   group_by(correction) %>% 
-  tally(name = "zeros")
+  tally(name = "zeros or \\texttt{NA}'s")
 
 means <- combo %>% 
-  filter(.data[[ch]] > 0 | !is.na(.data[[ch]])) %>% 
+  filter(!is.na(.data[[ch]])) %>% 
   group_by(correction) %>%
   summarize(mean = mean(.data[[ch]]))
 
-left_join(zeros, means, by = "correction") %>%
-  kableExtra::kbl(caption = "Summaries of Figure 2C. The mean is calculated after excluding zeros.", booktabs = T, digits = 2)
+zeros_means <- left_join(zeros, means, by = "correction")
+levels(zeros_means$correction)[2] <- "\\texttt{spillR}"
+levels(zeros_means$correction)[3] <- "other (\\texttt{CATALYST})"
+
+zeros_means %>%
+  kableExtra::kbl(
+    caption = "Additional summaries of the data underlying Figure 2C.", 
+    booktabs = T, digits = 2, escape = FALSE
+    )
 ```
 
-Panel C displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method, `spillR`, masks most markers in the low counts up to two, about 25% to 50% in the medium counts range between two and four, and keeps counts above four. Larger counts are not affected by the correction, as can be seen by the overlap of both curves. In contrast, the other method, `CATALYST`, shifts large counts to the left, and shifts medium counts to low counts or zero counts. Zero counts (or equivalently `NA` counts for `spillR`) and mean counts after excluding the zero counts are shown in Table \@ref(tab:method-example-summary).
+Panel C displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method, `spillR`, masks most markers in the low counts up to two, about 25% to 50% in the medium counts range between two and four, and keeps counts above four. Larger counts are not affected by the correction, as can be seen by the overlap of both curves. In contrast, the other method, `CATALYST`, shifts large counts to the left, and shifts medium counts to low counts or zero counts. Zero counts (or equivalently `NA` counts for `spillR`) and mean counts are shown in Table \@ref(tab:method-example-summary).
 
 ## Definition of Spillover Probability and Assumptions
 
