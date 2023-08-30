@@ -109,7 +109,7 @@ In Section \@ref(methods), we present our mixture model and link it to calculati
 
 ## Example
 
-```{r method-example, fig.height=7, fig.width=7, out.width="75%", fig.align="center", fig.cap='A: Gaussian kernel density plot of target and spillover markers. B: The solid black curve represents the spillover probability estimated with our method with smoothing parameter $k = 11$. The grey curve is the estimate with $k = 3$. Larger values yield smoother spillover probability curves. C: Frequency polygons of marker CD3 (Yb173Di) comparing no correction, our method, and another method. Zero counts are not plotted. See Table 1 for the zero counts and means. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
+```{r method-example, fig.height=7, fig.width=7, out.width="75%", fig.align="center", fig.cap='A: Gaussian kernel density plot of target and spillover markers. B: The solid black curve represents the spillover probability estimated with our method with smoothing parameter $k = 11$. The grey curve is the estimate with $k = 3$. Larger values yield smoother spillover probability curves. C: Frequency polygons of marker CD3 (Yb173Di) comparing no correction, our method, and another method. Zero counts are not plotted. See Table \\ref{tab:method-example-summary} for the zero counts and means. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 ch <- "CD3.2"
@@ -250,7 +250,7 @@ levels(zeros_means$correction)[3] <- "other (\\texttt{CATALYST})"
 
 zeros_means %>%
   kableExtra::kbl(
-    caption = "Additional summaries of the data underlying Figure 2C.", 
+    caption = "Additional summaries of the data underlying Figure \\ref{fig:method-example}C.", 
     booktabs = T, digits = 2, escape = FALSE
     )
 ```
