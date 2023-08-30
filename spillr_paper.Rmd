@@ -109,7 +109,7 @@ In Section \@ref(methods), we present our mixture model and link it to calculati
 
 ## Example
 
-```{r method-example, fig.height=7, fig.width=7, out.width="75%", fig.align="center", fig.cap='A: Gaussian kernel density plot of target and spillover markers. B: The solid black curve represents the spillover probability estimated with our method with smoothing parameter $k = 11$. The grey curve is the estimate with $k = 3$. Larger values yield smoother spillover probability curves. C: Frequency polygons of marker CD3 (Yb173Di) comparing our method to another method, and no correction. Zero counts are not shown. See main text for their values. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
+```{r method-example, fig.height=7, fig.width=7, out.width="75%", fig.align="center", fig.cap='A: Gaussian kernel density plot of target and spillover markers. B: The solid black curve represents the spillover probability estimated with our method with smoothing parameter $k = 11$. The grey curve is the estimate with $k = 3$. Larger values yield smoother spillover probability curves. C: Frequency polygons of marker CD3 (Yb173Di) comparing our method to another method, and no correction. Zero counts are not plotted. See Table 1 for the zero counts and means. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).', echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 ch <- "CD3.2"
@@ -218,11 +218,6 @@ p_before_after <- combo %>%
   xlab(ch_name) +
   ggtitle(str)
 
-zero_tally <- combo %>%
-  filter(.data[[ch]] == 0 | is.na(.data[[ch]])) %>% 
-  pull(correction) %>% 
-  table()
-  
 # --------- combine everything ---------
 plot_grid(
   p_beads + theme(legend.justification = c(0,1)),
@@ -238,7 +233,22 @@ Panel A depicts the marker distributions from the beads experiment. We see that 
 
 Panel B has a solid black and gray curves representing our spillover probability estimates. With the smoothing parameter $k = 11$, we can see that the probability of spillover goes up to around $0.5$. In that case, our correction step assigns around 50% of cells to spillover, and keeps the other 50% at the current value. Low counts have spillover probability of one, which means that our procedure assigns them to spillover and masks them from the sample by setting them to `NA` values. Counts above four stem from spillover with probability zero (and from the actual target with probability one), which means that our procedure keeps them at their raw uncorrected value. The estimated curve with smoothing parameter $k = 4$ is more irregular, suggesting that these fluctuation may be driven by noise. Users can control the smoothing parameter $k$ to choose the desired bias-variance tradeoff.
 
-Panel C displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method, `spillR`, masks most markers in the low counts up to two, about 25% to 50% in the medium counts range between two and four, and keeps counts above four. Larger counts are not affected by the correction, as can be seen by the overlap of both curves. In contrast, the other method, `CATALYST`, shifts large counts to the left, and shifts medium counts to low counts or zero counts. Zero counts are not shown in the plot. The zero counts (or equivalently `NA` counts for `spillR`) are: `r zero_tally["none"]` for no correction, `r zero_tally["spillR"]` for `spillR`, and `r zero_tally["other (CATALYST)"]` for `CATALYST`.
+```{r method-example-summary, echo=FALSE, warning=FALSE, message=FALSE}
+zeros <- combo %>%
+  filter(.data[[ch]] == 0 | is.na(.data[[ch]])) %>% 
+  group_by(correction) %>% 
+  tally(name = "zeros")
+
+means <- combo %>% 
+  filter(.data[[ch]] > 0 | !is.na(.data[[ch]])) %>% 
+  group_by(correction) %>%
+  summarize(mean = mean(.data[[ch]]))
+
+left_join(zeros, means, by = "correction") %>%
+  kableExtra::kbl(caption = "Summaries of Figure 2C. The mean is calculated after excluding zeros.", booktabs = T, digits = 2)
+```
+
+Panel C displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method, `spillR`, masks most markers in the low counts up to two, about 25% to 50% in the medium counts range between two and four, and keeps counts above four. Larger counts are not affected by the correction, as can be seen by the overlap of both curves. In contrast, the other method, `CATALYST`, shifts large counts to the left, and shifts medium counts to low counts or zero counts. Zero counts (or equivalently `NA` counts for `spillR`) and mean counts after excluding the zero counts are shown in Table \@ref(tab:method-example-summary).
 
 ## Definition of Spillover Probability and Assumptions
 
@@ -284,6 +294,7 @@ and evaluate the $k$th mixture component using its empirical CDF with equal weig
 $$
 \widehat{P}(Y_i = y \mid Z_i = k) = \widehat{F}_k(y) - \widehat{F}_k(y-1) \text{ with } w_i = 1/n.
 $$
+We smooth the probability mass function (PMF), $\widehat{P}(Y_i = y \mid Z_i = k)$, using running medians with a windows size of $k$ as implemented in R function `runmed`.
 
 * E-step: We evaluate the posterior probability of a count $y$ belonging to marker $k$,
 $$
@@ -302,7 +313,7 @@ and estimate the new target marker distribution using its empirical CDF with wei
 $$
 \widehat{P}(Y_i = y \mid Z_i = 1) = \widehat{F}_1(y) - \widehat{F}_1(y-1) \text{ with } w_i = \widehat{P} \left(Z_i = 1 \mid Y_i = y \right).
 $$
-We keep the bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
+As before, we smooth the PMF, $\widehat{P}(Y_i = y \mid Z_i = 1)$, using running medians with the same windows size of $k$. We keep the bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
 
 To refine our estimates, we iterate over the E and M-steps until estimates stabilize. We stop iterating when $\hat{\pi}_1$ changes less than $10^{-5}$ from the previous iteration. The final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
