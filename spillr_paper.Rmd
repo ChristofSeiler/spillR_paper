@@ -5,7 +5,6 @@ date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The
 output:
   bookdown::pdf_document2: 
     toc: false
-    keep_tex: true
 bibliography: spillr_paper.bib
 csl: style.csl
 link-citations: true
