@@ -39,15 +39,6 @@ source("plotDiagnostics.R")
 set.seed(23)
 ```
 
-\textcolor{red}{Discussion point:
-Chevrier in their \\
-"Compensation Corrects for Spillover-Mediated Artifacts in Mass Cytometry"
-section focus a lot on correlations and that those correlations were due to spillover
-– do you see why/how they can argue that the correlations were due to spillover and not biologically meaningful? \\
-I may be missing something, but I feel their argument is circular: assuming catalyst removes the right things, then observing a reduction in correlations must mean the correlations were due to spillover which catalyst removed. \\
-We write it's good to preserve correlations, which is in stark contrast.
-This seems like a contraposition to our claim that we may not have a reason to believe those correlations are due to spillover – do we address this or can we say something about this? Perhaps better if we do it rather than waiting for a reviewer to prompt us "but chevrier showed that those correlations are due to spillover, so preserving them is not a good thing after all"?}
-
 # Introduction
 
 Mass cytometry makes it possible to count a large number of proteins simultaneously on individual cells [@bandura2009mass; @bendall2011single]. Although mass cytometry has less spillover---measurements from one channel overlap less with those of another---than flow cytometry [@sp-c; @novo2013generalized], spillover is still a problem and affects downstream analyses such as differential testing [@diffcyt; @seiler2021cytoglmm] or dimensionality reduction [@scater]. Reducing spillover by careful design of experiment is possible [@takahashi2017mass], but a purely experimental approach may be neither sufficient nor efficient [@lun2017influence].
@@ -190,7 +181,7 @@ tb_spill_prob <- lapply(seq(runmed_ks), function(i) {
 p_spill <- tb_spill_prob %>%
   ggplot(aes(tfm(.data[[ch_metal]]), spill_prob, color = k)) +
   geom_line(linewidth = 0.8) +
-  scale_color_manual(values = runmed_colors) +
+  scale_color_manual(name = "window size", values = runmed_colors) +
   xlim(x_lim) +
   xlab(ch_name) +
   ylab("probability") +
@@ -218,7 +209,7 @@ combo <- combo %>% select(all_of(c(ch, "correction")))
 combo$correction <- factor(combo$correction, 
                        levels = c("none", "spillR", "other (CATALYST)"))
 
-str <- paste0("Spillover Compensation on Real Cells (k = ", 
+str <- paste0("Spillover Compensation on Real Cells (window size = ", 
               runmed_ks[select_k_ind], ")")
 p_before_after <- combo %>% 
   filter(.data[[ch]] > 0) %>%
@@ -239,12 +230,6 @@ plot_grid(
 
 Figure \@ref(fig:method-example) illustrates our procedure using a dataset from the `CATALYST` package as an example. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). The markers have two names: the first name is the protein name and the second name in brackets is the conjugated metal. There are bead experiments for each of the spillover markers.
 
-\textcolor{red}{Is the Yb172-Yb172 bead experiment also showing a peak in Yb172 comparable to the Yb172 peak observed in real data? \\
-For the beads to be high-quality we would probably want the beads experiments to have similar peaks in all markers as compared to the multi-stained real-cells? \\
-Otherwise, one may argue that the spilled-into blob around counts of 4 from Yb172 is not realistic as the true Yb172 signal and thus the spillover may be higher/lower in the real cells? \\
-I think this relates to Chevrier establishing that spillover is linear – if true signal is higher, spillover is higher – so if there is two cell types in the real data, one with mean-6 CD3 and mean-6-Yb172 that spills into Yb173, and one with mean-10-Yb172 that spills into Yb173 with higher mean, we would correct both similarly from spillover from Yb172 into Yb173.\\
-If we stick true to our assumption 1, the optimal bead experiments would probably be those, where the peaks in markers have the same distribution as the peaks in the real experiment, i.e. we may need beads with a Yb173 peak around 6, but perhaps also some with a peak at around 12 if there is real cells with Yb173 peaks at around 12, too – does this make sense? If so, should we discuss this very briefly in the last section? \\
-(If I understand correctly, in cyto data one often "gatse out" some cells which have a marker in a certain range, so they would perhaps often not assume that there is only cells with one Yb173 peak but also others which may have another peak?)}
 Panel A depicts the marker distributions from the beads experiment. We see that for this marker the bead experiments are high-quality as the target marker Yb173Di is concentrated around six, similarly to the experiment with real cells. This suggests that the spillover marker values can be transferred to the real experiments. Marker Yb172Di shows large spillover into Yb173Di, and suggests that the left tail of the first mode of the distribution may be attributed to that marker. The other spillover markers have low counts, making it justifiable to set some or all the low counts to zero.
 
 Panel B has a solid black and gray curves representing our spillover probability estimates. With the smoothing parameter $k = 11$, we can see that the probability of spillover goes up to around $0.5$. In that case, our correction step assigns around 50% of cells to spillover, and keeps the other 50% at the current value. Low counts have spillover probability of one, which means that our procedure assigns them to spillover and masks them from the sample by setting them to `NA` values. Counts above four stem from spillover with probability zero (and from the actual target with probability one), which means that our procedure keeps them at their raw uncorrected value. The estimated curve with smoothing parameter $k = 3$ is more irregular, suggesting that these fluctuation may be driven by noise. Users can control the smoothing parameter $k$ to choose the desired bias-variance tradeoff.
@@ -275,8 +260,6 @@ Panel C displays the distribution of our target marker, CD3 (Yb173Di), before an
 
 ## Definition of Spillover Probability and Assumptions
 
-\textcolor{red}{change k to c}
-
 We observe a count $Y_i$ of a target marker in cell $i$. We model the observed $Y_i$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Y_i \mid Z_i = 1$ and spillover marker counts $Y_i \mid Z_i = 2, \dots, Y_i \mid Z_i = K$ with mixing probabilities $\pi_{k} = P(Z_i = k)$ for $k = 1, \dots, K$, 
 $$
 P(Y_i = y) = \sum_{k = 1}^K \pi_k \, P(Y_i = y \mid Z_i = k).
@@ -286,13 +269,7 @@ The first mixing probability is the proportion of true signal in the observed co
 Experimentally, we only measure a sample from the distribution of $Y_i$. The probabilities $\pi_k$ and true distributions $P(Y_i = y \mid Z_i = k)$ are unobserved, and we need to estimate them from data. In many applications, the mixture components are in a parametric family, for example, the negative binomial distribution. As spillover correction is a pre-processing step followed by downstream analyses, choosing the wrong model can introduce biases in the next analysis step. To mitigate such biases, we propose to fit nonparametric mixture components. We make two assumptions that render the components and mixture probabilities identifiable:
 
 * <div id='assumption1'>(A1) Spillover distributions are the same in bead and real experiments.</div> 
-The distribution of $Y_i \mid Z_i = k$ for all $k > 1$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_i \mid Z_i = k$ for all $k > 1$ from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality single stained bead experiments that measure spillover in the same range as the target biological experiment.
-
-\textcolor{red}{Perhaps we can motivate this: \\
-Perhaps this makes sense as one would not stain such that the same cell type would have markers that are close to each other? \\
-I.e. if we stain some cells with Yb173, say to detect cell type A, then observing a cell with Yb173 at around 6 would probably tell us that this is a cell of type A and that the Yb173 value stems from the true distribution. \\
-If we instead observed a Yb173 value of 3, we would perhaps attribute this to spillover and conclude that this was not a type A cell. instead, perhaps, it was a type B cell that we stained with Yb172 and that shows a Yb172 count of 14 (and also spilled a bit into Yb173)? \\
-I am not sure I am making sense, but I think this assumption may actually be quite plausible: We would probably want to avoid staining the same cell with Yb172 and Yb173 as those spill into each other, so if we observe a Yb173 value, we only need to decide "is this a plausible value to have come from a cell that was stained with Yb173 or is it more likely spillover from a cell that was marked with Yb172"}
+The distribution of $Y_i \mid Z_i = k$ for all $k > 1$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_i \mid Z_i = k$ for all $k > 1$ from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality single stained bead experiments that measure spillover in the same range as the target biological experiment. In other words, a high-quality bead experiment for our method works best if the distribution of bead cells is similar to the distribution of real cells.
 
 * <div id='assumption2'>(A2) For each cell $i$, the observed count $Y_i$ can only be due to one distribution.</div> 
 This assumption is already implied by the statement of the mixture model. It allows us to calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from markers $k > 1$,
@@ -325,7 +302,7 @@ and evaluate the $k$th mixture component using its empirical CDF with equal weig
 $$
 \widehat{P}(Y_i = y \mid Z_i = k) = \widehat{F}_k(y) - \widehat{F}_k(y-1) \text{ with } w_i = 1/n.
 $$
-We smooth the probability mass function (PMF), $\widehat{P}(Y_i = y \mid Z_i = k)$, using running medians with a windows size of $k$ as implemented in R function `runmed`.
+We smooth the probability mass function (PMF), $\widehat{P}(Y_i = y \mid Z_i = k)$, using running medians with a fixed window size as implemented in R function `runmed`.
 
 * E-step: We evaluate the posterior probability of a count $y$ belonging to component $k$ (that is, originating from marker $k$),
 $$
@@ -344,7 +321,7 @@ and estimate the new target marker distribution using its empirical CDF with wei
 $$
 \widehat{P}(Y_i = y \mid Z_i = 1) = \widehat{F}_1(y) - \widehat{F}_1(y-1) \text{ with } w_i = \widehat{P} \left(Z_i = 1 \mid Y_i = y \right).
 $$
-As before, we smooth the PMF, $\widehat{P}(Y_i = y \mid Z_i = 1)$, using running medians with the same windows size of $k$. We keep the bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
+As before, we smooth the PMF, $\widehat{P}(Y_i = y \mid Z_i = 1)$, using running medians with the same window size. We keep the bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
 
 To refine our estimates, we iterate over the E and M-steps until estimates stabilize. We stop iterating when $\hat{\pi}_1$ changes less than $10^{-5}$ from the previous iteration. The final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
@@ -606,10 +583,7 @@ We choose three different experiments to test `spillR` against different bead an
 ### Bead Shift (A1)
 -->
 
-\textcolor{red}{"measured spillover" twice at tau = -30 the spillover in the simulated real cells has mean 40 instead of the spillover with mean 70 in the simulated bead observations \\
-maybe it's a good place to re-iterate, that our compensation increases means, as it should, in contrast to e.g. chevrier; \\
-also, in all cases, even for bad beads experiments, the compensation improves the means, I think that's noteworthy (similar to panel B below), the compensation does not fail, it just corrects less well if the beads are not well aligned with the real experiment}
-In the first experiment (panel A), we shift the measured beads spillover away from the true bead spillover to probe [(A1)](#assumption1). We test a wide range of bead shifts from $\tau = -30$ to no shift at $\tau = 0$. At $\tau = -30$, the measured spillover---the first mode of the yellow density---is shifted away from the measured spillover---the blue density. Such low-quality beads cause both the observed and compensated mean to be below the true mean. As the beads quality improves, the compensated signal move closer to the true mean. As we increase $\tau$ the first mode of the yellow density moves towards the blue density. This represents high-quality bead experiments.
+In the first experiment (panel A), we shift the measured beads spillover away from the true bead spillover to probe [(A1)](#assumption1). We test a wide range of bead shifts from no shift at $\tau = 0$ to $\tau = -30$. At $\tau = -30$, the measured spillover (the first mode of the yellow density) is shifted away from the actual spillover (the blue density). Such low-quality beads cause both the observed and compensated mean to be below the true mean. As the beads quality improves, the compensated signal move closer to the true mean. As we increase $\tau$ the first mode of the yellow density moves towards the blue density. This represents high-quality bead experiments. In all cases, even for bad beads experiments, our compensation improves the means. Our compensation also increases means, as it should, in contrast to e.g. @catalyst.
 
 <!--
 ### Model Misspecification (A2)
@@ -730,25 +704,23 @@ We compare the two methods on the same markers as in the original `CATALYST` pap
 
 In all six panels (A--F), we observed that `spillR` compensates most strongly in the low counts. In panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di), `CATALYST` can be seen to compensate strongly in the middle range. It removes the spherical pattern that shows correlation between the two markers. `spillR` preserves this correlation structure and only masks out the lower counts of CD3 (Yb173Di). This highlights a key difference between `spillR` and `CATALYST`: `spillR` does not correct all counts by shrinking them, but rather removes some counts, following the idea that the distribution of the remaining counts is close to the true distribution. `CATALYST` follows another strategy by shrinking counts across the entire range.
 
-The color code of the two-dimensional histograms indicates the absolute number of cells that fall into one hexagon bin. The uncorrected and `spillR` corrected histograms can contain different absolute number of cells because of how `spillR` rounds counts to integers. The raw mass cytometry data is often not count data due to proprietary post-processing of the manufacturer of the mass cytometer. That is why we convert mass cytometry data to count data, we convert the raw values to the next lower integer. The uncorrected counts do not undergo this pre-processing step. 
-
-\textcolor{red}{uncorrected data is the data from the machine with some inherent preprocessing and may not be counts? \\
-for spillr, we take this observed data, round it down to the closes integer (is this the common practice also used by CATALYST?) and then treat it as count data, do our spillR correction which just masks some counts but all values remain valid count integer data?}
+The color code of the two-dimensional histograms indicates the absolute number of cells that fall into one hexagon bin. The uncorrected and `spillR` corrected histograms can contain different absolute number of cells because of how `spillR` rounds counts to integers. The raw mass cytometry data is often not count data due to proprietary post-processing of the manufacturer of the mass cytometer. That is why we convert mass cytometry data to count data, we convert the raw values to the next lower integer. The uncorrected counts do not undergo this pre-processing step. `CATALYST` does not perform this pre-processing step.
 
 # Discussion
 
-The experiment for [(A1)](#assumption1) shows that the mean count after `spillR` correction is closer to the true mean over a wide range of bead shifts. This indicates that our method can perform well even if the bead experiments are imperfect. The experiment for [(A2)](#assumption2) shows that our method is also robust to model misspecification. Additionally, misspecification can be addressed by adding all channels if necessary. The increase in computational cost when adding channels is relatively minor as our method scales linearly in the number of spillover markers. The experiment on bimodal bead distributions shows that the mean count after correction is still closer to the true mean even with bimodal bead distributions.
-\textcolor{red}{Not only bimodality, but also if the spillover is actually larger than the true signal}
+The experiment for [(A1)](#assumption1) shows that the mean count after `spillR` correction is closer to the true mean over a wide range of bead shifts. This indicates that our method can perform well even if the bead experiments are imperfect. If the difference between distributions of beads and real cells is large, then one option is to rerun the bead experiments to reduce this gap. The experiment for [(A2)](#assumption2) shows that our method is also robust to model misspecification. Additionally, misspecification can be addressed by adding all channels if necessary. The increase in computational cost when adding channels is relatively minor as our method scales linearly in the number of spillover markers. The experiment on bimodal bead distributions shows that the mean count after correction is still closer to the true mean even with bimodal bead distributions, and also if the spillover is actually larger than the true signal.
 
-In our comparison to `CATALYST` on real data, we observe the effect of the two different correction strategies. `CATALYST` essentially shrinks counts towards zero by minimizing a non-negative least squares objective. It assumes that spillover is linear up to counts of 5,000. The applied shrinkage is the same for low counts (e.g., below 10) and high counts (e.g., more than 100). By contrast, `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment. If counts are in the spillover range (which mostly applies to low counts), they are corrected strongly and set to `NA` values. If counts are not in the spillover range, then they are left unchanged. Despite setting values to `NA`, correlations between markers are preserved. The marker correlation between HLA-ABC (Yb172Di) and CD3 (Yb173Di) illustrates this point. `CATALYST` removes the positive correlation, whereas `spillR` keeps the correlation for the higher counts. Compensation methods should try to remove spillover while keeping biological meaningful signal for unbiased downstream analyses. Another advantage of our method is the diagnostic plot of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation.
-\textcolor{red}{We can explicitly mention that correlations are used to identify co-regulated proteins/genes \\
-"Characterization of newly identified clusters or signaling network inference often involves the systematic correlation analysis of markers at the single-cell level to identify co-regulated proteins or genes, and this approach can be strongly affected by channel interference."}
+In our comparison to `CATALYST` on real data, we observe the effect of the two different correction strategies. `CATALYST` essentially shrinks counts towards zero by minimizing a non-negative least squares objective. It assumes that spillover is linear up to counts of 5,000. The applied shrinkage is the same for low counts (e.g., below 10) and high counts (e.g., more than 100). By contrast, `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment. In other words, the optimal bead experiments has the same peaks than in the real experiments.
+
+If counts are in the spillover range (which mostly applies to low counts), they are corrected strongly and set to `NA` values. If counts are not in the spillover range, then they are left unchanged. Despite setting values to `NA`, correlations between markers are preserved. The marker correlation between HLA-ABC (Yb172Di) and CD3 (Yb173Di) illustrates this point. `CATALYST` removes the positive correlation, whereas `spillR` keeps the correlation for the higher counts. Compensation methods should try to remove spillover while keeping biological meaningful signal for unbiased downstream analyses. Further experiments on the correlation structure between these markers are necessary to resolve the discrepancy between the two methods. This is an important point as discovering correlations between markers can lead to the discovery of new clusters or signaling networks.
+
+Another advantage of our method is the diagnostic plot of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation.
 
 Currently, we do not take advantage of the target bead distribution in our estimation procedure. We only use spillover bead distributions. In future work, we aim to investigate ways to incorporate the target distribution into our estimation in a nonparametric manner. In our view, one of the biggest strengths of our current method is that it does not assume a specific parametric model for count data. We believe that this is crucial because spillover is just one step that precedes many downstream analysis steps, and avoiding the introduction of bias is thus our top priority.
 
 # Acknowledgments {-}
 
-We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. \textcolor{red}{Alexander, can you check with Antoine if this is OK: We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved our method and the paper}.
+We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. \textcolor{red}{We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved our method and the paper. OK?}
 
 # References {-}
 
@@ -918,10 +890,10 @@ The generative model for beads is an independent copy of the unshifted $Y \mid Z
 Generative model for real cells $Y$ of this experiment:
 $$
 \begin{aligned}
-Z              & \sim \text{Categorical}(1 - (0.1 + \tau), 0.1, \tau) & \qquad \text{(spillover probability } \tau \text{)} \\
-(Y \mid Z = 1) & \sim \text{Poisson}(100)                             & \qquad \text{(target)} \\
-(Y \mid Z = 2) & \sim \text{Poisson}(70)                              & \qquad \text{(spillover)} \\
-(Y \mid Z = 3) & \sim \text{Poisson}(70)                              & \qquad \text{(hidden spillover)}. \\
+S              & \sim \text{Poisson}(70)     & \qquad \text{(spillover)} \\
+T              & \sim \text{Poisson}(100)    & \qquad \text{(target)} \\
+(Y \mid Z = 1) & = (1-\tau) T + \tau S       & \qquad \text{(mixture)} \\
+(Y \mid Z = 2) & = (1-\tau) S + \tau T       & \qquad \text{(mixture)}
 \end{aligned}
 $$
 The generative model for beads is an independent copy of $Y \mid Z > 1$.
