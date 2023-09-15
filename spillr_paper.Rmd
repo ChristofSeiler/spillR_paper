@@ -1,7 +1,7 @@
 ---
 title: "`spillR`: Spillover Compensation in Mass Cytometry Data"
-author: "Marco Guazzini$^{1}$, Alexander G. Reisach$^{2}$, Sebastian Weichwald$^{3}$, and Christof Seiler$^{1,4}$"
-date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^3$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n $^4$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n \\\n `r gsub(' 0', ' ', format(Sys.time(), '%B %d, %Y'))`"
+author: "Marco Guazzini$^{1}$, Alexander G. Reisach$^{2}$, Sebastian Weichwald$^{3}$, and Christof Seiler$^{1,4,5}$"
+date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^3$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n $^4$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n $^5$Center of Experimental Rheumatology, Department of Rheumatology, \\\n University Hospital Zurich, University of Zurich, Switzerland \\\n \\\n `r gsub(' 0', ' ', format(Sys.time(), '%B %d, %Y'))`"
 output:
   bookdown::pdf_document2: 
     toc: false
@@ -209,7 +209,7 @@ combo <- combo %>% select(all_of(c(ch, "correction")))
 combo$correction <- factor(combo$correction, 
                        levels = c("none", "spillR", "other (CATALYST)"))
 
-str <- paste0("Spillover Compensation on Real Cells (window size = ", 
+str <- paste0("Spillover Compensation on Real Cells (window size ", 
               runmed_ks[select_k_ind], ")")
 p_before_after <- combo %>% 
   filter(.data[[ch]] > 0) %>%
@@ -252,7 +252,7 @@ levels(zeros_means$correction)[3] <- "other (\\texttt{CATALYST})"
 zeros_means %>%
   kableExtra::kbl(
     caption = "Additional summaries of the data underlying Figure \\ref{fig:method-example}C.", 
-    booktabs = T, digits = 2, escape = FALSE
+    booktabs = TRUE, digits = 2, escape = FALSE
     )
 ```
 
@@ -384,10 +384,10 @@ compute_average <- function(data) {
 
 generate_data_a <- function(tau) {
   # real experiment
+  I    <- rbinom(n = n_real, size = 1, prob = spill_prob)
   Z_target <- rpois(n = n_real, lambda = lambda_real)
   Z_spill  <- rpois(n = n_real, lambda = lambda_bead+tau)
-  spill    <- rbinom(n = n_real, size = 1, prob = spill_prob)
-  Y        <- (1-spill)*Z_target + spill*Z_spill
+  Y        <- (1-I)*Z_target + I*Z_spill
   df_real  <- tibble(Y = Y, barcode = "Y", type = "real cells")
   
   # bead experiment
@@ -414,19 +414,23 @@ d_a <- bind_cols(d_a, d_averages)
 
 generate_data_b <- function(tau) {
   # real experiment
-  Z_target <- rpois(n = n_real, lambda = lambda_real)
-  Z_spill  <- rpois(n = n_real, lambda = lambda_bead)
-  Z_spill_hidden <- rpois(n = n_real, lambda = lambda_bead)
-  no_spill <- 1 - sum(spill_prob, tau)
-  spill_prob_vec <- c(no_spill, spill_prob, tau)
-  spill    <- rmultinom(n = n_real, size = 1, prob = spill_prob_vec)
-  Y        <- spill[1, ]*Z_target + spill[2, ]*Z_spill + spill[3, ]*Z_spill_hidden
+  I <- rbinom(n = n_real, size = 1, prob = spill_prob)
+  T <- rpois(n = n_real, lambda = lambda_real)
+  S <- rpois(n = n_real, lambda = lambda_bead)
+  M <- rbinom(n = n_real, size = 1, prob = tau)
+  Z_target <- (1-M)*T + M*S
+  Z_spill  <- (1-M)*S + M*T
+  Y        <- (1-I)*Z_target + I*Z_spill
   df_real  <- tibble(Y = Y,
                      barcode = "Y",
                      type = "real cells")
   
   # bead experiment
-  Z_bead   <- rpois(n = n_bead, lambda = lambda_bead)
+  I <- rbinom(n = n_bead, size = 1, prob = spill_prob)
+  T <- rpois(n = n_bead, lambda = lambda_real)
+  S <- rpois(n = n_bead, lambda = lambda_bead)
+  M <- rbinom(n = n_bead, size = 1, prob = tau)
+  Z_bead <- (1-M)*S + M*T
   df_bead  <- tibble(Y = Z_bead,
                      barcode = "Z",
                      type = "beads")
@@ -437,7 +441,7 @@ generate_data_b <- function(tau) {
 
 # create parameter combination
 d_b <- expand.grid(
-  tau = seq(from = 0, to = 0.1, length.out = 30), 
+  tau = seq(from = 0, to = 0.5, length.out = 30), 
   replicate = 1:n_rep,
   title = "Model Misspecification"
   )
@@ -451,21 +455,21 @@ d_b <- bind_cols(d_b, d_averages)
 
 generate_data_c <- function(tau) {
   # real experiment
-  Z_target  <- rpois(n = n_real, lambda = lambda_real)
-  Z_spill1  <- rpois(n = n_real, lambda = lambda_bead)
-  Z_spill2  <- rpois(n = n_real, lambda = lambda_bead_high)
-  mode      <- rbinom(n = n_real, size = 1, prob = tau)
-  Z_spill   <- (1-mode)*Z_spill1 + mode*Z_spill2
-  spill     <- rbinom(n = n_real, size = 1, prob = spill_prob)
-  Y         <- (1-spill)*Z_target + spill*Z_spill
+  I        <- rbinom(n = n_real, size = 1, prob = spill_prob)
+  Z_target <- rpois(n = n_real, lambda = lambda_real)
+  H        <- rbinom(n = n_real, size = 1, prob = tau)
+  Z_spill1 <- rpois(n = n_real, lambda = lambda_bead)
+  Z_spill2 <- rpois(n = n_real, lambda = lambda_bead_high)
+  Z_spill   <- (1-H)*Z_spill1 + H*Z_spill2
+  Y         <- (1-I)*Z_target + I*Z_spill
   df_real   <- tibble(Y = Y, barcode = "Y", type = "real cells")
   
   # bead experiment
-  Z_bead1   <- rpois(n = n_real, lambda = lambda_bead)
-  Z_bead2   <- rpois(n = n_real, lambda = lambda_bead_high)
-  mode      <- rbinom(n = n_real, size = 1, prob = tau)
-  Z_bead    <- (1-mode)*Z_bead1 + mode*Z_bead2
-  df_bead   <- tibble(Y = Z_bead, barcode = "Z", type = "beads")
+  H       <- rbinom(n = n_real, size = 1, prob = tau)
+  Z_bead1 <- rpois(n = n_real, lambda = lambda_bead)
+  Z_bead2 <- rpois(n = n_real, lambda = lambda_bead_high)
+  Z_bead  <- (1-H)*Z_bead1 + H*Z_bead2
+  df_bead <- tibble(Y = Z_bead, barcode = "Z", type = "beads")
 
   list(df_real = df_real, df_bead = df_bead, 
        Z_target = Z_target, Z_spill = Z_spill)
@@ -505,7 +509,7 @@ tb_summary_long <- pivot_longer(
 
 ```{r simulated-experiments-critical-values, echo = FALSE, warning = FALSE, message = FALSE}
 # --------- helper function ---------
-plot_critical <- function(experiment, taus, simulated, reverse = F) {
+plot_critical <- function(experiment, taus, simulated, reverse = FALSE) {
   
   var_names <- c(
     "Y",
@@ -529,17 +533,19 @@ plot_critical <- function(experiment, taus, simulated, reverse = F) {
   
   g_overview <- tb_summary_long %>% 
     filter(title == experiment) %>%
-    ggplot(aes(tau, count, color = mean)) +
+    ggplot(aes(tau, count, color = mean, linetype = mean)) +
     geom_line() + 
     scale_color_manual(values = c("#E69F00", "#000000", "#009E73")) +
+    scale_linetype_manual(values = c("solid", "dashed", "solid")) +
     ylab("mean")
   if(reverse) g_overview <- g_overview + scale_x_reverse()
   
   g_critical <- df_simulated %>%
-    ggplot(aes(count, color = variable)) + 
+    ggplot(aes(count, color = variable, linetype = variable)) + 
     geom_density(key_glyph = "path") +
     facet_wrap(~tau, labeller = label_both) +
-    scale_color_manual(values = c("#E69F00", "#000000", "#56B4E9", "#0072B2"))
+    scale_color_manual(values = c("#E69F00", "#000000", "#56B4E9")) +
+    scale_linetype_manual(values = c("solid", "dashed", "solid"))
   
   plot_grid(
     ggdraw() + 
@@ -556,12 +562,12 @@ plot_critical <- function(experiment, taus, simulated, reverse = F) {
 experiment <- "Bead Shift"
 taus <- c(0, -15, -30)
 simulated <- lapply(taus, generate_data_a)
-p_a <- plot_critical(experiment, taus, simulated, reverse = T)
+p_a <- plot_critical(experiment, taus, simulated, reverse = TRUE)
 
 # --------- B ---------
 
 experiment <- "Model Misspecification"
-taus <- c(0, 0.05, 0.1)
+taus <- c(0, 0.25, 0.5)
 simulated <- lapply(taus, generate_data_b)
 p_b <- plot_critical(experiment, taus, simulated)
 
@@ -589,13 +595,7 @@ In the first experiment (panel A), we shift the measured beads spillover away fr
 ### Model Misspecification (A2)
 -->
 
-In the second experiment (panel B), we add a hidden spillover marker to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the hidden spillover is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the beads experiment. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct; otherwise assumption [(A2)](#assumption2) is violated. \textcolor{red}{(though, I am not actually sure this violates A2, see next comment)} At $\tau = 0.1$, the hidden spillover is as large as the measured spillover. The compensated means are closer to the true means across the test range. The observed mean diverges from the true mean with increasing $\tau$ due to the transfer of mass from the signal to the spillover distribution.
-\textcolor{red}{I am not sure this is a violation of A2 as long as both $Z=2$ and $Z=3$ have the same lambda? \\
-Doesn't this experiment then just amount to having more or less spillover, that is, different $pi_i$ probabilities? \\
-I somehow think the hidden spillover component should have a different Poisson parameter, so that it's truly a different component - the beads experiment would be with $\lambda=70$, while the real cells could be the true component, the $\lambda=70$ component or the $\lambda=X$ component, while only modelling one spillover component, then A2 would be violated? although, strictly speaking, that would still not violate A2 as we could view the two components as one (since we do not assume that the hidden component follows a Poisson distribution); a violation of A2 would probably be adding the spillover to the real count in some fraction of the cases, i.e. \\
-$Y | Z = 1 \sim (1-\tau)marker + \tau*spillover$ \\
-$Y | Z = 2 \sim (1-\tau)spillover + \tau*marker$ \\
-so for $\tau=0$ no violation of the assumption, but for $\tau=0.5$ maximal violation}
+In the second experiment (panel B), we mixed target and spillover to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the mixture is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the beads experiment. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct, but for $\tau = 0.5$ the assumption [(A2)](#assumption2) is maximally violated. The true mean decrease with increasing $\tau$. Our compensation is closer to the true mean across the tested range.
 
 <!--
 ### High Count Spillover
@@ -877,10 +877,10 @@ This is the result after one iteration.
 Generative model for real cells $Y$ of this experiment:
 $$
 \begin{aligned}
-I              & \sim \text{Bernoulli}(0.1)   & \qquad \text{(spillover indicator)} \\
-Z              & = I + 1                      & \qquad \text{(channel number)} \\
-(Y \mid Z = 1) & \sim \text{Poisson}(100)     & \qquad \text{(target component)} \\
-(Y \mid Z = 2) & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover component with shift)} \\
+I              & \sim \text{Bernoulli}(0.1)                            & \qquad \text{(spillover indicator)} \\
+Z              & = I + 1                                               & \qquad \text{(channel number)} \\
+(Y \mid Z = 1) & \sim \text{Poisson}(100)                              & \qquad \text{(target component)} \\
+(Y \mid Z = 2) & \sim \text{Poisson}(70+\tau)                          & \qquad \text{(spillover component with shift)} \\
 Y              & = (1-I) \cdot (Y \mid Z = 1) + I \cdot (Y \mid Z = 2) & \qquad \text{(mixture)}.
 \end{aligned}
 $$
@@ -896,8 +896,8 @@ Z              & = I + 1                                               & \qquad 
 T              & \sim \text{Poisson}(100)                              & \qquad \text{(target)} \\
 S              & \sim \text{Poisson}(70)                               & \qquad \text{(spillover)} \\
 M              & \sim \text{Bernoulli}(\tau)                           & \qquad \text{(misspecification indicator)} \\
-(Y \mid Z = 1) & = (1-M) T + M S                                       & \qquad \text{(target mixture component)} \\
-(Y \mid Z = 2) & = (1-M) S + M T                                       & \qquad \text{(spillover mixture component)} \\
+(Y \mid Z = 1) & = (1-M) \cdot T + M \cdot S                           & \qquad \text{(target mixture component)} \\
+(Y \mid Z = 2) & = (1-M) \cdot S + M \cdot T                           & \qquad \text{(spillover mixture component)} \\
 Y              & = (1-I) \cdot (Y \mid Z = 1) + I \cdot (Y \mid Z = 2) & \qquad \text{(mixture)}
 \end{aligned}
 $$
@@ -908,12 +908,12 @@ The generative model for beads is an independent copy of $Y \mid Z = 2$.
 Generative model for real cells $Y$ of this experiment:
 $$
 \begin{aligned}
-I               & \sim \text{Bernoulli}(0.1)  & \qquad \text{(spillover indictor)} \\
-Z               & = I + 1                     & \qquad \text{(channel number)} \\
-(Y \mid Z = 1)  & \sim \text{Poisson}(100)    & \qquad \text{(target component)} \\
-H               & \sim \text{Bernoulli}(\tau) & \qquad \text{(high count indicator)} \\
-(S \mid H = 0)  & \sim \text{Poisson}(70)     & \qquad \text{(low count component)} \\
-(S \mid H = 1)  & \sim \text{Poisson}(130)    & \qquad \text{(high count component)} \\
+I               & \sim \text{Bernoulli}(0.1)                            & \qquad \text{(spillover indictor)} \\
+Z               & = I + 1                                               & \qquad \text{(channel number)} \\
+(Y \mid Z = 1)  & \sim \text{Poisson}(100)                              & \qquad \text{(target component)} \\
+H               & \sim \text{Bernoulli}(\tau)                           & \qquad \text{(high count indicator)} \\
+(S \mid H = 0)  & \sim \text{Poisson}(70)                               & \qquad \text{(low count component)} \\
+(S \mid H = 1)  & \sim \text{Poisson}(130)                              & \qquad \text{(high count component)} \\
 ( Y \mid Z = 2) & = (1-H) \cdot (S \mid H = 0) + H \cdot (S \mid H = 1) & \qquad \text{(spillover component)} \\
 Y               & = (1-I) \cdot (Y \mid Z = 1) + I \cdot (Y \mid Z = 2) & \qquad \text{(mixture)}
 \end{aligned}
