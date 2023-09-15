@@ -877,10 +877,11 @@ This is the result after one iteration.
 Generative model for real cells $Y$ of this experiment:
 $$
 \begin{aligned}
-S              & \sim \text{Bernoulli}(0.1)   & \qquad \text{(spillover probability } 0.1 \text{)} \\
-Z              & = S + 1                      & \qquad \text{(pick spillover)} \\
-(Y \mid Z = 1) & \sim \text{Poisson}(100)     & \qquad \text{(target)} \\
-(Y \mid Z = 2) & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover with shift } \tau \text{)}.
+I              & \sim \text{Bernoulli}(0.1)   & \qquad \text{(spillover indicator)} \\
+Z              & = I + 1                      & \qquad \text{(channel number)} \\
+(Y \mid Z = 1) & \sim \text{Poisson}(100)     & \qquad \text{(target component)} \\
+(Y \mid Z = 2) & \sim \text{Poisson}(70+\tau) & \qquad \text{(spillover component with shift)} \\
+Y              & = (1-I) \cdot (Y \mid Z = 1) + I \cdot (Y \mid Z = 2) & \qquad \text{(mixture)}.
 \end{aligned}
 $$
 The generative model for beads is an independent copy of the unshifted $Y \mid Z = 2$ at $\tau = 0$.
@@ -890,26 +891,31 @@ The generative model for beads is an independent copy of the unshifted $Y \mid Z
 Generative model for real cells $Y$ of this experiment:
 $$
 \begin{aligned}
-S              & \sim \text{Poisson}(70)     & \qquad \text{(spillover)} \\
-T              & \sim \text{Poisson}(100)    & \qquad \text{(target)} \\
-(Y \mid Z = 1) & = (1-\tau) T + \tau S       & \qquad \text{(mixture)} \\
-(Y \mid Z = 2) & = (1-\tau) S + \tau T       & \qquad \text{(mixture)}
+I              & \sim \text{Bernoulli}(0.1)                            & \qquad \text{(spillover indicator)} \\
+Z              & = I + 1                                               & \qquad \text{(channel number)} \\
+T              & \sim \text{Poisson}(100)                              & \qquad \text{(target)} \\
+S              & \sim \text{Poisson}(70)                               & \qquad \text{(spillover)} \\
+M              & \sim \text{Bernoulli}(\tau)                           & \qquad \text{(misspecification indicator)} \\
+(Y \mid Z = 1) & = (1-M) T + M S                                       & \qquad \text{(target mixture component)} \\
+(Y \mid Z = 2) & = (1-M) S + M T                                       & \qquad \text{(spillover mixture component)} \\
+Y              & = (1-I) \cdot (Y \mid Z = 1) + I \cdot (Y \mid Z = 2) & \qquad \text{(mixture)}
 \end{aligned}
 $$
-The generative model for beads is an independent copy of $Y \mid Z > 1$.
+The generative model for beads is an independent copy of $Y \mid Z = 2$.
 
 ## High Count Spillover {-}
 
 Generative model for real cells $Y$ of this experiment:
 $$
 \begin{aligned}
-S                & \sim \text{Bernoulli}(0.1)  & \qquad \text{(spillover probability } 0.1 \text{)} \\
-Z                & = S + 1                     & \qquad \text{(pick spillover)} \\
-(Y \mid Z = 1)   & \sim \text{Poisson}(100)    & \qquad \text{(target)} \\
-H                & \sim \text{Bernoulli}(\tau) & \qquad \text{(pick mode with probability } \tau \text{)} \\
-(S \mid H = 0)   & \sim \text{Poisson}(70)     & \qquad \text{(spillover)} \\
-(S \mid H = 1)   & \sim \text{Poisson}(130)    & \qquad \text{(high count spillover)} \\
-( Y \mid Z = 2)  & \overset{d}{=} S            & \qquad \text{(spillover)}.
+I               & \sim \text{Bernoulli}(0.1)  & \qquad \text{(spillover indictor)} \\
+Z               & = I + 1                     & \qquad \text{(channel number)} \\
+(Y \mid Z = 1)  & \sim \text{Poisson}(100)    & \qquad \text{(target component)} \\
+H               & \sim \text{Bernoulli}(\tau) & \qquad \text{(high count indicator)} \\
+(S \mid H = 0)  & \sim \text{Poisson}(70)     & \qquad \text{(low count component)} \\
+(S \mid H = 1)  & \sim \text{Poisson}(130)    & \qquad \text{(high count component)} \\
+( Y \mid Z = 2) & = (1-H) \cdot (S \mid H = 0) + H \cdot (S \mid H = 1) & \qquad \text{(spillover component)} \\
+Y               & = (1-I) \cdot (Y \mid Z = 1) + I \cdot (Y \mid Z = 2) & \qquad \text{(mixture)}
 \end{aligned}
 $$
-We use $\overset{d}{=}$ to denote that both random variables follow the same distribution. The random variable $S$ is the marginal distribution of the bimodal spillover distribution with high counts. The generative model for beads is an independent copy of $Y \mid Z = 2$.
+The generative model for beads is an independent copy of $Y \mid Z = 2$.
