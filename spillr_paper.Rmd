@@ -44,71 +44,7 @@ tfm <- function(x) asinh(x/5)
 
 Mass cytometry makes it possible to count a large number of proteins simultaneously on individual cells [@bandura2009mass; @bendall2011single]. Although mass cytometry has less spillover---measurements from one channel overlap less with those of another---than flow cytometry [@sp-c; @novo2013generalized], spillover is still a problem and affects downstream analyses such as differential testing [@diffcyt; @seiler2021cytoglmm] or dimensionality reduction [@scater]. Reducing spillover by careful design of experiment is possible [@takahashi2017mass], but a purely experimental approach may be neither sufficient nor efficient [@lun2017influence].
 
-@catalyst propose a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single type of antibody. The slope of the regression line between target antibody and non-target antibodies represents the spillover proportion between channels. @miao2021ab attempt to solve spillover by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous versions rely on an estimate for the spillover matrix. The spillover matrix encodes the pairwise spillover proportion between channels. We avoid estimating a spillover matrix and instead model spillover by fitting a mixture model to the observed counts. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we transfer the spillover distribution to the real experiment instead of just the spillover proportion encoded in the spillover matrix.
-
-<!-- 
-
-```{r intro-example, fig.height=3, fig.width=6, out.width="70%", fig.align="center", fig.cap="Two-dimensional histograms of cell counts. The blue shaded rectangle is an estimate of spillover from CD36 (Nd144Di) into CD4 (Nd145Di). Our method compensates for some counts that fall inside this rectangle. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", echo=FALSE, warning=FALSE, message=FALSE}
-# constants
-bc_key <- c(139, 141:156, 158:176)
-
-# helper functions
-colorscale = scale_fill_gradientn(
-  colors = rev(brewer.pal(9, "YlGnBu")),
-  values = c(0, exp(seq(-5, 0, length.out = 100)))
-  )
-
-# --------- left: experiment with beads ---------
-
-sce_spill <- prepData(ss_exp)
-sce_spill <- assignPrelim(sce_spill, bc_key, verbose = FALSE)
-sce_spill <- applyCutoffs(estCutoffs(sce_spill))
-sce_spill <- computeSpillmat(sce_spill)
-counts_spill <- t(assay(sce_spill, "counts"))
-counts_spill <- floor(counts_spill)
-counts_spill <- as_tibble(counts_spill)
-
-channel_names <- rowData(sce_spill)[,"channel_name"]
-names(counts_spill) <- channel_names
-counts_spill <- mutate(counts_spill, barcode = sce_spill$bc_id)
-counts_spill <- filter(counts_spill, barcode == 144)
-counts_spill <- counts_spill %>% select(-barcode)
-counts_spill <- mutate(counts_spill, type = "beads for CD36 (Nd144Di)")
-
-# --------- right: experiment with real cells ---------
-
-data(mp_cells, package = "CATALYST")
-sce <- prepData(mp_cells)
-channel_names <- rowData(sce)[, "channel_name"]
-counts_real <- t(assay(sce, "counts"))
-counts_real <- floor(counts_real)
-colnames(counts_real) <- channel_names
-counts_real <- as_tibble(counts_real)
-counts_real <- mutate(counts_real, type = "real cells")
-
-# --------- combine tables for plotting ---------
-combo <- bind_rows(counts_spill, counts_real)
-max_x <- max(counts_spill[,"Nd144Di"])
-max_y <- max(counts_spill[,"Nd145Di"])
-ggplot(combo, aes(x = tfm(Nd144Di), y = tfm(Nd145Di))) +
-  annotate("rect", 
-           xmin = 0, xmax = tfm(max_x),
-           ymin = 0, ymax = tfm(max_y), 
-           alpha = .1, fill = "blue") +
-  geom_hex(bins = 32) +
-  colorscale +
-  facet_wrap(~type) + 
-  xlab("CD36 (Nd144Di)") +
-  ylab("CD4 (Nd145Di)")
-```
-
-To illustrate the main idea of our work, we consider an example with only two markers (Figure \@ref(fig:intro-example)). The left panel depicts an experiment using beads stained only for CD36 (Nd144Di). In this example, the protein CD36 is conjugated with Nd144Di (Nd is the metal and 144 is the number of neutrons of the isotope). Without any spillover, all beads would have zero cell counts for CD4 (ND145Di). Yet, there are many positive CD4 (ND145Di) bead counts. The blue shaded area provides a reasonable estimate of the range of spillover values. The right panel shows an experiment conducted with real cells. Some of the values in the blue shaded area could in principle be real, low counts, but one would expect real counts to be higher and low counts more likely to be due to spillover. While it is not known how many of the low counts are due to spillover, an estimate can be obtained using the bead experiment. We propose to carry over a weighted version of the blue shaded area to the real experiment using finite mixtures. The blue shaded area plays the role of the spillover component and the non-shaded area is the component representing the true marker signal. Our objective is to separate the true signal from the spillover in this mixture. 
-
-This example highlights the main difference between our method and the one by @catalyst. After masking cell marker CD4 (ND145Di) counts that are likely due to spillover, the average of the remaining CD4 (ND145Di) counts will be larger than that of all CD4 (ND145Di) counts. So, in this example, our spillover correction method increases the average count. By contrast, the method by @catalyst will shrink all the counts towards zero. As a consequence, the average count will be lower after correction.
-
--->
-
-The main difference between our method and the one by @catalyst is the average count after correcting for spillover. Our method will increases the average count after correction. By contrast, the method by @catalyst will shrink all the counts towards zero. As a consequence, the average count will be lower after correction.
+@catalyst propose a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single type of antibody. The slope of the regression line between target antibody and non-target antibodies represents the spillover proportion between channels. @miao2021ab attempt to solve spillover by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous versions rely on an estimate for the spillover matrix. The spillover matrix encodes the pairwise spillover proportion between channels. We avoid estimating a spillover matrix and instead model spillover by fitting a mixture model to the observed counts. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we transfer the spillover distribution to the real experiment instead of just the spillover proportion encoded in the spillover matrix. The main difference between our method and the one by @catalyst is the average count after correcting for spillover. Our method will increases the average count after correction. By contrast, the method by @catalyst will shrink all the counts towards zero. As a consequence, the average count will be lower after correction.
 
 In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm and logistic regression, and implemented in our new R package `spillR`^[https://github.com/marcoguazzini/spillR]. In Section \@ref(results), we conduct experiments on simulated and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) discusses our synthetic experiments and relates our findings to `CATALYST`.
 
@@ -116,7 +52,7 @@ In Section \@ref(methods), we present our mixture model and link it to calculati
 
 ## Example
 
-```{r method-example, fig.height=7, fig.width=7, out.width="75%", fig.align="center", fig.cap='A: Gaussian kernel density plot of target and spillover markers. B: The solid black curve represents the spillover probability estimated with our method with smoothing parameter $k = 11$. The grey curve is the estimate with $k = 3$. Larger values yield smoother spillover probability curves. C: Frequency polygons of marker CD3 (Yb173Di) comparing no correction, our method, and another method. Zero counts are not plotted. See Table \\ref{tab:method-example-summary} for the zero counts and means. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}). The vertical dashed line helps to interpret the spillover correction when CD3 (Yb173Di) is $2.725$. This is an interesting point as it balances between spillover count from Yb172Di measured in beads (panel A) and the count measured on real cells (panel C). The spillover probability is around $0.5$. This means we will set about half of the counts to \\texttt{NA}'s at this point. After correction the read curve (panel C) will be adjusted downwards to the green curve (panel C) with our method spillR.', echo=FALSE, warning=FALSE, message=FALSE}
+```{r method-example, fig.height=7, fig.width=7, out.width="75%", fig.align="center", fig.cap='A: Gaussian kernel density plot of target and spillover markers. B: The solid black curve represents the spillover probability estimated with our method with smoothing parameter $k = 11$. The grey curve is the estimate with $k = 3$. Larger values yield smoother spillover probability curves. C: Frequency polygons of marker CD3 (Yb173Di) comparing no correction, our method, and another method. Zero counts are not plotted. See Table \\ref{tab:method-example-summary} for the zero counts and means. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}). The vertical dashed line helps to interpret the spillover correction when CD3 (Yb173Di) is $2.725$. This is an interesting point as it balances between spillover counts from Yb172Di measured in beads (panel A) and the counts measured on real cells (panel C). The spillover probability is around $0.5$. This means we will set about half of the counts to \\texttt{NA}\'s at this point. After correction the read curve (panel C) will be adjusted downwards to the green curve (panel C) with our method \\texttt{spillR}.', echo=FALSE, warning=FALSE, message=FALSE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 ch <- "CD3.2"
