@@ -501,9 +501,9 @@ tb_experiment <- bind_rows(d_a, d_b, d_c)
 tb_summary <- tb_experiment %>% 
     group_by(title, tau) %>% 
     summarize(
-      `E(Y)` = mean(mean_obsv),
-      `E(Y | Z = 1)` = mean(mean_truth),
-      `spillR E(Y)` = mean(mean_comp)
+      `mean(Y)` = mean(mean_obsv),
+      `mean(Y | Z = 1)` = mean(mean_truth),
+      `spillR mean(Y)` = mean(mean_comp)
       ) %>% 
     ungroup()
 
