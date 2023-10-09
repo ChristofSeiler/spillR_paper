@@ -542,7 +542,7 @@ In the first experiment (panel A), we shift the measured beads spillover away fr
 In the second experiment (panel B), we mixed target and spillover to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the mixture is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the beads experiment. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct, but for $\tau = 0.5$ the assumption [(A2)](#assumption2) is maximally violated. The true mean decrease with increasing $\tau$. Our compensation is closer to the true mean across the tested range. At $\tau = 0.5$ all three distributions and their means are the same.
 
 <!--
-### High Count Spillover
+### Bimodal Spillover
 -->
 
 In the third experiment (panel C), we model spillover with a bimodal distribution. Here $\tau$ is the mixing probability of the two modes. The locations of the two spillover modes are fixed. If $\tau = 0$ or $\tau = 1$, then spillover is unimodal. If $\tau = 0.5$, the first mode of the bimodal beads distribution is left to the signal mode, and the second mode is to the right. The corrected mean is closer to the true mean than the uncorrected mean across the test range.
@@ -847,7 +847,7 @@ Y              & = (1-I) \cdot (Y \mid Z = 1) + I \cdot (Y \mid Z = 2) & \qquad 
 $$
 The generative model for beads is an independent copy of $Y \mid Z = 2$.
 
-## High Count Spillover {-}
+## Bimodal Spillover {-}
 
 Generative model for real cells $Y$ of this experiment:
 $$
