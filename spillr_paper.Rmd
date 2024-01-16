@@ -19,6 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r load_packages, echo=FALSE, warning=FALSE, message=FALSE}
 library(CATALYST)
+library(spillR)
 library(nnls)
 library(flowCore)
 library(ggplot2)
@@ -34,9 +35,6 @@ library(spatstat.geom)
 library(parallel)
 library(kableExtra)
 library(hexbin)
-source("compensate.R")
-source("compCytof.R")
-source("plotDiagnostics.R")
 set.seed(23)
 tfm <- function(x) asinh(x/5)
 ```
