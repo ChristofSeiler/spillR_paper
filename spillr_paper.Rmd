@@ -309,10 +309,10 @@ n_cores <- 4
 # --------- helper functions ---------
 
 compute_average <- function(data) {
-  comp <- compensate(data$df_real, data$df_bead, 
-                     target_marker = "Y", 
-                     spillover_markers = "Z", 
-                     runmed_k = runmed_k)
+  comp <- spillR:::compensate(data$df_real, data$df_bead, 
+                              target_marker = "Y", 
+                              spillover_markers = "Z", 
+                              runmed_k = runmed_k)
   y_comp  <- comp$tb_compensate$corrected
   y_truth <- data$Z_target
 
