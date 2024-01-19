@@ -565,27 +565,50 @@ sce_bead <- applyCutoffs(estCutoffs(sce_bead))
 sce_bead <- computeSpillmat(sce_bead)
 sm <- metadata(sce_bead)$spillover_matrix
 
-# construct SCE of multiplexed cells
-data(mp_cells)
+# --------- prepare simulated data ---------
 sce <- prepData(mp_cells)
+counts_mat <- assay(sce, "counts")
+row_names <- rownames(counts_mat)
+real_vec <- rpois(n = length(counts_mat), lambda = 1150)
+bead_vec <- rpois(n = length(counts_mat), lambda = 39)
+spill_vec <- rbinom(n = length(counts_mat), size = 1, prob = 0.5)
+counts_vec <- (1-spill_vec) * real_vec + spill_vec * bead_vec
+counts_mat <- counts_vec |> 
+  matrix(nrow = nrow(counts_mat), ncol = ncol(counts_mat))
+rownames(counts_mat) <- row_names
+assay(sce, "counts") <- counts_mat
+assay(sce, "exprs") <- tfm(counts_mat)
 
-# overwrite with simulated data
-test <- assay(sce, "counts")
-rn <- rownames(test)
-test <- rpois(n = length(test), lambda = 5) |> 
-  matrix(nrow = nrow(test), ncol = ncol(test))
-rownames(test) <- rn
-assay(sce, "counts") <- test
-assay(sce, "exprs") <- tfm(test)
+# --------- CATALYST ---------
+sce_catalyst <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
 
-sce <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
+# --------- spillR ---------
+marker_to_barc <- 
+  rowData(sce_bead)[,c("channel_name", "is_bc")] %>%
+  as_tibble %>%
+  dplyr::filter(is_bc == TRUE) %>%
+  mutate(barcode = bc_key) %>%
+  dplyr::select(marker = channel_name, barcode)
+sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                        runmed_k = runmed_k)
 
-# visualize data before & after compensation
-chs <- c("Er167Di", "Er168Di")
+# --------- visualize data before & after compensation ---------
+chs <- c("Yb173Di", "Yb174Di")
 as <- c("exprs", "compexprs")
-ps <- lapply(as, function(a) 
-    plotScatter(sce, chs, assay = a))
-plot_grid(plotlist = ps, nrow = 1)
+ps_catalyst <- lapply(as, function(a) 
+    plotScatter(sce_catalyst, chs, assay = a))
+ps_spillr <- lapply(as, function(a) 
+    plotScatter(sce_spillr, chs, assay = a))
+plot_grid(plotlist = c(ps_catalyst, ps_spillr), nrow = 2)
+
+# diagnostics
+ps <- spillR::plotDiagnostics(sce_spillr, "Yb173Di")
+x_lim <- c(0, 7)
+plot_grid(
+  ps[[1]] + xlim(x_lim) + geom_vline(xintercept = c(tfm(39), tfm(1150))),
+  ps[[2]] + xlim(x_lim) + geom_vline(xintercept = c(tfm(39), tfm(1150))),
+  ncol = 1, align = "v"
+)
 ```
 
 ## Real Data
