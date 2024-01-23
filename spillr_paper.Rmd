@@ -553,9 +553,12 @@ In the third experiment (panel C), we model spillover with a bimodal distributio
 TODO: take the beads experiment `ss_exp`, compute spillover matrix, then simulated data using spillover matrix. Compare how spillR and CATALYST perform.
 
 ```{r eval=FALSE}
-# constants
+# --------- constants ---------
 bc_key <- c(139, 141:156, 158:176)
 runmed_k <- 11
+
+# --------- experiment with real cells ---------
+sce <- prepData(mp_cells)
 
 # --------- experiment with beads ---------
 
@@ -563,23 +566,30 @@ sce_bead <- prepData(ss_exp)
 sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
 sce_bead <- applyCutoffs(estCutoffs(sce_bead))
 sce_bead <- computeSpillmat(sce_bead)
-sm <- metadata(sce_bead)$spillover_matrix
 
-# --------- prepare simulated data ---------
-sce <- prepData(mp_cells)
-counts_mat <- assay(sce, "counts")
-row_names <- rownames(counts_mat)
-real_vec <- rpois(n = length(counts_mat), lambda = 1150)
-bead_vec <- rpois(n = length(counts_mat), lambda = 39)
-spill_vec <- rbinom(n = length(counts_mat), size = 1, prob = 0.5)
-counts_vec <- (1-spill_vec) * real_vec + spill_vec * bead_vec
-counts_mat <- counts_vec |> 
-  matrix(nrow = nrow(counts_mat), ncol = ncol(counts_mat))
-rownames(counts_mat) <- row_names
-assay(sce, "counts") <- counts_mat
-assay(sce, "exprs") <- tfm(counts_mat)
+# --------- modify bead data ---------
+
+counts_bead <- assay(sce_bead, "counts")
+target_channel <- "Yb173Di"
+target_barcode <- "172"
+target_marker <- rowData(sce_bead) |> 
+  as_tibble() |>
+  filter(channel_name == target_channel) |> 
+  pull(marker_name)
+col_ids <- which(sce_bead$bc_id == target_barcode)
+
+counts_real <- assay(sce, "counts")
+y_real <- counts_real[target_marker, ]
+#hist(tfm(y_real), breaks = 10)
+y_bead <- y_real[y_real > 10 & y_real < 300]
+y_bead <- sample(y_bead, length(col_ids))
+#y_bead <- counts_bead[target_marker, col_ids]
+#hist(tfm(y_bead))
+counts_bead[target_marker, col_ids] <- y_bead
+assay(sce_bead, "counts") <- counts_bead
 
 # --------- CATALYST ---------
+sm <- metadata(sce_bead)$spillover_matrix
 sce_catalyst <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
 
 # --------- spillR ---------
@@ -605,8 +615,8 @@ plot_grid(plotlist = c(ps_catalyst, ps_spillr), nrow = 2)
 ps <- spillR::plotDiagnostics(sce_spillr, "Yb173Di")
 x_lim <- c(0, 7)
 plot_grid(
-  ps[[1]] + xlim(x_lim) + geom_vline(xintercept = c(tfm(39), tfm(1150))),
-  ps[[2]] + xlim(x_lim) + geom_vline(xintercept = c(tfm(39), tfm(1150))),
+  ps[[1]] + xlim(x_lim) + geom_vline(xintercept = c(tfm(70), tfm(1150))),
+  ps[[2]] + xlim(x_lim) + geom_vline(xintercept = c(tfm(70), tfm(1150))),
   ncol = 1, align = "v"
 )
 ```
