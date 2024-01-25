@@ -580,13 +580,19 @@ col_ids <- which(sce_bead$bc_id == target_barcode)
 
 counts_real <- assay(sce, "counts")
 y_real <- counts_real[target_marker, ]
-#hist(tfm(y_real), breaks = 10)
 y_bead <- y_real[y_real > 10 & y_real < 300]
-y_bead <- sample(y_bead, length(col_ids))
-#y_bead <- counts_bead[target_marker, col_ids]
-#hist(tfm(y_bead))
-counts_bead[target_marker, col_ids] <- y_bead
+y_bead_small <- sample(y_bead, length(col_ids))
+counts_bead[target_marker, col_ids] <- y_bead_small
 assay(sce_bead, "counts") <- counts_bead
+
+# estimating empirical PMF using function density
+y_min <- min(floor(y_real))
+y_max <- max(floor(y_real))
+y <- floor(y_bead_small)
+fit <- density(y, from = y_min, to = y_max)
+f <- approxfun(fit$x, fit$y)
+x <- y_min:y_max
+#plot(x, f(x))
 
 # --------- CATALYST ---------
 sm <- metadata(sce_bead)$spillover_matrix
