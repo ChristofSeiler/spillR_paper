@@ -768,9 +768,9 @@ fit2 <- density(Y$spillover, from = y_min, to = y_max, na.rm = TRUE)
 f1 <- approxfun(fit1$x, fit1$y)
 f2 <- approxfun(fit2$x, fit2$y)
 P_Y1 <- f1(y_support)
-P_Y1 <- P_Y1/sum(P_Y1)
+P_Y1 <- P_Y1 / sum(P_Y1)
 P_Y2 <- f2(y_support)
-P_Y2 <- P_Y2/sum(P_Y2)
+P_Y2 <- P_Y2 / sum(P_Y2)
 P_YZ <- dplyr::bind_cols(P_Y1 = P_Y1, P_Y2 = P_Y2)
 P_YZ
 ```
@@ -800,7 +800,7 @@ P_ZY
 n <- nrow(Y)
 YP <- dplyr::left_join(Y, P_ZY, by = "target")
 YP
-pi <- c(sum(YP$P_Y1)/n, sum(YP$P_Y2)/n)
+pi <- c(sum(YP$P_Y1) / n, sum(YP$P_Y2) / n)
 pi
 ```
 
@@ -810,7 +810,7 @@ and re-estimate the distribution for the target marker using the posterior proba
 fit1 <- density(Y$target, from = y_min, to = y_max, weights = YP$P_Y1)
 f1 <- approxfun(fit1$x, fit1$y)
 P_Y1 <- f1(y_support)
-P_Y1 <- P_Y1/sum(P_Y1)
+P_Y1 <- P_Y1 / sum(P_Y1)
 P_YZ <- bind_cols(P_Y1 = P_Y1, P_Y2 = P_Y2)
 P_YZ
 ```
@@ -824,7 +824,7 @@ P_ZY <- dplyr::mutate(P_YZ,
 P_ZY <- P_ZY / rowSums(P_ZY)
 P_ZY |>
   dplyr::mutate(target = c(2, 3, 5, 17)) |> 
-  dplyr::mutate(p_spillover = round(1 - P_Y1, digits = 2)) |> 
+  dplyr::mutate(p_spillover = round(1 - P_Y1, digits = 7)) |> 
   dplyr::select(target, p_spillover)
 ```
 
