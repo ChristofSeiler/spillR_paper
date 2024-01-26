@@ -282,17 +282,16 @@ We first evaluate our new method `spillR` on simulated datasets. We probe our me
 
 ### Assumptions and Sensitivity
 
-```{r simulated-experiments, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE, eval = FALSE}
+```{r simulated-experiments, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE}
 # --------- global parameters ---------
 
-n_real <-10000
-n_bead <- 1000
-lambda_real <- 100
+n_real <- 10000
+n_bead <-  1000
+lambda_real <- 200
 lambda_bead  <- 70
-lambda_bead_high  <- 130
-spill_prob   <- 0.1
+lambda_bead_high  <- 330
+spill_prob <- 0.5
 n_rep <- 20
-runmed_k <- 3
 n_cores <- 4
 
 # --------- helper functions ---------
@@ -300,8 +299,7 @@ n_cores <- 4
 compute_average <- function(data) {
   comp <- spillR:::compensate(data$df_real, data$df_bead, 
                               target_marker = "Y", 
-                              spillover_markers = "Z", 
-                              runmed_k = runmed_k)
+                              spillover_markers = "Z")
   y_comp  <- comp$tb_compensate$corrected
   y_truth <- data$Z_target
 
@@ -439,7 +437,7 @@ tb_summary_long <- pivot_longer(
                                         "spillR mean(Y)")))
 ```
 
-```{r simulated-experiments-critical-values, echo = FALSE, warning = FALSE, message = FALSE, eval = FALSE}
+```{r simulated-experiments-critical-values, echo = FALSE, warning = FALSE, message = FALSE}
 # --------- helper function ---------
 plot_critical <- function(experiment, taus, simulated, reverse = FALSE) {
   
@@ -510,12 +508,12 @@ simulated <- lapply(taus, generate_data_c)
 p_c <- plot_critical(experiment, taus, simulated)
 ```
 
-```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups, and the bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \\mid Z = 1$ is the distribution without spillover. $Y \\mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \\mid Z = 1$) is the average count without spillover. \\texttt{spillR} mean($Y$) is the average count after correcting $Y$.", eval = FALSE}
+```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups, and the bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \\mid Z = 1$ is the distribution without spillover. $Y \\mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \\mid Z = 1$) is the average count without spillover. \\texttt{spillR} mean($Y$) is the average count after correcting $Y$."}
 plot_grid(p_a, p_b, p_c, labels = c("A", "B", "C"),
           ncol = 1, align = "v", axis = "lr")
 ```
 
-We choose three different experiments to test `spillR` against different bead and real cell distributions. We explore a wide range of possible parameter settings. Figure \@ref(fig:simulated-experiments-plot) has three panels, each representing one experimental setup. The first two panels test our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The third panel tests sensitivity of `spillR` to bimodal bead distributions. For all three experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 100$, and 1,000 beads with $\lambda = 70$, and spillover probability of $0.1$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are given in Appendix \@ref(generative-models). We repeat each simulation 20 times and report averages over the 20 replications. Each panel of Figure \@ref(fig:simulated-experiments-plot) has two rows of plots. The plot on the first row represents the summary of the means for each experimental setup as a function of their respective parameter $\tau$. This parameter has a different meaning in each setup. To visualize the different experiments, we summarize the full distributions with the true simulated signal mean (black), the uncorrected mean (orange), and the `spillR` corrected mean (green). Plots on the second row illustrate the simulated data distributions for three selected parameters $\tau$ picked from the experimental setup. The yellow density curve is the observed count $Y$. The black density curve is the target cell count. The blue density curve is the spillover distribution. The goal of the experiment is to estimate the mean of the black density as accurately as possible from the yellow density curve, which represents the data $Y$ that we would observe in practice. We simulate this data ourselves with the models in Appendix \@ref(generative-models).
+We choose three different experiments to test `spillR` against different bead and real cell distributions. We explore a wide range of possible parameter settings. Figure \@ref(fig:simulated-experiments-plot) has three panels, each representing one experimental setup. The first two panels test our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The third panel tests sensitivity of `spillR` to bimodal bead distributions. For all three experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 200$, and 1,000 beads with $\lambda = 70$, and spillover probability of $0.5$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are given in Appendix \@ref(generative-models). We repeat each simulation 20 times and report averages over the 20 replications. Each panel of Figure \@ref(fig:simulated-experiments-plot) has two rows of plots. The plot on the first row represents the summary of the means for each experimental setup as a function of their respective parameter $\tau$. This parameter has a different meaning in each setup. To visualize the different experiments, we summarize the full distributions with the true simulated signal mean (black), the uncorrected mean (orange), and the `spillR` corrected mean (green). Plots on the second row illustrate the simulated data distributions for three selected parameters $\tau$ picked from the experimental setup. The yellow density curve is the observed count $Y$. The black density curve is the target cell count. The blue density curve is the spillover distribution. The goal of the experiment is to estimate the mean of the black density as accurately as possible from the yellow density curve, which represents the data $Y$ that we would observe in practice. We simulate this data ourselves with the models in Appendix \@ref(generative-models).
 
 <!--
 ### Bead Shift (A1)
@@ -617,7 +615,6 @@ plot_grid(
 ```{r spillr-vignette, fig.height = 6, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011})."}
 # constants
 bc_key <- c(139, 141:156, 158:176)
-runmed_k <- 11
 
 # helper functions
 colorscale = scale_fill_gradientn(
@@ -646,8 +643,7 @@ marker_to_barc <-
   dplyr::select(marker = channel_name, barcode)
 
 # --------- call compensate from compCytof package ---------
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                        runmed_k = runmed_k)
+sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
 
 # --------- 2d histogram from spillR (for vignette, not for paper) ---------
 # as <- c("counts", "exprs", "compcounts", "compexprs")
@@ -843,7 +839,7 @@ $$
 \begin{aligned}
 I              & \sim \text{Bernoulli}(0.1)                            & \qquad \text{(spillover indicator)} \\
 Z              & = I + 1                                               & \qquad \text{(channel number)} \\
-(Y \mid Z = 1) & \sim \text{Poisson}(100)                              & \qquad \text{(target component)} \\
+(Y \mid Z = 1) & \sim \text{Poisson}(200)                              & \qquad \text{(target component)} \\
 (Y \mid Z = 2) & \sim \text{Poisson}(70+\tau)                          & \qquad \text{(spillover component with shift)} \\
 Y              & = (1-I) \cdot (Y \mid Z = 1) + I \cdot (Y \mid Z = 2) & \qquad \text{(mixture)}.
 \end{aligned}
@@ -857,7 +853,7 @@ $$
 \begin{aligned}
 I              & \sim \text{Bernoulli}(0.1)                            & \qquad \text{(spillover indicator)} \\
 Z              & = I + 1                                               & \qquad \text{(channel number)} \\
-T              & \sim \text{Poisson}(100)                              & \qquad \text{(target)} \\
+T              & \sim \text{Poisson}(200)                              & \qquad \text{(target)} \\
 S              & \sim \text{Poisson}(70)                               & \qquad \text{(spillover)} \\
 M              & \sim \text{Bernoulli}(\tau)                           & \qquad \text{(misspecification indicator)} \\
 (Y \mid Z = 1) & = (1-M) \cdot T + M \cdot S                           & \qquad \text{(target mixture component)} \\
@@ -874,10 +870,10 @@ $$
 \begin{aligned}
 I               & \sim \text{Bernoulli}(0.1)                            & \qquad \text{(spillover indictor)} \\
 Z               & = I + 1                                               & \qquad \text{(channel number)} \\
-(Y \mid Z = 1)  & \sim \text{Poisson}(100)                              & \qquad \text{(target component)} \\
+(Y \mid Z = 1)  & \sim \text{Poisson}(200)                              & \qquad \text{(target component)} \\
 H               & \sim \text{Bernoulli}(\tau)                           & \qquad \text{(high count indicator)} \\
 (S \mid H = 0)  & \sim \text{Poisson}(70)                               & \qquad \text{(low count component)} \\
-(S \mid H = 1)  & \sim \text{Poisson}(130)                              & \qquad \text{(high count component)} \\
+(S \mid H = 1)  & \sim \text{Poisson}(330)                              & \qquad \text{(high count component)} \\
 ( Y \mid Z = 2) & = (1-H) \cdot (S \mid H = 0) + H \cdot (S \mid H = 1) & \qquad \text{(spillover component)} \\
 Y               & = (1-I) \cdot (Y \mid Z = 1) + I \cdot (Y \mid Z = 2) & \qquad \text{(mixture)}
 \end{aligned}
