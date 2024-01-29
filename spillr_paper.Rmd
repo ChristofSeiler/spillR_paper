@@ -93,7 +93,7 @@ sce_catalyst <- CATALYST::compCytof(sce, sm, overwrite = FALSE)
 tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
 tb_bead <- mutate(
   tb_bead, 
-  barcode = ifelse(barcode == ch, paste(ch, "(target)"), barcode)
+  barcode = ifelse(barcode == ch_metal, paste(ch_metal, "(target)"), barcode)
   )
 
 p_beads <- tb_bead |>
@@ -545,14 +545,12 @@ bc_key <- c(139, 141:156, 158:176)
 sce <- prepData(mp_cells)
 
 # --------- experiment with beads ---------
-
 sce_bead <- prepData(ss_exp)
 sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
 sce_bead <- applyCutoffs(estCutoffs(sce_bead))
 sce_bead <- computeSpillmat(sce_bead)
 
 # --------- modify bead data ---------
-
 counts_bead <- assay(sce_bead, "counts")
 target_channel <- "Yb173Di"
 target_barcode <- "172"
@@ -569,15 +567,6 @@ y_bead_small <- sample(y_bead, length(col_ids))
 counts_bead[target_marker, col_ids] <- y_bead_small
 assay(sce_bead, "counts") <- counts_bead
 
-# estimating empirical PMF using function density
-y_min <- min(floor(y_real))
-y_max <- max(floor(y_real))
-y <- floor(y_bead_small)
-fit <- density(y, from = y_min, to = y_max)
-f <- approxfun(fit$x, fit$y)
-x <- y_min:y_max
-#plot(x, f(x))
-
 # --------- CATALYST ---------
 sm <- metadata(sce_bead)$spillover_matrix
 sce_catalyst <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
@@ -585,28 +574,65 @@ sce_catalyst <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
 # --------- spillR ---------
 marker_to_barc <- 
   rowData(sce_bead)[,c("channel_name", "is_bc")] |>
-  as_tibble |>
+  as_tibble() |>
   dplyr::filter(is_bc == TRUE) |>
   mutate(barcode = bc_key) |>
   dplyr::select(marker = channel_name, barcode)
 sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
 
-# --------- visualize data before & after compensation ---------
-chs <- c("Yb173Di", "Yb174Di")
-as <- c("exprs", "compexprs")
-ps_catalyst <- lapply(as, function(a) 
-    plotScatter(sce_catalyst, chs, assay = a))
-ps_spillr <- lapply(as, function(a) 
-    plotScatter(sce_spillr, chs, assay = a))
-plot_grid(plotlist = c(ps_catalyst, ps_spillr), nrow = 2)
+# --------- beads experiment ---------
+tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
+tb_bead <- mutate(
+  tb_bead, 
+  barcode = ifelse(barcode == target_channel, paste(target_channel, "(target)"), barcode)
+  )
 
-# diagnostics
-ps <- spillR::plotDiagnostics(sce_spillr, "Yb173Di")
-x_lim <- c(0, 7)
+p_beads <- tb_bead |>
+  ggplot(aes(tfm(.data[[ch_metal]]), color = barcode)) +
+  geom_density(adjust = 1, linewidth = 0.8) +
+  xlim(x_lim) +
+  xlab(ch_name) +
+  ylab("density") + 
+  ggtitle("Beads Experiment")
+
+# --------- before and after ---------
+exprs_spillr <- sce_spillr |> 
+  assay("exprs") |>
+  t() |>
+  as_tibble() |>
+  mutate(correction = "none")
+compexprs_spillr <- sce_spillr |> 
+  assay("compexprs") |>
+  t() |>
+  as_tibble() |>
+  mutate(correction = "spillR")
+compexprs_catalyst <- sce_catalyst |> 
+  assay("compexprs") |>
+  t() |>
+  as_tibble() |>
+  mutate(correction = "other (CATALYST)")
+combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
+combo <- combo |> select(all_of(c(ch, "correction")))
+combo$correction <- factor(combo$correction, 
+                       levels = c("none", "spillR", "other (CATALYST)"))
+
+p_before_after <- combo |> 
+  filter(.data[[ch]] > 0) |>
+  ggplot(aes(.data[[ch]], color = correction, linetype = correction)) + 
+  geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
+  xlim(x_lim) +
+  xlab(ch_name) +
+  ggtitle("Spillover Compensation on Real Cells")
+
+# --------- combine everything ---------
+
+v <- 2.725
 plot_grid(
-  ps[[1]] + xlim(x_lim) + geom_vline(xintercept = c(tfm(70), tfm(1150))),
-  ps[[2]] + xlim(x_lim) + geom_vline(xintercept = c(tfm(70), tfm(1150))),
-  ncol = 1, align = "v"
+  p_beads + theme(legend.justification = c(0,1)) + 
+    geom_vline(xintercept = v, linetype = "dashed"),
+  p_before_after + theme(legend.justification = c(0,1)) +
+    geom_vline(xintercept = v, linetype = "dashed"), 
+  ncol = 1, align = "v", axis = "lr", labels = c("A", "B")
 )
 ```
 
