@@ -757,12 +757,12 @@ Y = dplyr::bind_cols(target = target, spillover = spillover)
 Y
 ```
 
-* Initialization: We initialize our EM algorithm by estimating the conditional probability of observing $y$ given that it belongs to the target marker, and another conditional probability given that it belongs to the spillover marker,
+* Initialization: We initialize our EM algorithm by estimating the conditional probability of observing $y$ given that it belongs to the target marker, and another conditional probability given that it belongs to the spillover marker.
 
 ```{r}
 y_min <- min(Y$target)
 y_max <- max(Y$target)
-y_support <- sort(unique(Y$target))
+y_support <- y_min:y_max
 fit1 <- density(Y$target, from = y_min, to = y_max)
 fit2 <- density(Y$spillover, from = y_min, to = y_max, na.rm = TRUE)
 f1 <- approxfun(fit1$x, fit1$y)
@@ -772,10 +772,9 @@ P_Y1 <- P_Y1 / sum(P_Y1)
 P_Y2 <- f2(y_support)
 P_Y2 <- P_Y2 / sum(P_Y2)
 P_YZ <- dplyr::bind_cols(P_Y1 = P_Y1, P_Y2 = P_Y2)
-P_YZ
 ```
 
-We initialize the mixture probabilities with the discrete uniform, 
+We initialize the mixture probabilities with the discrete uniform.
 
 ```{r}
 pi <- c(0.9, 0.1)
@@ -783,15 +782,14 @@ pi <- c(0.9, 0.1)
 
 Now, we update these initial values using the E and M-steps.
 
-* E-step: Calculate the posterior probability for the true marker, and the spillover marker,
+* E-step: Calculate the posterior probability for the true marker, and the spillover marker.
 
 ```{r}
 P_ZY <- dplyr::mutate(P_YZ, 
                       P_Y1 = pi[1] * P_Y1, 
                       P_Y2 = pi[2] * P_Y2)
 P_ZY <- P_ZY / rowSums(P_ZY)
-P_ZY <- dplyr::mutate(P_ZY, target = c(2, 3, 5, 17), .before = 1)
-P_ZY
+P_ZY <- dplyr::bind_cols(target = y_support, P_ZY)
 ```
 
 * M-step: Update the mixing probability vector,
@@ -804,7 +802,7 @@ pi <- c(sum(YP$P_Y1) / n, sum(YP$P_Y2) / n)
 pi
 ```
 
-and re-estimate the distribution for the target marker using the posterior probabilities as weights, keep the non-target marker at its initial value, 
+and re-estimate the distribution for the target marker using the posterior probabilities as weights, keep the non-target marker at its initial value,
 
 ```{r warning = FALSE}
 fit1 <- density(Y$target, from = y_min, to = y_max, weights = YP$P_Y1)
@@ -812,7 +810,6 @@ f1 <- approxfun(fit1$x, fit1$y)
 P_Y1 <- f1(y_support)
 P_Y1 <- P_Y1 / sum(P_Y1)
 P_YZ <- bind_cols(P_Y1 = P_Y1, P_Y2 = P_Y2)
-P_YZ
 ```
 
 and calculate the spillover probability estimate,
@@ -822,10 +819,11 @@ P_ZY <- dplyr::mutate(P_YZ,
                       P_Y1 = pi[1] * P_Y1, 
                       P_Y2 = pi[2] * P_Y2)
 P_ZY <- P_ZY / rowSums(P_ZY)
+P_ZY <- dplyr::bind_cols(target = y_support, P_ZY)
 P_ZY |>
-  dplyr::mutate(target = c(2, 3, 5, 17)) |> 
-  dplyr::mutate(p_spillover = round(1 - P_Y1, digits = 7)) |> 
-  dplyr::select(target, p_spillover)
+  dplyr::mutate(p_spillover = round(1 - P_Y1, digits = 3)) |>
+  dplyr::select(target, p_spillover) |>
+  dplyr::filter(target %in% unique(Y$target))
 ```
 
 This is the result after one iteration.
