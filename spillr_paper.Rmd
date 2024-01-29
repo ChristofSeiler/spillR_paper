@@ -330,7 +330,7 @@ generate_data_a <- function(tau) {
 
 # create parameter combination
 d_a <- expand.grid(
-  tau = seq(-30, 0, length.out = 30), 
+  tau = seq(-10, 0, length.out = 60), 
   replicate = 1:n_rep,
   title = "Bead Shift"
   )
@@ -371,7 +371,7 @@ generate_data_b <- function(tau) {
 
 # create parameter combination
 d_b <- expand.grid(
-  tau = seq(from = 0, to = 0.5, length.out = 30), 
+  tau = seq(from = 0, to = 0.5, length.out = 60), 
   replicate = 1:n_rep,
   title = "Model Misspecification"
   )
@@ -407,7 +407,7 @@ generate_data_c <- function(tau) {
 
 # create parameter combination
 d_c <- expand.grid(
-  tau = seq(from = 0, to = 1, length.out = 30), 
+  tau = seq(from = 0, to = 1, length.out = 60), 
   replicate = 1:n_rep,
   title = "Bimodal Spillover"
   ) 
@@ -490,7 +490,7 @@ plot_critical <- function(experiment, taus, simulated, reverse = FALSE) {
 # --------- A ---------
 
 experiment <- "Bead Shift"
-taus <- c(0, -15, -30)
+taus <- c(0, -5, -10)
 simulated <- lapply(taus, generate_data_a)
 p_a <- plot_critical(experiment, taus, simulated, reverse = TRUE)
 
