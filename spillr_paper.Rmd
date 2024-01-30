@@ -541,14 +541,9 @@ TODO: take the beads experiment `ss_exp`, compute spillover matrix, then simulat
 # --------- constants ---------
 bc_key <- c(139, 141:156, 158:176)
 
-# --------- experiment with real cells ---------
+# --------- load experiment data of real cells and beads ---------
 sce <- prepData(mp_cells)
-
-# --------- experiment with beads ---------
 sce_bead <- prepData(ss_exp)
-sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
-sce_bead <- applyCutoffs(estCutoffs(sce_bead))
-sce_bead <- computeSpillmat(sce_bead)
 
 # --------- modify bead data ---------
 counts_bead <- assay(sce_bead, "counts")
@@ -566,6 +561,10 @@ y_bead <- y_real[y_real > 10 & y_real < 300]
 y_bead_small <- sample(y_bead, length(col_ids))
 counts_bead[target_marker, col_ids] <- y_bead_small
 assay(sce_bead, "counts") <- counts_bead
+
+sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
+sce_bead <- applyCutoffs(estCutoffs(sce_bead))
+sce_bead <- computeSpillmat(sce_bead)
 
 # --------- CATALYST ---------
 sm <- metadata(sce_bead)$spillover_matrix
