@@ -538,8 +538,8 @@ In the third experiment (panel C), we model spillover with a bimodal distributio
 TODO: take the beads experiment `ss_exp`, compute spillover matrix, then simulated data using spillover matrix. Compare how spillR and CATALYST perform.
 
 ```{r echo = FALSE, eval=FALSE}
-# --------- constants ---------
-bc_key <- c(139, 141:156, 158:176)
+# --------- helper function ---------
+inv_tfm <- function(x) 5*sinh(x)
 
 # --------- load experiment data of real cells and beads ---------
 sce <- prepData(mp_cells)
@@ -548,6 +548,11 @@ semi_synthetic_data <- function(shift) {
 
   # --------- modify bead data ---------
   sce_bead <- prepData(ss_exp)
+  
+  sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
+  sce_bead <- applyCutoffs(estCutoffs(sce_bead))
+  sce_bead <- computeSpillmat(sce_bead)
+  
   counts_bead <- assay(sce_bead, "counts")
   target_channel <- "Yb173Di"
   target_barcode <- "172"
@@ -560,8 +565,9 @@ semi_synthetic_data <- function(shift) {
   counts_real <- assay(sce, "counts")
   y_real <- counts_real[target_marker, ]
   y_bead <- y_real[y_real > 10 & y_real < 300]
-  y_bead_small <- sample(y_bead, length(col_ids))
-  y_bead_small <- max(y_bead_small - shift, 0)
+  y_bead_shifted <- inv_tfm(tfm(y_bead) - shift)
+  y_bead_shifted <- pmax(y_bead_shifted, 0)
+  y_bead_small <- sample(y_bead_shifted, length(col_ids))
   counts_bead[target_marker, col_ids] <- y_bead_small
   assay(sce_bead, "counts") <- counts_bead
   
@@ -616,7 +622,7 @@ semi_synthetic_data <- function(shift) {
 
 }
 
-semi_list <- lapply(c(0, 30), semi_synthetic_data)
+semi_list <- lapply(c(0, 0.47, 0.94), semi_synthetic_data)
 tb_bead <- lapply(semi_list, function(x) x$tb_bead) |> bind_rows()
 combo <- lapply(semi_list, function(x) x$combo) |> bind_rows()
 
