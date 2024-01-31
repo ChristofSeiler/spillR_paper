@@ -537,7 +537,7 @@ In the third experiment (panel C), we model spillover with a bimodal distributio
 
 TODO: take the beads experiment `ss_exp`, compute spillover matrix, then simulated data using spillover matrix. Compare how spillR and CATALYST perform.
 
-```{r echo = FALSE, eval=FALSE}
+```{r semi-sim-comparison, fig.height = 6, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on semi-synthetic data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011})."}
 # --------- helper function ---------
 inv_tfm <- function(x) 5*sinh(x)
 
