@@ -543,48 +543,82 @@ bc_key <- c(139, 141:156, 158:176)
 
 # --------- load experiment data of real cells and beads ---------
 sce <- prepData(mp_cells)
-sce_bead <- prepData(ss_exp)
 
-# --------- modify bead data ---------
-counts_bead <- assay(sce_bead, "counts")
-target_channel <- "Yb173Di"
-target_barcode <- "172"
-target_marker <- rowData(sce_bead) |> 
-  as_tibble() |>
-  filter(channel_name == target_channel) |> 
-  pull(marker_name)
-col_ids <- which(sce_bead$bc_id == target_barcode)
+semi_synthetic_data <- function(shift) {
 
-counts_real <- assay(sce, "counts")
-y_real <- counts_real[target_marker, ]
-y_bead <- y_real[y_real > 10 & y_real < 300]
-y_bead_small <- sample(y_bead, length(col_ids))
-counts_bead[target_marker, col_ids] <- y_bead_small
-assay(sce_bead, "counts") <- counts_bead
+  # --------- modify bead data ---------
+  sce_bead <- prepData(ss_exp)
+  counts_bead <- assay(sce_bead, "counts")
+  target_channel <- "Yb173Di"
+  target_barcode <- "172"
+  target_marker <- rowData(sce_bead) |> 
+    as_tibble() |>
+    filter(channel_name == target_channel) |> 
+    pull(marker_name)
+  col_ids <- which(sce_bead$bc_id == target_barcode)
+  
+  counts_real <- assay(sce, "counts")
+  y_real <- counts_real[target_marker, ]
+  y_bead <- y_real[y_real > 10 & y_real < 300]
+  y_bead_small <- sample(y_bead, length(col_ids))
+  y_bead_small <- max(y_bead_small - shift, 0)
+  counts_bead[target_marker, col_ids] <- y_bead_small
+  assay(sce_bead, "counts") <- counts_bead
+  
+  sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
+  sce_bead <- applyCutoffs(estCutoffs(sce_bead))
+  sce_bead <- computeSpillmat(sce_bead)
+  
+  # --------- CATALYST ---------
+  sm <- metadata(sce_bead)$spillover_matrix
+  sce_catalyst <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
+  
+  # --------- spillR ---------
+  marker_to_barc <- 
+    rowData(sce_bead)[,c("channel_name", "is_bc")] |>
+    as_tibble() |>
+    dplyr::filter(is_bc == TRUE) |>
+    mutate(barcode = bc_key) |>
+    dplyr::select(marker = channel_name, barcode)
+  sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
+  
+  # --------- beads experiment ---------
+  tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
+  tb_bead <- mutate(
+    tb_bead, 
+    barcode = ifelse(barcode == target_channel, paste(target_channel, "(target)"), barcode)
+    )
+  tb_bead <- mutate(tb_bead, shift = shift)
+  
+  # --------- before and after ---------
+  exprs_spillr <- sce_spillr |> 
+    assay("exprs") |>
+    t() |>
+    as_tibble() |>
+    mutate(correction = "none")
+  compexprs_spillr <- sce_spillr |> 
+    assay("compexprs") |>
+    t() |>
+    as_tibble() |>
+    mutate(correction = "spillR")
+  compexprs_catalyst <- sce_catalyst |> 
+    assay("compexprs") |>
+    t() |>
+    as_tibble() |>
+    mutate(correction = "other (CATALYST)")
+  combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
+  combo <- combo |> select(all_of(c(ch, "correction")))
+  combo$correction <- factor(combo$correction, 
+                         levels = c("none", "spillR", "other (CATALYST)"))
+  combo <- mutate(combo, shift = shift)
+  
+  list(tb_bead = tb_bead, combo = combo)
 
-sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
-sce_bead <- applyCutoffs(estCutoffs(sce_bead))
-sce_bead <- computeSpillmat(sce_bead)
+}
 
-# --------- CATALYST ---------
-sm <- metadata(sce_bead)$spillover_matrix
-sce_catalyst <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
-
-# --------- spillR ---------
-marker_to_barc <- 
-  rowData(sce_bead)[,c("channel_name", "is_bc")] |>
-  as_tibble() |>
-  dplyr::filter(is_bc == TRUE) |>
-  mutate(barcode = bc_key) |>
-  dplyr::select(marker = channel_name, barcode)
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
-
-# --------- beads experiment ---------
-tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
-tb_bead <- mutate(
-  tb_bead, 
-  barcode = ifelse(barcode == target_channel, paste(target_channel, "(target)"), barcode)
-  )
+semi_list <- lapply(c(0, 30), semi_synthetic_data)
+tb_bead <- lapply(semi_list, function(x) x$tb_bead) |> bind_rows()
+combo <- lapply(semi_list, function(x) x$combo) |> bind_rows()
 
 p_beads <- tb_bead |>
   ggplot(aes(tfm(.data[[ch_metal]]), color = barcode)) +
@@ -592,28 +626,8 @@ p_beads <- tb_bead |>
   xlim(x_lim) +
   xlab(ch_name) +
   ylab("density") + 
-  ggtitle("Beads Experiment")
-
-# --------- before and after ---------
-exprs_spillr <- sce_spillr |> 
-  assay("exprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(correction = "none")
-compexprs_spillr <- sce_spillr |> 
-  assay("compexprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(correction = "spillR")
-compexprs_catalyst <- sce_catalyst |> 
-  assay("compexprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(correction = "other (CATALYST)")
-combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
-combo <- combo |> select(all_of(c(ch, "correction")))
-combo$correction <- factor(combo$correction, 
-                       levels = c("none", "spillR", "other (CATALYST)"))
+  ggtitle("Beads Experiment") +
+  facet_wrap(~shift)
 
 p_before_after <- combo |> 
   filter(.data[[ch]] > 0) |>
@@ -621,7 +635,8 @@ p_before_after <- combo |>
   geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
   xlim(x_lim) +
   xlab(ch_name) +
-  ggtitle("Spillover Compensation on Real Cells")
+  ggtitle("Spillover Compensation on Real Cells") +
+  facet_wrap(~shift)
 
 # --------- combine everything ---------
 
