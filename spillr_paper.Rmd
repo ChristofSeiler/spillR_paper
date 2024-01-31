@@ -133,11 +133,11 @@ compexprs_catalyst <- sce_catalyst |>
   assay("compexprs") |>
   t() |>
   as_tibble() |>
-  mutate(correction = "other (CATALYST)")
+  mutate(correction = "CATALYST")
 combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
 combo <- combo |> select(all_of(c(ch, "correction")))
 combo$correction <- factor(combo$correction, 
-                       levels = c("none", "spillR", "other (CATALYST)"))
+                       levels = c("none", "spillR", "CATALYST"))
 
 p_before_after <- combo |> 
   filter(.data[[ch]] > 0) |>
@@ -179,7 +179,7 @@ means <- combo |>
 
 zeros_means <- left_join(zeros, means, by = "correction")
 levels(zeros_means$correction)[2] <- "\\texttt{spillR}"
-levels(zeros_means$correction)[3] <- "other (\\texttt{CATALYST})"
+levels(zeros_means$correction)[3] <- "\\texttt{CATALYST}"
 
 zeros_means |>
   kableExtra::kbl(
@@ -279,8 +279,6 @@ To perform the spillover compensation, we draw from a Bernoulli distribution wit
 We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its shortcomings. Then, we compare `spillR` to the non-negative least squares method implemented in the R package `CATALYST` on real data from the same package. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd`^[https://github.com/ChristofSeiler/spillR_paper].
 
 ## Simulated Data
-
-### Assumptions and Sensitivity
 
 ```{r simulated-experiments, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE}
 # --------- global parameters ---------
@@ -533,129 +531,6 @@ In the second experiment (panel B), we mixed target and spillover to explore the
 
 In the third experiment (panel C), we model spillover with a bimodal distribution. Here $\tau$ is the mixing probability of the two modes. The locations of the two spillover modes are fixed. If $\tau = 0$ or $\tau = 1$, then spillover is unimodal. If $\tau = 0.5$, the first mode of the bimodal beads distribution is left to the signal mode, and the second mode is to the right. The corrected mean is closer to the true mean than the uncorrected mean across the test range.
 
-### Comparison with CATALYST
-
-TODO: take the beads experiment `ss_exp`, compute spillover matrix, then simulated data using spillover matrix. Compare how spillR and CATALYST perform.
-
-```{r semi-sim-comparison, fig.height = 6, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on semi-synthetic data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011})."}
-# --------- helper function ---------
-inv_tfm <- function(x) 5*sinh(x)
-
-# --------- load experiment data of real cells and beads ---------
-sce <- prepData(mp_cells)
-
-semi_synthetic_data <- function(shift) {
-
-  # --------- modify bead data ---------
-  sce_bead <- prepData(ss_exp)
-  
-  sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
-  sce_bead <- applyCutoffs(estCutoffs(sce_bead))
-  sce_bead <- computeSpillmat(sce_bead)
-  
-  counts_bead <- assay(sce_bead, "counts")
-  target_channel <- "Yb173Di"
-  target_barcode <- "172"
-  target_marker <- rowData(sce_bead) |> 
-    as_tibble() |>
-    filter(channel_name == target_channel) |> 
-    pull(marker_name)
-  col_ids <- which(sce_bead$bc_id == target_barcode)
-  
-  counts_real <- assay(sce, "counts")
-  y_real <- counts_real[target_marker, ]
-  y_bead <- y_real[y_real > 10 & y_real < 300]
-  y_bead_shifted <- inv_tfm(tfm(y_bead) - shift)
-  y_bead_shifted <- pmax(y_bead_shifted, 0)
-  y_bead_small <- sample(y_bead_shifted, length(col_ids))
-  counts_bead[target_marker, col_ids] <- y_bead_small
-  assay(sce_bead, "counts") <- counts_bead
-  
-  sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
-  sce_bead <- applyCutoffs(estCutoffs(sce_bead))
-  sce_bead <- computeSpillmat(sce_bead)
-  
-  # --------- CATALYST ---------
-  sm <- metadata(sce_bead)$spillover_matrix
-  sce_catalyst <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
-  
-  # --------- spillR ---------
-  marker_to_barc <- 
-    rowData(sce_bead)[,c("channel_name", "is_bc")] |>
-    as_tibble() |>
-    dplyr::filter(is_bc == TRUE) |>
-    mutate(barcode = bc_key) |>
-    dplyr::select(marker = channel_name, barcode)
-  sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
-  
-  # --------- beads experiment ---------
-  tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
-  tb_bead <- mutate(
-    tb_bead, 
-    barcode = ifelse(barcode == target_channel, paste(target_channel, "(target)"), barcode)
-    )
-  tb_bead <- mutate(tb_bead, shift = shift)
-  
-  # --------- before and after ---------
-  exprs_spillr <- sce_spillr |> 
-    assay("exprs") |>
-    t() |>
-    as_tibble() |>
-    mutate(correction = "none")
-  compexprs_spillr <- sce_spillr |> 
-    assay("compexprs") |>
-    t() |>
-    as_tibble() |>
-    mutate(correction = "spillR")
-  compexprs_catalyst <- sce_catalyst |> 
-    assay("compexprs") |>
-    t() |>
-    as_tibble() |>
-    mutate(correction = "other (CATALYST)")
-  combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
-  combo <- combo |> select(all_of(c(ch, "correction")))
-  combo$correction <- factor(combo$correction, 
-                         levels = c("none", "spillR", "other (CATALYST)"))
-  combo <- mutate(combo, shift = shift)
-  
-  list(tb_bead = tb_bead, combo = combo)
-
-}
-
-semi_list <- lapply(c(0, 0.47, 0.94), semi_synthetic_data)
-tb_bead <- lapply(semi_list, function(x) x$tb_bead) |> bind_rows()
-combo <- lapply(semi_list, function(x) x$combo) |> bind_rows()
-
-p_beads <- tb_bead |>
-  ggplot(aes(tfm(.data[[ch_metal]]), color = barcode)) +
-  geom_density(adjust = 1, linewidth = 0.8) +
-  xlim(x_lim) +
-  xlab(ch_name) +
-  ylab("density") + 
-  ggtitle("Beads Experiment") +
-  facet_wrap(~shift)
-
-p_before_after <- combo |> 
-  filter(.data[[ch]] > 0) |>
-  ggplot(aes(.data[[ch]], color = correction, linetype = correction)) + 
-  geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
-  xlim(x_lim) +
-  xlab(ch_name) +
-  ggtitle("Spillover Compensation on Real Cells") +
-  facet_wrap(~shift)
-
-# --------- combine everything ---------
-
-v <- 2.725
-plot_grid(
-  p_beads + theme(legend.justification = c(0,1)) + 
-    geom_vline(xintercept = v, linetype = "dashed"),
-  p_before_after + theme(legend.justification = c(0,1)) +
-    geom_vline(xintercept = v, linetype = "dashed"), 
-  ncol = 1, align = "v", axis = "lr", labels = c("A", "B")
-)
-```
-
 ## Real Data
 
 ```{r spillr-vignette, fig.height = 6, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011})."}
@@ -756,6 +631,129 @@ We compare the two methods on the same markers as in the original `CATALYST` pap
 In all six panels (A--F), we observe that `spillR` compensates most strongly in the low counts. In panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di), `CATALYST` can be seen to compensate strongly in the middle range. It removes the spherical pattern that shows correlation between the two markers. `spillR` preserves this correlation structure and only masks out the lower counts of CD3 (Yb173Di). This highlights a key difference between `spillR` and `CATALYST`: `spillR` does not correct all counts by shrinking them, but rather removes some counts, following the idea that the distribution of the remaining counts is close to the true distribution. `CATALYST` follows another strategy by shrinking counts across the entire range.
 
 The color code of the two-dimensional histograms indicates the absolute number of cells that fall into one hexagon bin. The uncorrected and `spillR` corrected histograms can contain different absolute numbers of cells because of how `spillR` rounds counts to integers. The raw mass cytometry data is often not count data due to proprietary post-processing of the manufacturer of the mass cytometer. That is why we convert mass cytometry data to count data, we convert the raw values to the next lower integer. The uncorrected counts do not undergo this pre-processing step. `CATALYST` does not perform this pre-processing step. This also explains the different patterns in panel B. `spillR` has horizontal stripes that correspond to non-integer values not in the support of the distribution for `spillR`.
+
+## Semi-Simulated Data
+
+```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on semi-synthetic data. The vertical dashed line helps to interpret the spillover correction when CD3 (Yb173Di) is 2.725. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011})."}
+# --------- helper function ---------
+inv_tfm <- function(x) 5*sinh(x)
+
+# --------- load experiment data of real cells and beads ---------
+sce <- prepData(mp_cells)
+
+semi_synthetic_data <- function(shift) {
+
+  # --------- modify bead data ---------
+  sce_bead <- prepData(ss_exp)
+  
+  sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
+  sce_bead <- applyCutoffs(estCutoffs(sce_bead))
+  sce_bead <- computeSpillmat(sce_bead)
+  
+  counts_bead <- assay(sce_bead, "counts")
+  target_channel <- "Yb173Di"
+  target_barcode <- "172"
+  target_marker <- rowData(sce_bead) |> 
+    as_tibble() |>
+    filter(channel_name == target_channel) |> 
+    pull(marker_name)
+  col_ids <- which(sce_bead$bc_id == target_barcode)
+  
+  counts_real <- assay(sce, "counts")
+  y_real <- counts_real[target_marker, ]
+  y_bead <- y_real[y_real > 10 & y_real < 300]
+  y_bead_shifted <- inv_tfm(tfm(y_bead) - shift)
+  y_bead_shifted <- pmax(y_bead_shifted, 0)
+  y_bead_small <- sample(y_bead_shifted, length(col_ids))
+  counts_bead[target_marker, col_ids] <- y_bead_small
+  assay(sce_bead, "counts") <- counts_bead
+  
+  sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
+  sce_bead <- applyCutoffs(estCutoffs(sce_bead))
+  sce_bead <- computeSpillmat(sce_bead)
+  
+  # --------- CATALYST ---------
+  sm <- metadata(sce_bead)$spillover_matrix
+  sce_catalyst <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
+  
+  # --------- spillR ---------
+  marker_to_barc <- 
+    rowData(sce_bead)[,c("channel_name", "is_bc")] |>
+    as_tibble() |>
+    dplyr::filter(is_bc == TRUE) |>
+    mutate(barcode = bc_key) |>
+    dplyr::select(marker = channel_name, barcode)
+  sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
+  
+  # --------- beads experiment ---------
+  tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
+  tb_bead <- mutate(
+    tb_bead, 
+    barcode = ifelse(barcode == target_channel, paste(target_channel, "(target)"), barcode)
+    )
+  tb_bead <- mutate(tb_bead, shift = shift)
+  
+  # --------- before and after ---------
+  exprs_spillr <- sce_spillr |> 
+    assay("exprs") |>
+    t() |>
+    as_tibble() |>
+    mutate(correction = "none")
+  compexprs_spillr <- sce_spillr |> 
+    assay("compexprs") |>
+    t() |>
+    as_tibble() |>
+    mutate(correction = "spillR")
+  compexprs_catalyst <- sce_catalyst |> 
+    assay("compexprs") |>
+    t() |>
+    as_tibble() |>
+    mutate(correction = "CATALYST")
+  combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
+  combo <- combo |> select(all_of(c(ch, "correction")))
+  combo$correction <- factor(combo$correction, 
+                         levels = c("none", "spillR", "CATALYST"))
+  combo <- mutate(combo, shift = shift)
+  
+  list(tb_bead = tb_bead, combo = combo)
+
+}
+
+semi_list <- lapply(c(0, 0.47, 0.94), semi_synthetic_data)
+tb_bead <- lapply(semi_list, function(x) x$tb_bead) |> bind_rows()
+combo <- lapply(semi_list, function(x) x$combo) |> bind_rows()
+
+p_beads <- tb_bead |>
+  ggplot(aes(tfm(.data[[ch_metal]]), color = barcode)) +
+  geom_density(adjust = 1, linewidth = 0.8) +
+  xlim(x_lim) +
+  xlab(ch_name) +
+  ylab("density") + 
+  ggtitle("Beads Experiment") +
+  facet_wrap(~shift, labeller = label_both)
+
+p_before_after <- combo |> 
+  filter(.data[[ch]] > 0) |>
+  ggplot(aes(.data[[ch]], color = correction, linetype = correction)) + 
+  geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
+  xlim(x_lim) +
+  xlab(ch_name) +
+  ggtitle("Spillover Compensation on Real Cells") +
+  facet_wrap(~shift, labeller = label_both)
+
+# --------- combine everything ---------
+
+v <- 2.725
+plot_grid(
+  p_beads + theme(legend.justification = c(0,1)) + 
+    geom_vline(xintercept = v, linetype = "dashed"),
+  p_before_after + theme(legend.justification = c(0,1)) +
+    geom_vline(xintercept = v, linetype = "dashed"), 
+  ncol = 1, align = "v", axis = "lr", labels = c("A", "B")
+)
+```
+
+We compare `spillR` and `CATALYST` on semi-simulated data. The goal of is to explain some of the differences between `spillR` and `CATALYST` and to evaluate the performance of `spillR` on more than one spillover marker. We create an synthetic beads for CD3 (Yb173Di) by overwriting the beads channel with the true channel from the real experiment. We take the first mode of the true signal in CD3 (Yb173Di) between 10 and 300 counts. We shift these counts (0 is no shift, subtract 0.47 after data transformation, and subtract 0.94 after data transformation). We subsample this new distribution to keep the same number of beads. Figure \@ref(fig:semi-simulated-plot) is the same plot as in the introduction, but now with the synthetically modified beads distribution.
 
 # Discussion
 
