@@ -10,7 +10,7 @@ tb_real = read.csv("alexander_experiments/tb_real.csv")
 tb_bead = read.csv("alexander_experiments/tb_bead.csv")
 spillover_markers = c("Yb171Di", "Yb172Di", "Yb174Di", "Yb176Di")
 target_marker = "Yb173Di"
-runmed_k = 3
+runmed_k = 1
 res = compensate(tb_real, tb_bead, target_marker, spillover_markers, runmed_k)
 
 # reproduce figure 1 A
