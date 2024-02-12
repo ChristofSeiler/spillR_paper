@@ -25,8 +25,9 @@ my_compensate <- function(tb_real, tb_bead, target_marker, spillover_markers,
                        impute_value = NA, n_iter = 1000, target_p=0.9) {
     # check if any beads
     tb_bead_keep <- tb_bead
-    tb_bead <-
-        tb_bead |> filter(barcode != !!target_marker)
+    # TODO we're trying to keep the target beads for now.
+    # tb_bead <-
+        # tb_bead |> filter(barcode != !!target_marker)
     if (nrow(tb_bead) == 0) {
         warning("no beads")
         return(NULL)
@@ -46,14 +47,15 @@ my_compensate <- function(tb_real, tb_bead, target_marker, spillover_markers,
     # parameters and helper functions
     epsilon <- 1 / 10^5
     all_markers <- c(target_marker, spillover_markers)
-    y_min <- y_min_real
-    y_max <- y_max_real
+    y_min <- y_min_bead
+    y_max <- y_max_bead
 
     # support for target marker
     tb_beads_pmf <- tibble(y = y_min:y_max)
 
     # collect pmf from beads
-    tb_beads_smooth <- lapply(spillover_markers, function(marker) {
+    tb_beads_smooth <- lapply(all_markers, function(marker) {
+        print(marker)
         
         n <- nrow(filter(tb_bead, barcode == marker))
         tb <- tibble(
@@ -61,7 +63,6 @@ my_compensate <- function(tb_real, tb_bead, target_marker, spillover_markers,
             pmf = 1 / nrow(tb_beads_pmf)
         )
         if (n > 0) {
-            
             y <- tb_bead |>
                 filter(barcode == marker) |>
                 pull(all_of(target_marker))
@@ -89,19 +90,25 @@ my_compensate <- function(tb_real, tb_bead, target_marker, spillover_markers,
     pi[2:n_markers] <- (1-target_p) / (n_markers - 1)
     names(pi) <- all_markers
 
-    # add pmf from real cells
-    y <- pull(tb_real, all_of(target_marker))
-    fit <- density(y, from = y_min, to = y_max)
-    f <- approxfun(fit$x, fit$y)
-    
-    tb_real_pmf <- tibble(y = y_min:y_max) |>
-        mutate(pmf = f(y)) |>
-        mutate(pmf = pmf/sum(pmf)) |>
-        select(y, pmf)
-    names(tb_real_pmf) <- c("y", target_marker)
+    ### use only the bead experiment for now
+    tb_pmf <- tb_beads_pmf
+    # TODO: use left join to ensure equal support??
 
-    # join beads and real
-    tb_pmf <- left_join(tb_beads_pmf, tb_real_pmf, by = "y")
+    # ### TODO why are we doing this?? why not take everything from the beads experiment?
+    # # add pmf from real cells
+    # y <- pull(tb_real, all_of(target_marker))
+    # fit <- density(y, from = y_min, to = y_max)
+    # f <- approxfun(fit$x, fit$y)
+    
+    # tb_real_pmf <- tibble(y = y_min:y_max) |>
+    #     mutate(pmf = f(y)) |>
+    #     mutate(pmf = pmf/sum(pmf)) |>
+    #     select(y, pmf)
+    # names(tb_real_pmf) <- c("y", target_marker)
+
+    # # join beads and real
+    # tb_pmf <- left_join(tb_beads_pmf, tb_real_pmf, by = "y")
+
 
     # --------- step 2: iterate ---------
 
@@ -115,6 +122,9 @@ my_compensate <- function(tb_real, tb_bead, target_marker, spillover_markers,
     while (i <= n_iter & abs(prev - curr) > epsilon) {
         # E-step
 
+        print('inside E')
+        print(tb_pmf |> head())
+
         # membership probabilities
         M <- tb_pmf |>
             select(all_of(all_markers)) |>
@@ -124,22 +134,29 @@ my_compensate <- function(tb_real, tb_bead, target_marker, spillover_markers,
         post_M <- post_M / rowSums(post_M)
 
         # # assign equal probability to counts without any signal
-        # post_M[is.nan(post_M)] <- 1 / ncol(post_M)
+        post_M[is.nan(post_M)] <- 1 / ncol(post_M)
+        print(post_M |> dim())
 
-        ### TODO assign the pi instead... seems to make no difference??
-        rows_with_na <- apply(post_M, 1, function(x) any(is.na(x)))
-        post_M[rows_with_na, ] <- pi
-        print('ok')
+        ## TODO assign the pi instead... seems to make no difference??
+        # rows_with_na <- apply(post_M, 1, function(x) any(is.na(x)))
+        # post_M[rows_with_na, ] <- pi
+        # print('ok')
 
         # M-step
 
+        # TODO: need to change this!
         # update prior probability
         y_pi <- bind_cols(y = tb_pmf$y, post_M)
-        y_obsv <- tb_real |>
+        y_obsv <- tb_bead |>
             select(y = all_of(target_marker))
+        print('y_obsv')
+        print(y_obsv |> head())
         y_obsv <- left_join(y_obsv, y_pi, by = "y")
         pi <- y_obsv |> select(-y)
         pi <- colSums(pi) / nrow(pi)
+
+        print(pi)
+        sys.exit(0)
 
         # new weighted empirical density estimate
         y <- pull(y_obsv, y)
