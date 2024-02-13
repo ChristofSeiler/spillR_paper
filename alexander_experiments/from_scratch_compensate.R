@@ -2,6 +2,7 @@
 library(tidyr)
 library(dplyr)
 
+# TODO - I'm misunderstanding counts! have to fix this!!!
 
 compensate = function(df, target, pi_k=0.9){
     min_x = min(df$X)

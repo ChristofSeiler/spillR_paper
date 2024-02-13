@@ -5,7 +5,7 @@ library(ggplot2)
 library(magrittr)
 library(spatstat.geom)
 source("alexander_experiments/compensate.R")
-source("alexander_experiments/my_compensate.R")
+# source("alexander_experiments/my_compensate.R")
 
 tfm <- function(x) asinh(x/5)
 tb_real = read.csv("alexander_experiments/tb_real.csv")
