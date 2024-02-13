@@ -2,39 +2,67 @@
 library(tidyr)
 library(dplyr)
 
-# TODO - I'm misunderstanding counts! have to fix this!!!
 
-compensate = function(df, target, pi_k=0.9){
-    min_x = min(df$X)
-    max_x = max(df$X)
-    d = ncol(df)
+compensate = function(df, target, pi_k=0.9, n_iter=3){
+    x_min = min(df[[target]])
+    x_max = max(df[[target]])
     markers = unique(df$barcode)
+    d = length(markers)
 
-    # data
+    # initialize
     pdfs = list()
-    data = data.frame('count'=c(min_x:max_x))
+    data = data.frame('count'=c(x_min:x_max))
+    # TODO I'm not sure I'm estimating the pdfs correctly!
     for(i in markers){
         # get frequency of each count for barcode
-        bc_counts = df |>
-                    filter(barcode==i) |>
-                    transmute('count'=.data[["X"]], !!i:=.data[[target]])
-        data = left_join(data, bc_counts, by='count')
-        # compute ecdf for barcode
-        fit = density(rep(bc_counts$count, times=bc_counts[[i]]))
+        bc_counts = df[df$barcode==i, target]
+        fit = density(bc_counts, from=x_min, to=x_max)
         pdfs = append(pdfs, approxfun(fit$x, fit$y))
+        # create table of counts for each barcode
+        bc_table = data.frame(table(bc_counts))
+        names(bc_table) = c('count', i)
+        bc_table$count = as.numeric(as.character(bc_table$count))
+        data = left_join(data, bc_table, by='count')
     }
     names(pdfs) = markers
     pi = c(pi_k, vapply(2:d, function(x) (1-pi_k)/(d-1), numeric(1)))
+    convergence <- matrix(nrow=n_iter, ncol=d)
+    convergence[1,] = pi
+    
+    # EM algorithm
+    for(i in 2:n_iter){
+        # E-step
+        pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
+        names(pmf_pi) = markers
+        pmf_pi[is.na(pmf_pi)] = 0
+        ka_given_x = pmf_pi / rowSums(pmf_pi)
 
-    # initialize
-    pmf_data = lapply(markers, function(x) pdfs[[x]](data[[x]])) |> bind_cols()
-    pmf_data[is.na(pmf_data)] = 0
-    names(pmf_data) = markers
+        # M-step
+        ka = colMeans(ka_given_x, na.rm=TRUE)
 
-    # TODO we only ever seem to have one marker for each count?? not clear why...
+        # logging
+        convergence[i,] = ka
 
-    # E-step
+        # TODO have to be very careful here, not sure this is correct
+        ka_given_x[is.na(ka_given_x)] = 1/d
+        # update density estimates
+        for(m in markers){
+            # TODO check if the weights really make sense
+            fit = density(df[df$barcode==m, target], from=x_min, to=x_max,
+                          weights=ka_given_x[[m]])
+            pdfs[[m]] = approxfun(fit$x, fit$y)
+        }
+    }
+
+    print(convergence)
+}
 
 
-    return(0)
+if(interactive()){
+    print('testing compensate')
+    df = read.csv("alexander_experiments/tb_bead.csv")
+    target = 'Yb173Di'
+    pi_k = 0.9
+    n_iter = 3
+    compensate(df, target, pi_k, n_iter)
 }
