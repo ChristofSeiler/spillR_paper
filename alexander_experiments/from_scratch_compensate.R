@@ -1,4 +1,5 @@
 # implement compensate function from scratch
+if(interactive()){rm(list=ls())}
 library(tidyr)
 library(dplyr)
 
@@ -52,7 +53,7 @@ compensate = function(df, target, pi_k=0.9, n_iter=3){
         for(m in markers){
             # TODO check if the weights really make sense
             obs = df[df$barcode==m, target]
-            ws = ka_given_x[[m]][obs]
+            ws = ka_given_x[obs+1, m]  # need +1 because R is 1-indexed
             ws[is.na(ws)] = 0
             ws = ws / sum(ws)
             fit = density(obs, from=x_min, to=x_max, weights=ws)
@@ -69,6 +70,6 @@ if(interactive()){
     df = read.csv("alexander_experiments/tb_bead.csv")
     target = 'Yb173Di'
     pi_k = 0.9
-    n_iter = 3
+    n_iter = 10
     compensate(df, target, pi_k, n_iter)
 }
