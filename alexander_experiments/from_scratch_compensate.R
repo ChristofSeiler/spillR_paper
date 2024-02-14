@@ -66,7 +66,7 @@ from_scratch_compensate = function(df, target, pi_k=0.9, n_iter=3){
     names(pmf_pi) = markers
     ka_given_x = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
     ka_given_x[is.na(ka_given_x)] = 0
-    compensated = ka_given_x * rowSums(data, na.rm=TRUE)
+    compensated = ka_given_x * rowSums(data[markers], na.rm=TRUE)
     compensated$count = data$count
     # TODO get back to original format!
     res = data.frame('count'=c(), 'compensated_number'=c(), 'barcode'=c())
