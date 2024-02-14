@@ -34,25 +34,26 @@ from_scratch_compensate = function(df, df_real, target, pi_k=0.9, n_iter=3){
     for(i in 2:n_iter){
         # E-step
         pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
+        pmf_pi = pmf_pi * pi
         pmf_pi = pmf_pi / colSums(pmf_pi, na.rm=TRUE)
+        pmf_pi = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
         names(pmf_pi) = markers
-        ka_given_x = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
 
-        # M-step
-        ka = colMeans(ka_given_x, na.rm=TRUE)
-        ka = ka / sum(ka)
+        # M-step: update pi
+        pi = colMeans(pmf_pi, na.rm=TRUE)
+        pi = pi / sum(pi)
 
         # logging
-        convergence[i,] = ka
+        convergence[i,] = pi
 
         # # TODO have to be very careful here, not sure this is correct
-        # ka_given_x[is.na(ka_given_x)] = 1/d
+        # pmf_pi[is.na(pmf_pi)] = 1/d
 
         # update density estimates
         for(m in markers){
             # TODO check if the weights really make sense
             obs = df[df$barcode==m, target]
-            ws = ka_given_x[obs+1, m]  # need +1 because R is 1-indexed
+            ws = pmf_pi[obs+1, m]  # need +1 because R is 1-indexed
             ws[is.na(ws)] = 0
             ws = ws / sum(ws)
             fit = density(obs, from=x_min, to=x_max, weights=ws)
@@ -66,9 +67,9 @@ from_scratch_compensate = function(df, df_real, target, pi_k=0.9, n_iter=3){
     # pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
     # pmf_pi = pmf_pi / colSums(pmf_pi, na.rm=TRUE)
     # names(pmf_pi) = markers
-    # ka_given_x = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
-    # ka_given_x[is.na(ka_given_x)] = 0
-    # compensated = ka_given_x * rowSums(data[markers], na.rm=TRUE)
+    # pmf_pi = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
+    # pmf_pi[is.na(pmf_pi)] = 0
+    # compensated = pmf_pi * rowSums(data[markers], na.rm=TRUE)
     # compensated$count = data$count
     # # get back into original format!
     # res = data.frame('count'=c(), 'compensated_number'=c(), 'barcode'=c())
@@ -79,9 +80,12 @@ from_scratch_compensate = function(df, df_real, target, pi_k=0.9, n_iter=3){
     #     res = bind_rows(res, compensated_m)
     # }
 
-    # Compensate spillover on real data
+    # Compensate spillover on real data (basically E-step)
     r_pmf_pi = bind_cols(lapply(markers, 
                                 function(x) pdfs[[x]](df_real[[target]])))
+    r_pmf_pi = r_pmf_pi * pi
+    r_pmf_pi = r_pmf_pi / colSums(r_pmf_pi, na.rm=TRUE)
+    r_pmf_pi / rowSums(r_pmf_pi, na.rm=TRUE)
     names(r_pmf_pi) = markers
     # find the index of the largest value of each row
     df_real$barcode = markers[apply(r_pmf_pi, 1, function(x)which.max(x))]

@@ -48,14 +48,15 @@ res = from_scratch_compensate(df, df_real, target, pi_k, n_iter)
 
 # TODO the barcode-colored densities look weird...
 
+ggplot(df_real) +
+    geom_density(aes(tfm(Yb173Di)))
+
 ggplot(res) +
     geom_density(aes(tfm(Yb173Di), color=barcode))
 
 ggplot(res |> filter(barcode=="Yb173Di")) +
-    geom_density(aes(tfm(Yb173Di)))
-
-ggplot(df_real) +
-    geom_density(aes(tfm(Yb173Di)))
+    geom_density(aes(tfm(Yb173Di))) +
+    xlim(0, NA)
 
 # # plot the sanity-check compensation of the beads experiment itself
 # ggplot(res) +
