@@ -86,6 +86,8 @@ from_scratch_compensate = function(df, df_real, target, pi_k=0.9, n_iter=3){
     # find the index of the largest value of each row
     df_real$barcode = markers[apply(r_pmf_pi, 1, function(x)which.max(x))]
     
+    # TODO: instead of removing counts, we could multiply the target marker probability with the actual count? (or just set the counts which we believe to be spillover to zero?)
+
     return(df_real)
 }
 
