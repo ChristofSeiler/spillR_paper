@@ -4,9 +4,10 @@ library(tidyr)
 library(dplyr)
 
 
-from_scratch_compensate = function(df, target, pi_k=0.9, n_iter=3){
-    x_min = min(df[[target]])
-    x_max = max(df[[target]])
+from_scratch_compensate = function(df, df_real, target, pi_k=0.9, n_iter=3){
+    # choose max range of support
+    x_min = min(min(df[[target]]), min(df_real[[target]]))
+    x_max = max(max(df[[target]]), max(df_real[[target]]))
     markers = unique(df$barcode)
     d = length(markers)
 
@@ -60,31 +61,41 @@ from_scratch_compensate = function(df, target, pi_k=0.9, n_iter=3){
     }
     print(convergence)
 
-    # basically perform E-step once more
-    pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
-    pmf_pi = pmf_pi / colSums(pmf_pi, na.rm=TRUE)
-    names(pmf_pi) = markers
-    ka_given_x = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
-    ka_given_x[is.na(ka_given_x)] = 0
-    compensated = ka_given_x * rowSums(data[markers], na.rm=TRUE)
-    compensated$count = data$count
-    # TODO get back to original format!
-    res = data.frame('count'=c(), 'compensated_number'=c(), 'barcode'=c())
-    for(m in markers){
-        compensated_m = compensated[compensated[,m]>0, c('count', m)]
-        names(compensated_m) = c('count', 'compensated_number')
-        compensated_m$barcode = m
-        res = bind_rows(res, compensated_m)
-    }
-    return(res)
+    # # perform correction on the bead data itself - just as a sanity check
+    # # (basically perform the E-step once more)
+    # pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
+    # pmf_pi = pmf_pi / colSums(pmf_pi, na.rm=TRUE)
+    # names(pmf_pi) = markers
+    # ka_given_x = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
+    # ka_given_x[is.na(ka_given_x)] = 0
+    # compensated = ka_given_x * rowSums(data[markers], na.rm=TRUE)
+    # compensated$count = data$count
+    # # get back into original format!
+    # res = data.frame('count'=c(), 'compensated_number'=c(), 'barcode'=c())
+    # for(m in markers){
+    #     compensated_m = compensated[compensated[,m]>0, c('count', m)]
+    #     names(compensated_m) = c('count', 'compensated_number')
+    #     compensated_m$barcode = m
+    #     res = bind_rows(res, compensated_m)
+    # }
+
+    # Compensate spillover on real data
+    r_pmf_pi = bind_cols(lapply(markers, 
+                                function(x) pdfs[[x]](df_real[[target]])))
+    names(r_pmf_pi) = markers
+    # find the index of the largest value of each row
+    df_real$barcode = markers[apply(r_pmf_pi, 1, function(x)which.max(x))]
+    
+    return(df_real)
 }
 
 
 if(interactive()){
     print('testing from_scratch_compensate')
     df = read.csv("alexander_experiments/tb_bead.csv")
+    df_real = read.csv("alexander_experiments/tb_real.csv")
     target = 'Yb173Di'
     pi_k = 0.9
     n_iter = 10
-    from_scratch_compensate(df, target, pi_k, n_iter)
+    from_scratch_compensate(df, df_real, target, pi_k, n_iter)
 }

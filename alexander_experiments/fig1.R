@@ -29,14 +29,34 @@ ggplot(res$tb_spill_prob) +
 
 
 ################################################################################
-
 # try reimplementation of compensate
+
+library(dplyr)
+library(ggplot2)
+library(magrittr)
+library(spatstat.geom)
+source("alexander_experiments/from_scratch_compensate.R")
+tfm <- function(x) asinh(x/5)
 print('testing compensate')
 df = read.csv("alexander_experiments/tb_bead.csv")
+df_real = read.csv("alexander_experiments/tb_real.csv")
 target = 'Yb173Di'
 pi_k = 0.9
 n_iter = 10
-res = from_scratch_compensate(df, target, pi_k, n_iter)
+# df = df |> filter(barcode != "Yb176Di")
+res = from_scratch_compensate(df, df_real, target, pi_k, n_iter)
+
+# TODO the barcode-colored densities look weird...
 
 ggplot(res) +
-    geom_density(aes(x=tfm(count), weight=compensated_number, color=as.factor(barcode)), alpha=0.5)
+    geom_density(aes(tfm(Yb173Di), color=barcode))
+
+ggplot(res |> filter(barcode=="Yb173Di")) +
+    geom_density(aes(tfm(Yb173Di)))
+
+ggplot(df_real) +
+    geom_density(aes(tfm(Yb173Di)))
+
+# # plot the sanity-check compensation of the beads experiment itself
+# ggplot(res) +
+#     geom_density(aes(x=tfm(count), weight=compensated_number, color=as.factor(barcode)), alpha=0.5)
