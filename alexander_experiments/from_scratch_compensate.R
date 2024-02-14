@@ -4,7 +4,7 @@ library(tidyr)
 library(dplyr)
 
 
-compensate = function(df, target, pi_k=0.9, n_iter=3){
+from_scratch_compensate = function(df, target, pi_k=0.9, n_iter=3){
     x_min = min(df[[target]])
     x_max = max(df[[target]])
     markers = unique(df$barcode)
@@ -13,7 +13,6 @@ compensate = function(df, target, pi_k=0.9, n_iter=3){
     # initialize
     pdfs = list()
     data = data.frame('count'=c(x_min:x_max))
-    # TODO I'm not sure I'm estimating the pdfs correctly!
     for(i in markers){
         # get frequency of each count for barcode
         bc_counts = df[df$barcode==i, target]
@@ -34,9 +33,8 @@ compensate = function(df, target, pi_k=0.9, n_iter=3){
     for(i in 2:n_iter){
         # E-step
         pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
-        names(pmf_pi) = markers
         pmf_pi = pmf_pi / colSums(pmf_pi, na.rm=TRUE)
-        # pmf_pi[is.na(pmf_pi)] = 0
+        names(pmf_pi) = markers
         ka_given_x = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
 
         # M-step
@@ -60,16 +58,33 @@ compensate = function(df, target, pi_k=0.9, n_iter=3){
             pdfs[[m]] = approxfun(fit$x, fit$y)
         }
     }
-
     print(convergence)
+
+    # basically perform E-step once more
+    pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
+    pmf_pi = pmf_pi / colSums(pmf_pi, na.rm=TRUE)
+    names(pmf_pi) = markers
+    ka_given_x = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
+    ka_given_x[is.na(ka_given_x)] = 0
+    compensated = ka_given_x * rowSums(data, na.rm=TRUE)
+    compensated$count = data$count
+    # TODO get back to original format!
+    res = data.frame('count'=c(), 'compensated_number'=c(), 'barcode'=c())
+    for(m in markers){
+        compensated_m = compensated[compensated[,m]>0, c('count', m)]
+        names(compensated_m) = c('count', 'compensated_number')
+        compensated_m$barcode = m
+        res = bind_rows(res, compensated_m)
+    }
+    return(res)
 }
 
 
 if(interactive()){
-    print('testing compensate')
+    print('testing from_scratch_compensate')
     df = read.csv("alexander_experiments/tb_bead.csv")
     target = 'Yb173Di'
     pi_k = 0.9
     n_iter = 10
-    compensate(df, target, pi_k, n_iter)
+    from_scratch_compensate(df, target, pi_k, n_iter)
 }

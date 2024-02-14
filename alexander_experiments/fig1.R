@@ -31,3 +31,14 @@ ggplot(my_res$tb_spill_prob) +
 # TODO make sure all the spillover is actually removed!
 # why does assigning the pi vs. uniform for missing counts make no difference??
 # TODO the choice of target_p has suspiciously little effect
+
+
+################################################################################
+
+# try reimplementation of compensate
+print('testing compensate')
+df = read.csv("alexander_experiments/tb_bead.csv")
+target = 'Yb173Di'
+pi_k = 0.9
+n_iter = 10
+res = from_scratch_compensate(df, target, pi_k, n_iter)
