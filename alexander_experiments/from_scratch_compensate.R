@@ -34,22 +34,28 @@ compensate = function(df, target, pi_k=0.9, n_iter=3){
         # E-step
         pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
         names(pmf_pi) = markers
-        pmf_pi[is.na(pmf_pi)] = 0
-        ka_given_x = pmf_pi / rowSums(pmf_pi)
+        pmf_pi = pmf_pi / colSums(pmf_pi, na.rm=TRUE)
+        # pmf_pi[is.na(pmf_pi)] = 0
+        ka_given_x = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
 
         # M-step
         ka = colMeans(ka_given_x, na.rm=TRUE)
+        ka = ka / sum(ka)
 
         # logging
         convergence[i,] = ka
 
-        # TODO have to be very careful here, not sure this is correct
-        ka_given_x[is.na(ka_given_x)] = 1/d
+        # # TODO have to be very careful here, not sure this is correct
+        # ka_given_x[is.na(ka_given_x)] = 1/d
+
         # update density estimates
         for(m in markers){
             # TODO check if the weights really make sense
-            fit = density(df[df$barcode==m, target], from=x_min, to=x_max,
-                          weights=ka_given_x[[m]])
+            obs = df[df$barcode==m, target]
+            ws = ka_given_x[[m]][obs]
+            ws[is.na(ws)] = 0
+            ws = ws / sum(ws)
+            fit = density(obs, from=x_min, to=x_max, weights=ws)
             pdfs[[m]] = approxfun(fit$x, fit$y)
         }
     }
