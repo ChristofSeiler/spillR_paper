@@ -11,13 +11,12 @@ tb_real = read.csv("alexander_experiments/tb_real.csv")
 tb_bead = read.csv("alexander_experiments/tb_bead.csv")
 spillover_markers = c("Yb171Di", "Yb172Di", "Yb174Di", "Yb176Di")
 target_marker = "Yb173Di"
-runmed_k = 3
 
 # reproduce figure 1 A
 ggplot(tb_bead) + 
     geom_density(aes(x=tfm(Yb173Di), color=barcode))
 
-res = compensate(tb_real, tb_bead, target_marker, spillover_markers, runmed_k)
+res = compensate(tb_real, tb_bead, target_marker, spillover_markers)
 
 # reproduce figure 1 B
 ggplot(res$tb_spill_prob) +

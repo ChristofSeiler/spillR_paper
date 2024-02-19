@@ -1,5 +1,4 @@
 # implement compensate function from scratch
-if(interactive()){rm(list=ls())}
 library(tidyr)
 library(dplyr)
 
@@ -34,8 +33,9 @@ from_scratch_compensate = function(df, df_real, target, pi_k=0.9, n_iter=3){
     for(i in 2:n_iter){
         # E-step
         pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
+        # normalize each marker density
+        pmf_pi = sweep(pmf_pi, 2, colSums(pmf_pi, na.rm=TRUE), FUN="/")
         pmf_pi = pmf_pi * pi
-        pmf_pi = pmf_pi / colSums(pmf_pi, na.rm=TRUE)
         pmf_pi = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
         names(pmf_pi) = markers
 
@@ -51,7 +51,6 @@ from_scratch_compensate = function(df, df_real, target, pi_k=0.9, n_iter=3){
 
         # update density estimates
         for(m in markers){
-            # TODO check if the weights really make sense
             obs = df[df$barcode==m, target]
             ws = pmf_pi[obs+1, m]  # need +1 because R is 1-indexed
             ws[is.na(ws)] = 0
@@ -62,46 +61,17 @@ from_scratch_compensate = function(df, df_real, target, pi_k=0.9, n_iter=3){
     }
     print(convergence)
 
-    # # perform correction on the bead data itself - just as a sanity check
-    # # (basically perform the E-step once more)
-    # pmf_pi = bind_cols(lapply(markers, function(x) pdfs[[x]](data[[x]])))
-    # pmf_pi = pmf_pi / colSums(pmf_pi, na.rm=TRUE)
-    # names(pmf_pi) = markers
-    # pmf_pi = pmf_pi / rowSums(pmf_pi, na.rm=TRUE)
-    # pmf_pi[is.na(pmf_pi)] = 0
-    # compensated = pmf_pi * rowSums(data[markers], na.rm=TRUE)
-    # compensated$count = data$count
-    # # get back into original format!
-    # res = data.frame('count'=c(), 'compensated_number'=c(), 'barcode'=c())
-    # for(m in markers){
-    #     compensated_m = compensated[compensated[,m]>0, c('count', m)]
-    #     names(compensated_m) = c('count', 'compensated_number')
-    #     compensated_m$barcode = m
-    #     res = bind_rows(res, compensated_m)
-    # }
-
     # Compensate spillover on real data (basically E-step)
-    r_pmf_pi = bind_cols(lapply(markers, 
-                                function(x) pdfs[[x]](df_real[[target]])))
+    r_pmf_pi = data.frame(bind_cols(lapply(markers,
+        function(x) pdfs[[x]](df_real[[target]]))))
+    r_pmf_pi = sweep(r_pmf_pi, 2, colSums(r_pmf_pi, na.rm=TRUE), FUN="/")
     r_pmf_pi = r_pmf_pi * pi
-    r_pmf_pi = r_pmf_pi / colSums(r_pmf_pi, na.rm=TRUE)
-    r_pmf_pi / rowSums(r_pmf_pi, na.rm=TRUE)
+    r_pmf_pi = r_pmf_pi / rowSums(r_pmf_pi, na.rm=TRUE)
     names(r_pmf_pi) = markers
     # find the index of the largest value of each row
-    df_real$barcode = markers[apply(r_pmf_pi, 1, function(x)which.max(x))]
+    df_real$barcode = as.double(sapply(apply(r_pmf_pi, 1, which.max), unname))
     
     # TODO: instead of removing counts, we could multiply the target marker probability with the actual count? (or just set the counts which we believe to be spillover to zero?)
 
     return(df_real)
-}
-
-
-if(interactive()){
-    print('testing from_scratch_compensate')
-    df = read.csv("alexander_experiments/tb_bead.csv")
-    df_real = read.csv("alexander_experiments/tb_real.csv")
-    target = 'Yb173Di'
-    pi_k = 0.9
-    n_iter = 10
-    from_scratch_compensate(df, df_real, target, pi_k, n_iter)
 }
