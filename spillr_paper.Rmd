@@ -86,6 +86,8 @@ marker_to_barc <-
 # --------- call compensate from compCytof package ---------
 
 sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
+sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                             fast = TRUE)
 
 # --------- run CATALYST ---------
 
@@ -133,15 +135,23 @@ compexprs_spillr <- sce_spillr |>
   t() |>
   as_tibble() |>
   mutate(correction = "spillR")
+compexprs_spillr_fast <- sce_spillr_fast |> 
+  assay("compexprs") |>
+  t() |>
+  as_tibble() |>
+  mutate(correction = "spillR (fast)")
 compexprs_catalyst <- sce_catalyst |> 
   assay("compexprs") |>
   t() |>
   as_tibble() |>
   mutate(correction = "CATALYST")
-combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
+combo <- bind_rows(exprs_spillr, compexprs_spillr, 
+                   compexprs_spillr_fast, compexprs_catalyst)
 combo <- combo |> select(all_of(c(ch, "correction")))
-combo$correction <- factor(combo$correction, 
-                       levels = c("none", "spillR", "CATALYST"))
+combo$correction <- factor(
+  combo$correction, 
+  levels = c("none", "spillR", "spillR (fast)", "CATALYST")
+  )
 
 p_before_after <- combo |> 
   filter(.data[[ch]] > 0) |>
@@ -183,7 +193,8 @@ means <- combo |>
 
 zeros_means <- left_join(zeros, means, by = "correction")
 levels(zeros_means$correction)[2] <- "\\texttt{spillR}"
-levels(zeros_means$correction)[3] <- "\\texttt{CATALYST}"
+levels(zeros_means$correction)[3] <- "\\texttt{spillR} (fast)"
+levels(zeros_means$correction)[4] <- "\\texttt{CATALYST}"
 
 zeros_means |>
   kableExtra::kbl(
