@@ -555,7 +555,7 @@ In the third experiment (panel C), we model spillover with a bimodal distributio
 
 ## Real Data
 
-```{r spillr-vignette, fig.height = 6, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 
@@ -587,6 +587,8 @@ marker_to_barc <-
 
 # --------- call compensate from compCytof package ---------
 sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
+sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                             fast = TRUE)
 
 # --------- 2d histogram from spillR (for vignette, not for paper) ---------
 # as <- c("counts", "exprs", "compcounts", "compexprs")
@@ -610,13 +612,22 @@ compexprs_spillr <- sce_spillr |>
   t() |>
   as_tibble() |>
   mutate(method = "spillR")
+compexprs_spillr_fast <- sce_spillr_fast |> 
+  assay("compexprs") |>
+  t() |>
+  as_tibble() |>
+  mutate(method = "spillR (fast)")
 compexprs_catalyst <- sce_catalyst |> 
   assay("compexprs") |>
   t() |>
   as_tibble() |>
   mutate(method = "CATALYST")
-combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
-combo$method <- factor(combo$method, levels=c('uncorrected', 'CATALYST', 'spillR'))
+combo <- bind_rows(exprs_spillr, compexprs_spillr, 
+                   compexprs_spillr_fast, compexprs_catalyst)
+combo$method <- factor(
+  combo$method, 
+  levels = c("uncorrected", "spillR", "spillR (fast)", "CATALYST")
+  )
 
 # row 1
 p1 <- ggplot(combo, aes(x = CD3.2, y = CD8b)) +
@@ -724,6 +735,8 @@ semi_synthetic_data <- function(shift) {
     mutate(barcode = bc_key) |>
     dplyr::select(marker = channel_name, barcode)
   sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
+  sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                             fast = TRUE)
   
   # --------- beads experiment ---------
   tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
@@ -744,15 +757,23 @@ semi_synthetic_data <- function(shift) {
     t() |>
     as_tibble() |>
     mutate(correction = "spillR")
+  compexprs_spillr_fast <- sce_spillr_fast |> 
+    assay("compexprs") |>
+    t() |>
+    as_tibble() |>
+    mutate(correction = "spillR (fast)")
   compexprs_catalyst <- sce_catalyst |> 
     assay("compexprs") |>
     t() |>
     as_tibble() |>
     mutate(correction = "CATALYST")
-  combo <- bind_rows(exprs_spillr, compexprs_spillr, compexprs_catalyst)
+  combo <- bind_rows(exprs_spillr, compexprs_spillr, 
+                   compexprs_spillr_fast, compexprs_catalyst)
   combo <- combo |> select(all_of(c(ch, "correction")))
-  combo$correction <- factor(combo$correction, 
-                         levels = c("none", "spillR", "CATALYST"))
+  combo$correction <- factor(
+    combo$correction, 
+    levels = c("none", "spillR", "spillR (fast)", "CATALYST")
+    )
   combo <- mutate(combo, shift = shift)
   
   list(tb_bead = tb_bead, combo = combo)
