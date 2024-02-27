@@ -313,7 +313,7 @@ lambda_bead  <- 70
 lambda_bead_high  <- 330
 spill_prob <- 0.5
 n_rep <- 20
-n_cores <- 16
+n_cores <- 8
 
 # --------- helper functions ---------
 
