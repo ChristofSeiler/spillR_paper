@@ -34,6 +34,7 @@ library(spatstat.geom)
 library(parallel)
 library(kableExtra)
 library(hexbin)
+library(rbenchmark)
 set.seed(23)
 tfm <- function(x) asinh(x/5)
 ```
@@ -679,8 +680,20 @@ The uncorrected counts do not undergo this pre-processing step. `CATALYST` does 
 We leave the decision to apply re-randomization of the count data for downstream analysis up to the user.
 }
 
+```{r computational-resources, echo=FALSE, eval=FALSE}
+mark <- benchmark(
+  "spillR" = spillR::compCytof(sce, sce_bead, marker_to_barc, n_cores = 8),
+  "spillR (fast)" = spillR::compCytof(sce, sce_bead, marker_to_barc, 
+                                      fast = TRUE, n_cores = 8),
+  "CATALYST" = CATALYST::compCytof(sce, sm),
+  replications = 5,
+  columns = c("test", "replications", "elapsed")
+)
+mark$average = mark$elapsed/mark$replications
+```
+
 \textcolor{red}{
-The computational time and memory consumption are for \texttt{spillR} are: around 30 seconds with less than 1 GB of RAM. In comparison, for \texttt{CATALYST} is less than one second with less than 1GB of RAM..
+The average computational time with five replications on an Apple M1 with 8 cores and 16 GB of RAM are $10.7$ seconds for \texttt{spillR}, $0.4$ seconds for \texttt{CATALYST}, and $0.5$ seconds for \texttt{spillR} (fast).
 }
 
 ## Semi-Simulated Data
