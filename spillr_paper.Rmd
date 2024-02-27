@@ -686,14 +686,14 @@ mark <- benchmark(
   "spillR (fast)" = spillR::compCytof(sce, sce_bead, marker_to_barc, 
                                       fast = TRUE, n_cores = 8),
   "CATALYST" = CATALYST::compCytof(sce, sm),
-  replications = 20,
+  replications = 100,
   columns = c("test", "replications", "elapsed")
 )
 mark$average = mark$elapsed/mark$replications
 ```
 
 \textcolor{red}{
-The average computational time with five replications on an Apple M1 with 8 cores and 16 GB of RAM are $10.7$ seconds for \texttt{spillR}, $0.4$ seconds for \texttt{CATALYST}, and $0.5$ seconds for \texttt{spillR} (fast).
+The average computational time with 100 replications on an Apple M1 with 8 cores and 16 GB of RAM are $10.6$ seconds for \texttt{spillR}, $0.43$ seconds for \texttt{CATALYST}, and $0.45$ seconds for \texttt{spillR} (fast).
 }
 
 ## Semi-Simulated Data
