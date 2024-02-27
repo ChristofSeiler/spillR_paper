@@ -686,7 +686,7 @@ mark <- benchmark(
   "spillR (fast)" = spillR::compCytof(sce, sce_bead, marker_to_barc, 
                                       fast = TRUE, n_cores = 8),
   "CATALYST" = CATALYST::compCytof(sce, sm),
-  replications = 5,
+  replications = 20,
   columns = c("test", "replications", "elapsed")
 )
 mark$average = mark$elapsed/mark$replications
