@@ -297,6 +297,16 @@ To perform the spillover compensation, we draw from a Bernoulli distribution wit
 
 -->
 
+## `spillR` (fast)
+
+\textcolor{red}{
+We compare our methods to a fast baseline method with the following steps: We estimate the bead PMF of each bead $k$ with the smoother function \texttt{density} in R, $\widehat{P}(Y_i | Z_i = k)$. We normalize the PMF at a specific count value $Y_i = y$ to one and calculate the spillover probability as, 
+$$
+P(Z_i = k \mid Y_i = y) = 1 - \frac{\widehat{P}(Y_i | Z_i = k)}{\sum_{k'}^K \widehat{P}(Y_i | Z_i = k)}.
+$$
+The spillover decision is the same as in our standard \texttt{spillR} method.
+}
+
 # Results
 
 We first evaluate our new method `spillR` on simulated datasets. We probe our method to experimentally find its shortcomings. Then, we compare `spillR` to the non-negative least squares method implemented in the R package `CATALYST` on real data from the same package. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd`^[https://github.com/ChristofSeiler/spillR_paper].
@@ -658,16 +668,19 @@ plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2,
           labels = c("A", "B", "C", "D", "E", "F"))
 ```
 
-We compare our method to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset has an experiment with real cells and a corresponding bead experiment. The experiment on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels. They have single stained bead experiments. The number of beads per metal label range from 112 to 241.
+We compare our methods to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset has an experiment with real cells and a corresponding bead experiment. The experiment on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels. They have single stained bead experiments. The number of beads per metal label range from 112 to 241.
 
-We compare the two methods on the same markers as in the original `CATALYST` paper [@catalyst] in their Figure 3B. In the original experiment, they conjugated three proteins---CD3, CD8, and HLA-DR---with two different metal labels. They conjugated CD8 (first row in Figure \@ref(fig:spillr-vignette)) with Yb174Di (Yb is the metal and 174 is the number of 
+We compare the three methods on the same markers as in the original `CATALYST` paper [@catalyst] in their Figure 3B. In the original experiment, they conjugated three proteins---CD3, CD8, and HLA-DR---with two different metal labels. They conjugated CD8 (first row in Figure \@ref(fig:spillr-vignette)) with Yb174Di (Yb is the metal and 174 is the number of 
 \textcolor{red}{nucleons}
 of the isotope) and La139Di, and similarly for the other rows. On the horizontal axis, we plot the same markers as in the original paper, CD3 and HLA-ABC. We visualize the joint distributions using two-dimensional histograms.
 
-In all six panels (A--F), we observe that `spillR` compensates most strongly in the low counts. In panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di), `CATALYST` can be seen to compensate strongly in the middle range. It removes the spherical pattern that shows correlation between the two markers. `spillR` preserves this correlation structure and only masks out the lower counts of CD3 (Yb173Di). This highlights a key difference between `spillR` and `CATALYST`: `spillR` does not correct all counts by shrinking them, but rather removes some counts, following the idea that the distribution of the remaining counts is close to the true distribution. `CATALYST` follows another strategy by shrinking counts across the entire range.
+In all six panels (A--F), we observe that `spillR` compensates most strongly in the low counts. In panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di), `CATALYST` can be seen to compensate strongly in the middle range. It removes the spherical pattern that shows correlation between the two markers. `spillR` preserves this correlation structure and only masks out the lower counts of CD3 (Yb173Di). This highlights a key difference between `spillR` and `CATALYST`: `spillR` does not correct all counts by shrinking them, but rather removes some counts, following the idea that the distribution of the remaining counts is close to the true distribution. `CATALYST` follows another strategy by shrinking counts across the entire range. 
+\textcolor{red}{
+\texttt{spillR} (fast) compensates most aggressively, removing everything that is the support of the beads distributions.
+}
 
 \textcolor{red}{
-The panels D and F no compensation from \texttt{CATALYST} and similar compensation to panels C and E from \texttt{spillR}. We checked the diagnostic plots using function \texttt{plotDiagnostics} in \texttt{spillR} to investigate the reason for the strong compensation. The design of the original experiment is such that we expect no spillover in the channels on the vertical axis. But our diagnostic plots show that there the bead distribution from spillover marker as identified by the spillover matrix in \texttt{CATALYST} exhibit strong overlap between at least one spillover marker then the first mode in the distribution of real cells. Thus our strong compensation is consistent with our assumption (A1).
+The panels D and F show no compensation for \texttt{CATALYST}. For the same panels our \texttt{spillR} methods compensates quite strongly. Our diagnostic plots using function \texttt{plotDiagnostics} in \texttt{spillR} give some indication on why our method compensates that strongly. The design of the original experiment is such that we expect no spillover in the channels on the vertical axis. But our diagnostic plots show that the bead distributions from spillover marker---as identified by the spillover matrix in \texttt{CATALYST}---exhibit strong overlap between at least one spillover marker and the first mode in the distribution of real cells. Thus, our strong compensation is consistent with our assumption (A1).
 } 
 <!-- [(A1)](#assumption1) -->
 
@@ -698,7 +711,7 @@ The average computational time with 100 replications on an Apple M1 with 8 cores
 
 ## Semi-Simulated Data
 
-```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on semi-synthetic data. The vertical dashed line helps to interpret the spillover correction when CD3 (Yb173Di) is 2.725. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on semi-synthetic data. The vertical dashed line helps to interpret the spillover correction. It indicates the mode of the bead distribution of Yb173Di at 2.725. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
 # --------- helper function ---------
 inv_tfm <- function(x) 5*sinh(x)
 
@@ -827,7 +840,9 @@ plot_grid(
 )
 ```
 
-We compare `spillR` and `CATALYST` on semi-simulated data. The goal is to elucidate the main differences between `spillR` and `CATALYST`, and to evaluate the performance of `spillR` on more than one spillover marker. We create semi-simulated datasets by overwriting the beads distribution for CD3 (Yb173Di). We take the first mode of the distribution of CD3 (Yb173Di) in real cells by filtering counts that range from 10 to 300. We shift these filtered counts by three different values: no shift is 0, subtracting 0.47 on the transformed scale, and subtracting 0.94 on the transformed scale. We further sample without replacement from this new bead distribution to keep the same number of beads as in the original dataset. Figure \@ref(fig:semi-simulated-plot) shows the three different datasets. In panel A, all bead distribution are equal to the original dataset in Figure \@ref(fig:method-example). Only the bead with barcode Yb173Di shift by 0.47 and 0.94 in the middle and right most plot. Both methdos correctly compensate the spillover mode when no shift is present. `CATALYST` compensate more aggressively with the medium shift of 0.47, and `spillR` is more moderate and compensate only the left hand tail of the spillover mode. In the largest shift of 0.94, the two methods behave differently. `CATALYST` shrink counts towards zero, shifting the entire spillover mode towards zero. In contrast, `spillR` just compensates lightly on the left hand tail.
+\textcolor{red}{
+We compare \texttt{spillR} and \texttt{CATALYST} on semi-simulated data. The goal is to elucidate the main differences between \texttt{spillR} and \texttt{CATALYST}, and to evaluate the performance of \texttt{spillR} on more than one spillover marker. We create semi-simulated datasets by overwriting the beads distribution for CD3 (Yb173Di). We take the first mode of the distribution of CD3 (Yb173Di) in real cells by filtering counts that range from 10 to 300. We shift these filtered counts by three different values: no shift is $0$, subtracting $0.47$ on the transformed scale, and subtracting $0.94$ on the transformed scale. We further sample without replacement from this new bead distribution to keep the same number of beads as in the original dataset. Figure \ref{fig:semi-simulated-plot} shows the three different datasets. In panel A, all bead distributions are equal to the original dataset in Figure \ref{fig:method-example} except Yb173Di is now perfectly aligned with the first mode of the distribution of real cell (red curve in B). In panel B and C, we shift the bead distribution of Yb173Di by $0.47$ and $0.94$. All three methods correctly compensate the spillover mode when no shift is present. \texttt{CATALYST} and \texttt{spillR} (fast) compensates more aggressively in the medium shift cases, while \texttt{spillR} is more moderate and compensate only the left hand tail of the spillover mode. In the largest shift of $0.94$, the three methods behave differently. \texttt{CATALYST} shrinks counts towards zero, shifting the entire spillover towards zero, \texttt{spillR} just compensates lightly on the left hand tail, and \texttt{spillR} (fast) compensate aggressively leaving only a small piece on the right hand tail.
+}
 
 # Discussion
 
