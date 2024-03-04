@@ -47,10 +47,6 @@ Mass cytometry makes it possible to count a large number of proteins simultaneou
 
 In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm and logistic regression, and implemented in our new R package `spillR`^[https://github.com/marcoguazzini/spillR]. In Section \@ref(results), we conduct experiments on simulated and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) discusses our synthetic experiments and relates our findings to `CATALYST`.
 
-\textcolor{red}{
-Note on the terminology: In mass cytometry, counts are called dual counts as they are calculated from real pulse ion counts for lower values and converted from intensity values for higher values using the dual count coefficient. Some authors refer to dual counts as signal intensity. We will call them counts in this paper to illustrate the fact that we heavily rely on the fact that they are non-negative integers as opposed to possibly real valued intensities. 
-}
-
 # Methods
 
 ## Example
@@ -209,6 +205,10 @@ Panel C displays the distribution of our target marker, CD3 (Yb173Di), before an
 As we do not know the true mean in this case, the comparison of means here serves merely as an illustration of the main differences between \texttt{spillR} and \texttt{CATALYST} and not to identify the correct method.
 }
 
+\textcolor{red}{
+Note on the terminology: In mass cytometry, counts are called dual counts as they are calculated from real pulse ion counts for lower values and converted from intensity values for higher values using the dual count coefficient. Some authors refer to dual counts as signal intensity. We will call them counts in this paper to illustrate the fact that we rely heavily on the fact that they are non-negative integers as opposed to possibly real valued intensities. 
+}
+
 ## Definition of Spillover Probability and Assumptions
 
 We observe a count $Y_i$ of a target marker in cell $i$. We model the observed $Y_i$ as a finite mixture [@mclachlan2019finite] of unobserved true marker counts $Y_i \mid Z_i = 1$ and spillover marker counts $Y_i \mid Z_i = 2, \dots, Y_i \mid Z_i = K$ with mixing probabilities $\pi_{k} = P(Z_i = k)$ for $k = 1, \dots, K$, 
@@ -241,23 +241,14 @@ from real and bead experiments have the same $n$. In practice, the number of
 \textcolor{red}{events}
 from bead experiments is much smaller than from real experiments. The $k$th column of $\mathbf{Y}$ contains marker counts for the $k$th spillover marker, which represents the empirical spillover distribution of marker $k$ into the target marker, that is, the marker in the first column of $\mathbf{Y}$.
 
-We use the empirical weighted cumulative distribution function (CDF) with non-negative weights $w_i$ at each data point to model the marker distributions $F$ for a marker $k$,
-$$
-\widehat{F}_k(y) = \frac{\sum_{i = 1}^n w_i \, \mathbf{1} \left( y_{ik} \le y \right)}{\sum_{i = 1}^n w_i},
-$$
-where $\mathbf{1}(\cdot)$ is the indicator function.
-
 ### EM Algorithm
 
 * Initialization: For the mixture probability vector, we assign probability $0.9$ to the the target marker and divide the probability $0.1$ among the spillover markers, 
 $$
 \hat{\pi}_{1} = 0.9 \text{ and } \hat{\pi}_i = 0.1/(K-1) \text{ for all } i > 1,
 $$ 
-and evaluate the $k$th mixture component using its empirical CDF with equal weights for all data points,
-$$
-\widehat{P}(Y_i = y \mid Z_i = k) = \widehat{F}_k(y) - \widehat{F}_k(y-1) \text{ with } w_i = 1/n.
-$$
-We smooth the probability mass function (PMF), $\widehat{P}(Y_i = y \mid Z_i = k)$, using running medians with a fixed window size as implemented in R function `runmed`. The procedure is not sensitive to the choice of the initial mixture probability vector. Other settings are possible, e.g., setting all probabilities to the same value.
+and evaluate the $k$th mixture component using \textcolor{red}{its PMF after smoothing and renormalizing, $\widehat{P}(Y_i = y \mid Z_i = k)$.} We smooth the probability mass function (PMF), $\widehat{P}(Y_i = y \mid Z_i = k)$, 
+\textcolor{red}{using kernel density estimation implemented in R function \texttt{density} with the default option for selecting the bandwith of the Gaussian kernel.} The procedure is not sensitive to the choice of the initial mixture probability vector. Other settings are possible, e.g., setting all probabilities to the same value.
 
 * E-step: We evaluate the posterior probability of a count $y$ belonging to component $k$ (that is, originating from marker $k$),
 $$
@@ -272,11 +263,7 @@ $$
 \hat{\pi}_k = 
 \frac{1}{n} \sum_{i = 1}^n \widehat{P}\left(Z_i = k \mid Y_i = y \right),
 $$
-and estimate the new target marker distribution using its empirical CDF with weights set to posterior probabilities,
-$$
-\widehat{P}(Y_i = y \mid Z_i = 1) = \widehat{F}_1(y) - \widehat{F}_1(y-1) \text{ with } w_i = \widehat{P} \left(Z_i = 1 \mid Y_i = y \right).
-$$
-As before, we smooth the PMF, $\widehat{P}(Y_i = y \mid Z_i = 1)$, using running medians with the same window size. We keep the bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
+and estimate the new target marker distribution \textcolor{red}{by weighting observations by their posterior probabilities $\widehat{P} \left(Z_i = 1 \mid Y_i = y \right)$.} As before, we smooth the PMF, $\widehat{P}(Y_i = y \mid Z_i = 1)$, using running medians with the same window size. We keep the bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
 
 To refine our estimates, we iterate over the E and M-steps until estimates stabilize. We stop iterating when $\hat{\pi}_1$ changes less than $10^{-5}$ from the previous iteration. The final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
@@ -300,7 +287,7 @@ To perform the spillover compensation, we draw from a Bernoulli distribution wit
 ## `spillR` (fast)
 
 \textcolor{red}{
-We compare our methods to a fast baseline method with the following steps: We estimate the bead PMF of each bead $k$ with the smoother function \texttt{density} in R, $\widehat{P}(Y_i | Z_i = k)$. We normalize the PMF at a specific count value $Y_i = y$ to one and calculate the spillover probability as, 
+We compare our mixture method to a fast baseline method that considers only the bead distributions. We estimate the bead PMF of each bead $k$ with the smoother function \texttt{density} in R, $\widehat{P}(Y_i | Z_i = k)$. We normalize the PMF at a specific count value $Y_i = y$ to one and calculate the spillover probability as, 
 $$
 P(Z_i = k \mid Y_i = y) = 1 - \frac{\widehat{P}(Y_i | Z_i = k)}{\sum_{k'}^K \widehat{P}(Y_i | Z_i = k)}.
 $$
@@ -676,7 +663,7 @@ of the isotope) and La139Di, and similarly for the other rows. On the horizontal
 
 In all six panels (A--F), we observe that `spillR` compensates most strongly in the low counts. In panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di), `CATALYST` can be seen to compensate strongly in the middle range. It removes the spherical pattern that shows correlation between the two markers. `spillR` preserves this correlation structure and only masks out the lower counts of CD3 (Yb173Di). This highlights a key difference between `spillR` and `CATALYST`: `spillR` does not correct all counts by shrinking them, but rather removes some counts, following the idea that the distribution of the remaining counts is close to the true distribution. `CATALYST` follows another strategy by shrinking counts across the entire range. 
 \textcolor{red}{
-\texttt{spillR} (fast) compensates most aggressively, removing everything that is the support of the beads distributions.
+\texttt{spillR} (fast) compensates most aggressively, removing everything that is not in the support of the beads distributions.
 }
 
 \textcolor{red}{
@@ -706,7 +693,7 @@ mark$average = mark$elapsed/mark$replications
 ```
 
 \textcolor{red}{
-The average computational time with 100 replications on an Apple M1 with 8 cores and 16 GB of RAM are $10.6$ seconds for \texttt{spillR}, $0.43$ seconds for \texttt{CATALYST}, and $0.45$ seconds for \texttt{spillR} (fast).
+The average computational time with 100 replications on an Apple M1 with 8 cores and 16 GB of RAM are $10.6$ seconds for \texttt{spillR}, $0.43$ seconds for \texttt{CATALYST}, and $0.45$ seconds for \texttt{spillR} (fast). The computational costs scale linearly in the number of cells. This allows for processing of large scale datasets.
 }
 
 ## Semi-Simulated Data
