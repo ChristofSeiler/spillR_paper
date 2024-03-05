@@ -245,10 +245,9 @@ from bead experiments is much smaller than from real experiments. The $k$th colu
 
 * Initialization: For the mixture probability vector, we assign probability $0.9$ to the the target marker and divide the probability $0.1$ among the spillover markers, 
 $$
-\hat{\pi}_{1} = 0.9 \text{ and } \hat{\pi}_i = 0.1/(K-1) \text{ for all } i > 1,
+\hat{\pi}_{1} = 0.9 \text{ and } \hat{\pi}_i = 0.1/(K-1) \text{ for all } i > 1.
 $$ 
-and evaluate the $k$th mixture component using \textcolor{red}{its PMF after smoothing and renormalizing, $\widehat{P}(Y_i = y \mid Z_i = k)$.} We smooth the probability mass function (PMF), $\widehat{P}(Y_i = y \mid Z_i = k)$, 
-\textcolor{red}{using kernel density estimation implemented in R function \texttt{density} with the default option for selecting the bandwith of the Gaussian kernel.} The procedure is not sensitive to the choice of the initial mixture probability vector. Other settings are possible, e.g., setting all probabilities to the same value.
+The procedure is not sensitive to the choice of the initial mixture probability vector. Other settings are possible but may be slower to converge, e.g., setting all probabilities to the same value. Then, we initialize the $k$th mixture component using \textcolor{red}{its probability mass function (PMF) after smoothing and renormalizing, $\widehat{P}(Y_i = y \mid Z_i = k)$.} We smooth the PMF, $\widehat{P}(Y_i = y \mid Z_i = k)$, \textcolor{red}{using kernel density estimation implemented in R function \texttt{density} with the default option for selecting the bandwith of the Gaussian kernel.}
 
 * E-step: We evaluate the posterior probability of a count $y$ belonging to component $k$ (that is, originating from marker $k$),
 $$
@@ -263,7 +262,7 @@ $$
 \hat{\pi}_k = 
 \frac{1}{n} \sum_{i = 1}^n \widehat{P}\left(Z_i = k \mid Y_i = y \right),
 $$
-and estimate the new target marker distribution \textcolor{red}{by weighting observations by their posterior probabilities $\widehat{P} \left(Z_i = 1 \mid Y_i = y \right)$.} As before, we smooth the PMF, $\widehat{P}(Y_i = y \mid Z_i = 1)$, using running medians with the same window size. We keep the bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
+and estimate the new target marker distribution using \textcolor{red}{the kernel density estimator. Here, we use \texttt{density} function from R again but weight each observations according to their posterior probabilities $\widehat{P} \left(Z_i = 1 \mid Y_i = y \right)$. We only update the target marker, $\widehat{P}(Y_i = y \mid Z_i = 1)$, and} keep the other bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
 
 To refine our estimates, we iterate over the E and M-steps until estimates stabilize. We stop iterating when $\hat{\pi}_1$ changes less than $10^{-5}$ from the previous iteration. The final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
@@ -287,7 +286,7 @@ To perform the spillover compensation, we draw from a Bernoulli distribution wit
 ## `spillR` (fast)
 
 \textcolor{red}{
-We compare our mixture method to a fast baseline method that considers only the bead distributions. We estimate the bead PMF of each bead $k$ with the smoother function \texttt{density} in R, $\widehat{P}(Y_i | Z_i = k)$. We normalize the PMF at a specific count value $Y_i = y$ to one and calculate the spillover probability as, 
+We compare our mixture method to a fast baseline method that considers only the bead distributions. We estimate the bead PMF of each bead $k$ with the kernel density estimator \texttt{density} in R, $\widehat{P}(Y_i | Z_i = k)$. For all count values $y$ in the range of the bead counts, we separately normalize the PMF at each value $Y_i = y$ and calculate the spillover probability as, 
 $$
 P(Z_i = k \mid Y_i = y) = 1 - \frac{\widehat{P}(Y_i | Z_i = k)}{\sum_{k'}^K \widehat{P}(Y_i | Z_i = k)}.
 $$
