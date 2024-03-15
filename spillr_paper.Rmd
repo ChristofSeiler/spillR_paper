@@ -675,11 +675,16 @@ plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2,
           labels = c("A", "B", "C", "D", "E", "F"))
 ```
 
-We compare our methods to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset has an experiment with real cells and a corresponding bead experiment. The experiment on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels. They have single stained bead experiments. The number of beads per metal label range from 112 to 241.
+We compare our methods to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset consists of an experiment with real cells and a corresponding bead experiment. The experiment on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels. They have single stained bead experiments. The number of beads per metal label ranges from 112 to 241.
 
-We compare the three methods on the same markers as in the original `CATALYST` paper [@catalyst] in their Figure 3B. In the original experiment, they conjugated three proteins---CD3, CD8, and HLA-DR---with two different metal labels. They conjugated CD8 (first row in Figure \@ref(fig:spillr-vignette)) with Yb174Di (Yb is the metal and 174 is the number of 
-\textcolor{red}{nucleons}
-of the isotope) and La139Di, and similarly for the other rows. On the horizontal axis, we plot the same markers as in the original paper, CD3 and HLA-ABC. We visualize the joint distributions using two-dimensional histograms.
+In Figure \@ref(fig:spillr-vignette), we show the comparison of our methods to `CATALYST` on the same markers as their original paper [@catalyst] in their Figure 3B. In the original experiment, they conjugate three proteins---CD3, CD8, and HLA-DR---with two different metal labels. 
+\textcolor{red}{
+For example, they conjugate CD8 with Yb174Di (Yb is the metal and the number indicates the number of nucleons of the isotope) and La139Di. 
+As in their plot, our columns correspond to the different metal labels.
+Following their set-up, we show the three target proteins on the vertical axis, and plot spillover markers on the horizontal axis.
+We show counts of CD3 on the horizontal axis of row one and counts of HLA-ABC on the horizontal axis of row two and three.
+}
+We visualize the joint distributions using two-dimensional histograms.
 
 In all six panels (A--F), we observe that `spillR` compensates most strongly in the low counts. In panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di), `CATALYST` can be seen to compensate strongly in the middle range. It removes the spherical pattern that shows correlation between the two markers. `spillR` preserves this correlation structure and only masks out the lower counts of CD3 (Yb173Di). This highlights a key difference between `spillR` and `CATALYST`: `spillR` does not correct all counts by shrinking them, but rather removes some counts, following the idea that the distribution of the remaining counts is close to the true distribution. `CATALYST` follows another strategy by shrinking counts across the entire range. 
 \textcolor{red}{
