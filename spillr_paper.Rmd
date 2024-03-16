@@ -87,9 +87,10 @@ marker_to_barc <-
 
 # --------- call compensate from compCytof package ---------
 
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
+sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
+                        impute_value = 0)
 sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                             fast = TRUE)
+                             fast = TRUE, impute_value = 0)
 
 # --------- run CATALYST ---------
 
@@ -156,19 +157,27 @@ combo$correction <- factor(
   combo$correction, 
   levels = c("none", "spillR", "spillR (naive)", "CATALYST")
   )
-
-p_before_after <- combo |> 
-  filter(.data[[ch]] > 0) |>
-  ggplot(aes(.data[[ch]], color = correction, linetype = correction)) + 
-  geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
-  xlim(x_lim) +
-  xlab(ch_name) +
-  ggtitle("Spillover Compensation on Real Cells")
-
 ```
 
-```{r method-example, fig.height=5.5, fig.width=7, out.width="75%", fig.align="center", fig.cap='\\textcolor{red}{Panel A shows a density plot of target and spillover markers, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}), zero counts are not shown; they are 31 for no compensation, 1603 for \\texttt{spillR}, 2162 for \\texttt{CATALYST}, and 2532 for \\texttt{spillR (naive)}. As shown in Panel C, our baseline method \\texttt{spillR (naive)} performs similarly to \\texttt{CATALYST} and removes the first peak of the uncorrected data (red) between about 2 and 4. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) the first peak in the real data (Panec C red), and only removes the part that corresponds to a peak in the bead experiment.}', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
-# --------- combine everything ---------
+```{r method-example, fig.height=5.5, fig.width=7, out.width="75%", fig.align="center", fig.cap='\\textcolor{red}{Panel A shows a density plot of target and spillover markers, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}), zero counts are not shown; they are 31 for no compensation, 1603 for \\texttt{spillR}, 2162 for \\texttt{CATALYST}, and 2 nbins for \\texttt{spillR (naive)}. As shown in Panel C, our baseline method \\texttt{spillR (naive)} performs similarly to \\texttt{CATALYST} and removes the first peak of the uncorrected data (red) between about 2 and 4. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) the first peak in the real data (Panec C red), and only removes the part that corresponds to a peak in the bead experiment.}', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
+
+# --------- before_after plot and combining the three plots ---------
+
+p_before_after <- combo |> 
+    filter(.data[[ch]] > 0) |>
+    ggplot() + 
+    geom_freqpoly(aes(.data[[ch]], color = correction, linetype = correction),
+                  alpha = 1.0, bins = 50, linewidth = 0.8) +
+    xlim(x_lim) +
+    xlab(ch_name) +
+    ggtitle("Spillover Compensation on Real Cells")
+
+# p_before_after <- p_before_after +
+#     geom_histogram(data = combo |> filter(.data[[ch]] == 0), aes(x=.data[[ch]], y=..count.., color = correction))
+    # geom_histogram(data = combo |> filter(.data[[ch]] < 3),
+    #                aes_string(x = ch, fill = "correction"),
+    #                binwidth = 0.3, alpha = 0.7)
+
 # v <- 2.725
 plot_grid(
     p_beads + theme(legend.justification = c(0,1)) + 
@@ -572,15 +581,9 @@ In the third experiment (panel C), we model spillover with a bimodal distributio
 
 ## Real Data
 
-```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+```{r spillr-vignette_code, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
-
-# helper functions
-colorscale = scale_fill_gradientn(
-  colors = rev(brewer.pal(9, "YlGnBu")),
-  values = c(0, exp(seq(-5, 0, length.out = 100)))
-  )
 
 # --------- experiment with beads ---------
 
@@ -603,9 +606,10 @@ marker_to_barc <-
   dplyr::select(marker = channel_name, barcode)
 
 # --------- call compensate from compCytof package ---------
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
-sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                             fast = TRUE)
+sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
+                        impute_value = 0)
+sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
+                             fast = TRUE, impute_value = 0)
 
 # --------- 2d histogram from spillR (for vignette, not for paper) ---------
 # as <- c("counts", "exprs", "compcounts", "compexprs")
@@ -645,34 +649,52 @@ combo$method <- factor(
   combo$method, 
   levels = c("uncorrected", "spillR", "spillR (naive)", "CATALYST")
   )
+```
+
+```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+
+# # helper functions
+# colorscale = scale_fill_gradientn(
+#   colors = rev(brewer.pal(9, "YlGnBu")),
+#   values = c(0, exp(seq(-5, 0, length.out = 100)))
+# )
+
+colorscale <- scale_fill_gradientn(
+    colors = c("blue", "green", "yellow", "red"),
+    values = c(0, exp(seq(-5, 0, length.out = 100)))
+    # values = scales::rescale(c(0, 0.33, 0.66, 1))
+)
 
 # row 1
+nbins <- 64
 p1 <- ggplot(combo, aes(x = CD3.2, y = CD8b)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("CD3 (Yb173Di)") + ylab("CD8 (Yb174Di)")
 p2 <- ggplot(combo, aes(x = CD3.2, y = CD8)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("CD3 (Yb173Di)") + ylab("CD8 (La139Di)")
 
 # row 2
 p3 <- ggplot(combo, aes(x = HLA.ABC, y = CD3.2)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("HLA-ABC (Yb172Di)") + ylab("CD3 (Yb173Di)")
 p4 <- ggplot(combo, aes(x = HLA.ABC, y = CD3.1)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("HLA-ABC (Yb172Di)") + ylab("CD3 (Sm147Di)")
 
 # row 3
 p5 <- ggplot(combo, aes(x = HLA.ABC, y = HLA.DR.1)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("HLA-ABC (Yb172Di)") + ylab("HLA-DR (Yb171Di)")
 p6 <- ggplot(combo, aes(x = HLA.ABC, y = HLA.DR.2)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("HLA-ABC (Yb172Di)") + ylab("HLA-DR (Lu175Di)")
 
 plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2, 
           labels = c("A", "B", "C", "D", "E", "F"))
+
 ```
+
 
 We compare our methods to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset consists of an experiment with real cells and corresponding single-stained bead experiments. The experiment on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels with the number of beads per metal label ranging from 112 to 241.
 
@@ -818,7 +840,7 @@ semi_synthetic_data <- function(shift) {
 }
 ```
 
-```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on semi-synthetic data. The vertical dashed line helps to interpret the spillover correction. It indicates the \textcolor{red}{original mode of the bead distribution of Yb172Di at 2.725, before it overwriting it with the first peak of the real observations of Yb172Di}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on semi-synthetic data \textcolor{red}{(\texttt{spillR} and \texttt{spillR (naive)} are set to impute spillover values with $0$)}. The vertical dashed line helps to interpret the spillover correction. It indicates the \textcolor{red}{original mode of the bead distribution of Yb172Di at 2.725, before it overwriting it with the first peak of the real observations of Yb172Di}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
 
 # --------- plotting of semi-simulated data ---------
 
@@ -888,7 +910,7 @@ For future work, we plan to apply our methodology to imaging mass cytometry (Ang
 
 # Acknowledgments {-}
 
-We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved the paper. Alexander G. Reisach received funding from the European Union's Horizon 2020 research and innovation program under the Marie Sk\l{}odowska-Curie grant agreement No 945332 \euflag.
+We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved the paper. Alexander G. Reisach received funding from the European Union's Horizon 2020 research and innovation program under the Marie Sk\l{}odowska-Curie grant agreement No 945 nbins \euflag.
 
 # References {-}
 
