@@ -274,7 +274,7 @@ $$
 \hat{\pi}_k = 
 \frac{1}{n} \sum_{i = 1}^n \widehat{P}\left(Z_i = k \mid Y_i = y \right),
 $$
-and estimate the new target marker distribution \textcolor{red}{by smoothing and normalizing. Here, we use the R function \texttt{density} again}, but weight each observations according to their posterior probabilities, $\widehat{P} \left(Z_i = 1 \mid Y_i = y \right)$. We only update the target marker, $\widehat{P}(Y_i = y \mid Z_i = 1)$, and keep the other bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
+and estimate the new target marker distribution \textcolor{red}{by smoothing and normalizing. Here, we use the R function \texttt{density} again}, but weight each observation according to their posterior probabilities, $\widehat{P} \left(Z_i = 1 \mid Y_i = y \right)$. We only update the target marker, $\widehat{P}(Y_i = y \mid Z_i = 1)$, and keep the other bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
 
 To refine our estimates, we iterate over the E and M-steps until estimates stabilize. We stop iterating when $\hat{\pi}_1$ changes less than $10^{-5}$ from the previous iteration. The final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
