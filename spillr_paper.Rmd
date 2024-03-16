@@ -259,7 +259,7 @@ from bead experiments is much smaller than from real experiments. The $k$th colu
 $$
 \hat{\pi}_{1} = 0.9 \text{ and } \hat{\pi}_i = 0.1/(K-1) \text{ for all } i > 1.
 $$ 
-The procedure is not sensitive to the choice of the initial mixture probability vector and other initalizations are possible but may be slower to converge. Then, we initialize the $k$th mixture component using \textcolor{red}{its probability mass function (PMF) after smoothing and normalizing, $\widehat{P}(Y_i = y \mid Z_i = k)$. We smooth the PMF using kernel density estimation implemented in R function \texttt{density} with the default option for selecting the bandwith of a Gaussian kernel.}
+The procedure is not sensitive to the choice of the initial mixture probability vector and other initializations are possible but may be slower to converge. Then, we initialize the $k$th mixture component using \textcolor{red}{its probability mass function (PMF) after smoothing and normalizing, $\widehat{P}(Y_i = y \mid Z_i = k)$. We smooth the PMF using kernel density estimation implemented in R function \texttt{density} with the default option for selecting the bandwith of a Gaussian kernel.}
 
 * E-step: We evaluate the posterior probability of a count $y$ belonging to component $k$ (that is, originating from marker $k$),
 $$
