@@ -1,7 +1,7 @@
 ---
 title: "`spillR`: Spillover Compensation in Mass Cytometry Data"
 author: "Marco Guazzini$^{1}$, Alexander G. Reisach$^{2}$, Sebastian Weichwald$^{3}$, and Christof Seiler$^{1,4,5}$"
-date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^3$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n $^4$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n $^5$Center of Experimental Rheumatology, Department of Rheumatology, \\\n University Hospital Zurich, University of Zurich, Switzerland \\\n \\\n `r gsub(' 0', ' ', format(Sys.time(), '%B %d, %Y'))`"
+date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^3$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n $^4$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n $^5$Center of Experimental Rheumatology, Department of Rheumatology, \\\n University Hospital Zurich, University of Zurich, Switzerland \\\n \\\n March 16, 2024"
 output:
   bookdown::pdf_document2: 
     toc: false
@@ -13,32 +13,9 @@ abstract: |
   Channel interference in mass cytometry can cause spillover and may result in miscounting of protein markers. @catalyst introduce an experimental and computational procedure to estimate and compensate for spillover implemented in their R package `CATALYST`. They assume spillover can be described by a spillover matrix that encodes the ratio between unstained and stained channels. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model and use the mixture components to estimate the probability of spillover. Spillover correction is often a pre-processing step followed by downstream analyses, and choosing a flexible model reduces the chance of introducing biases that can propagate downstream. We implement our method in an R package `spillR` using expectation-maximization to fit the mixture model. We test our method on synthetic and real data from `CATALYST`. We find that our method compensates low counts accurately, does not introduce negative counts, avoids overcompensating high counts, and preserves correlations between markers that may be biologically meaningful.
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
-```{r load_packages, echo=FALSE, warning=FALSE, message=FALSE}
-library(CATALYST)
-library(spillR)
-library(nnls)
-library(flowCore)
-library(ggplot2)
-library(tibble)
-library(dplyr)
-library(readr)
-library(tidyr)
-library(cowplot)
-library(transport)
-library(RColorBrewer)
-library(spatstat.geom)
-library(parallel)
-library(kableExtra)
-library(hexbin)
-library(rbenchmark)
-library(latex2exp)
-set.seed(23)
-tfm <- function(x) asinh(x/5)
-```
+
+
 
 # Introduction
 
@@ -56,140 +33,16 @@ In this section we first illustrate our method \texttt{spillR} (as well as a sim
 
 ## Example
 
-```{r method-example_comp, echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
-# constants
-bc_key <- c(139, 141:156, 158:176)
-ch <- "CD3.2"
-ch_metal <- "Yb173Di"
-ch_name <- "CD3 (Yb173Di)"
-x_lim <- c(0, 7)
 
-# --------- experiment with beads ---------
 
-sce_bead <- prepData(ss_exp)
-sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
-sce_bead <- applyCutoffs(estCutoffs(sce_bead))
-sce_bead <- computeSpillmat(sce_bead)
+\begin{figure}
 
-# --------- experiment with real cells ---------
+{\centering \includegraphics[width=0.75\linewidth]{spillr_paper_files/figure-latex/method-example-1} 
 
-data(mp_cells, package = "CATALYST")
-sce <- prepData(mp_cells)
+}
 
-# --------- table for mapping markers and barcode ---------
-
-marker_to_barc <- 
-  rowData(sce_bead)[,c("channel_name", "is_bc")] |>
-  as_tibble() |>
-  dplyr::filter(is_bc == TRUE) |>
-  mutate(barcode = bc_key) |>
-  select(marker = channel_name, barcode)
-
-# --------- call compensate from compCytof package ---------
-
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
-                        impute_value = 0)
-sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                             fast = TRUE, impute_value = 0)
-
-# --------- run CATALYST ---------
-
-sm <- metadata(sce_bead)$spillover_matrix
-sce_catalyst <- CATALYST::compCytof(sce, sm, overwrite = FALSE)
-
-# --------- beads experiment ---------
-
-tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
-tb_bead <- mutate(
-  tb_bead, 
-  barcode = ifelse(barcode == ch_metal, paste(ch_metal, "(target)"), barcode)
-  )
-
-p_beads <- tb_bead |>
-  ggplot(aes(tfm(.data[[ch_metal]]), color = barcode)) +
-  geom_density(adjust = 1, linewidth = 0.8) +
-  xlim(x_lim) +
-  xlab(ch_name) +
-  ylab("density") + 
-  ggtitle("Beads Experiment")
-
-# --------- spillover probability curves ---------
-
-tb_spill_prob <- metadata(sce_spillr)$spillover_est[[ch_metal]]
-
-p_spill <- tb_spill_prob |>
-  ggplot(aes(tfm(.data[[ch_metal]]), spill_prob, color="Spillover probability")) +
-  geom_line(linewidth = 0.8) +
-  scale_color_manual(values = "black") +
-  labs(color = "") +
-  xlim(x_lim) +
-  ylim(c(0, 1)) +
-  xlab(ch_name) +
-  ylab("probability") +
-  ggtitle("Spillover Estimation")
-
-# --------- before and after ---------
-
-exprs_spillr <- sce_spillr |> 
-  assay("exprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(correction = "none")
-compexprs_spillr <- sce_spillr |> 
-  assay("compexprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(correction = "spillR")
-compexprs_spillr_fast <- sce_spillr_fast |> 
-  assay("compexprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(correction = "spillR (naive)")
-compexprs_catalyst <- sce_catalyst |> 
-  assay("compexprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(correction = "CATALYST")
-combo <- bind_rows(exprs_spillr, compexprs_spillr, 
-                   compexprs_spillr_fast, compexprs_catalyst)
-combo <- combo |> select(all_of(c(ch, "correction")))
-combo$correction <- factor(
-  combo$correction, 
-  levels = c("none", "spillR", "spillR (naive)", "CATALYST")
-  )
-```
-
-```{r method-example, fig.height=5.5, fig.width=7, out.width="75%", fig.align="center", fig.cap='\\textcolor{red}{Panel A shows a density plot of target and spillover markers, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}), zero counts are not shown; they are 31 for no compensation, 1603 for \\texttt{spillR}, 2162 for \\texttt{CATALYST}, and 2 nbins for \\texttt{spillR (naive)}. As shown in Panel C, our baseline method \\texttt{spillR (naive)} performs similarly to \\texttt{CATALYST} and removes the first peak of the uncorrected data (red) between about 2 and 4. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) the first peak in the real data (Panec C red), and only removes the part that corresponds to a peak in the bead experiment.}', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
-
-# --------- before_after plot and combining the three plots ---------
-
-p_before_after <- combo |> 
-    filter(.data[[ch]] > 0) |>
-    ggplot() + 
-    geom_freqpoly(aes(.data[[ch]], color = correction, linetype = correction),
-                  alpha = 1.0, bins = 50, linewidth = 0.8) +
-    xlim(x_lim) +
-    xlab(ch_name) +
-    ggtitle("Spillover Compensation on Real Cells")
-
-# p_before_after <- p_before_after +
-#     geom_histogram(data = combo |> filter(.data[[ch]] == 0), aes(x=.data[[ch]], y=..count.., color = correction))
-    # geom_histogram(data = combo |> filter(.data[[ch]] < 3),
-    #                aes_string(x = ch, fill = "correction"),
-    #                binwidth = 0.3, alpha = 0.7)
-
-# v <- 2.725
-plot_grid(
-    p_beads + theme(legend.justification = c(0,1)) + 
-        theme(legend.box.margin = margin(-20, 0, 0, 0, unit = "pt")),
-    p_spill + theme(legend.justification = c(0,1)) +
-        theme(legend.box.margin = margin(-20, 0, 0, 0, unit = "pt")),
-    p_before_after + theme(legend.justification = c(0,1)) +
-        theme(legend.box.margin = margin(-20, 0, 0, 0, unit = "pt")),
-  ncol = 1, align = "v", axis = "lr", labels = c("A", "B", "C"),
-  rel_widths = c(1, 1, 1)
-)
-```
+\caption{\textcolor{red}{Panel A shows a density plot of target and spillover markers, Panel B shows spillover probability for Yb173Di estimated by \texttt{spillR}, and Panel C compares spillover compensation by our methods and \texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (\protect\hyperlink{ref-bendall2011single}{Bendall \emph{et al.}, 2011}), zero counts are not shown; they are 31 for no compensation, 1603 for \texttt{spillR}, 2162 for \texttt{CATALYST}, and 2 nbins for \texttt{spillR (naive)}. As shown in Panel C, our baseline method \texttt{spillR (naive)} performs similarly to \texttt{CATALYST} and removes the first peak of the uncorrected data (red) between about 2 and 4. By contrast, \texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) the first peak in the real data (Panec C red), and only removes the part that corresponds to a peak in the bead experiment.}}(\#fig:method-example)
+\end{figure}
 
 Our procedure is illustrated in Figure \@ref(fig:method-example), using a dataset from the `CATALYST` package as an example. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). The markers have two names: the first name is the protein name and the second name in brackets is the conjugated metal. There are bead experiments for each of the spillover markers.
 
@@ -197,28 +50,7 @@ Panel A depicts the marker distributions from the beads experiment. We see that 
 
 \textcolor{red}{Panel B shows a curve representing our spillover probability estimates. We can see that the probability of spillover is highest at points that correspond to a high density of spillover markers in Panel A. If the spillover probability is close to one, our correction step assigns most cells to spillover.} Counts above four stem from spillover with probability zero (and from the actual target with probability one), which means that our procedure keeps them at their raw uncorrected value.
 
-```{r method-example-summary, echo=FALSE, warning=FALSE, message=FALSE}
-zeros <- combo |>
-  filter(.data[[ch]] == 0 | is.na(.data[[ch]])) |> 
-  group_by(correction) |> 
-  tally(name = "zeros or \\texttt{NA}'s")
 
-means <- combo |> 
-  filter(!is.na(.data[[ch]])) |> 
-  group_by(correction) |>
-  summarize(mean = mean(.data[[ch]]))
-
-zeros_means <- left_join(zeros, means, by = "correction")
-levels(zeros_means$correction)[2] <- "\\texttt{spillR}"
-levels(zeros_means$correction)[3] <- "\\texttt{spillR (naive)}"
-levels(zeros_means$correction)[4] <- "\\texttt{CATALYST}"
-
-# zeros_means |>
-#   kableExtra::kbl(
-#     caption = "Additional summaries of the data underlying Figure \\ref{fig:method-example}C.", 
-#     booktabs = TRUE, digits = 2, escape = FALSE
-#     )
-```
 
 Panel C displays the distribution of our target marker, CD3 (Yb173Di) before and after spillover correction. \textcolor{red}{We observe few real counts (red) below a value of $2$, so although all methods perform strong compensation in this range, there is little visible change. From $2$ onward there is a clear distinction between the methods. `CATALYST`, like our baseline `spillR (naive)`, compensates nearly all counts below the second peak of the raw counts (red) as spillover. By contrast, `spillR` compensates only where the relative frequency of the raw counts (red) match the density of spillovermarkers in the bead experiment shown in panel A, and does not remove a part of the first peak as a result. While `CATALYST` shifts the distribution of large counts (around 6) slightly to the left, our methods leave them unaffected as the bead experiment shows no spillover in this region.}
 <!-- Zero counts (or equivalently `NA` counts for `spillR`) and mean counts are shown in Table \@ref(tab:method-example-summary). 
@@ -320,238 +152,18 @@ We first evaluate our new method `spillR` on simulated datasets. We probe our me
 
 ## Simulated Data
 
-```{r simulated-experiments, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE}
-# --------- global parameters ---------
 
-n_real <- 10000
-n_bead <-  1000
-lambda_real <- 200
-lambda_bead  <- 70
-lambda_bead_high  <- 330
-spill_prob <- 0.5
-n_rep <- 20
-n_cores <- 8
 
-# --------- helper functions ---------
 
-compute_average <- function(data) {
-  comp <- spillR:::compensate(data$df_real, data$df_bead, 
-                              target_marker = "Y", 
-                              spillover_markers = "Z")
-  y_comp  <- comp$tb_compensate$corrected
-  y_truth <- data$Z_target
 
-  tibble(
-    mean_obsv = mean(data$df_real$Y),
-    mean_comp = mean(y_comp, na.rm = TRUE),
-    mean_truth = mean(y_truth)
-  )
+\begin{figure}
+
+{\centering \includegraphics[width=0.9\linewidth]{spillr_paper_files/figure-latex/simulated-experiments-plot-1} 
+
 }
 
-# --------- panel A ---------
-
-generate_data_a <- function(tau) {
-  # real experiment
-  I    <- rbinom(n = n_real, size = 1, prob = spill_prob)
-  Z_target <- rpois(n = n_real, lambda = lambda_real)
-  Z_spill  <- rpois(n = n_real, lambda = lambda_bead+tau)
-  Y        <- (1-I)*Z_target + I*Z_spill
-  df_real  <- tibble(Y = Y, barcode = "Y", type = "real cells")
-  
-  # bead experiment
-  Z_bead   <- rpois(n = n_bead, lambda = lambda_bead)
-  df_bead  <- tibble(Y = Z_bead, barcode = "Z", type = "beads")
-  
-  list(df_real = df_real, df_bead = df_bead, 
-       Z_target = Z_target, Z_spill = Z_spill)
-}
-
-# create parameter combination
-d_a <- expand.grid(
-  tau = seq(-10, 0, length.out = 60), 
-  replicate = 1:n_rep,
-  title = "Bead Shift"
-  )
-d_averages <- mclapply(d_a$tau, function(tau) {
-  data <- generate_data_a(tau)
-  compute_average(data)
-}, mc.cores = n_cores) |> bind_rows()
-d_a <- bind_cols(d_a, d_averages)
-
-# --------- panel B ---------
-
-generate_data_b <- function(tau) {
-  # real experiment
-  I <- rbinom(n = n_real, size = 1, prob = spill_prob)
-  T <- rpois(n = n_real, lambda = lambda_real)
-  S <- rpois(n = n_real, lambda = lambda_bead)
-  M <- rbinom(n = n_real, size = 1, prob = tau)
-  Z_target <- (1-M)*T + M*S
-  Z_spill  <- (1-M)*S + M*T
-  Y        <- (1-I)*Z_target + I*Z_spill
-  df_real  <- tibble(Y = Y,
-                     barcode = "Y",
-                     type = "real cells")
-  
-  # bead experiment
-  I <- rbinom(n = n_bead, size = 1, prob = spill_prob)
-  T <- rpois(n = n_bead, lambda = lambda_real)
-  S <- rpois(n = n_bead, lambda = lambda_bead)
-  M <- rbinom(n = n_bead, size = 1, prob = tau)
-  Z_bead <- (1-M)*S + M*T
-  df_bead  <- tibble(Y = Z_bead,
-                     barcode = "Z",
-                     type = "beads")
-  
-  list(df_real = df_real, df_bead = df_bead, 
-       Z_target = Z_target, Z_spill = Z_spill)
-}
-
-# create parameter combination
-d_b <- expand.grid(
-  tau = seq(from = 0, to = 0.5, length.out = 60), 
-  replicate = 1:n_rep,
-  title = "Model Misspecification"
-  )
-d_averages <- mclapply(d_b$tau, function(tau) {
-  data <- generate_data_b(tau)
-  compute_average(data)
-}, mc.cores = n_cores) |> bind_rows()
-d_b <- bind_cols(d_b, d_averages)
-
-# --------- panel C ---------
-
-generate_data_c <- function(tau) {
-  # real experiment
-  I        <- rbinom(n = n_real, size = 1, prob = spill_prob)
-  Z_target <- rpois(n = n_real, lambda = lambda_real)
-  H        <- rbinom(n = n_real, size = 1, prob = tau)
-  Z_spill1 <- rpois(n = n_real, lambda = lambda_bead)
-  Z_spill2 <- rpois(n = n_real, lambda = lambda_bead_high)
-  Z_spill   <- (1-H)*Z_spill1 + H*Z_spill2
-  Y         <- (1-I)*Z_target + I*Z_spill
-  df_real   <- tibble(Y = Y, barcode = "Y", type = "real cells")
-  
-  # bead experiment
-  H       <- rbinom(n = n_real, size = 1, prob = tau)
-  Z_bead1 <- rpois(n = n_real, lambda = lambda_bead)
-  Z_bead2 <- rpois(n = n_real, lambda = lambda_bead_high)
-  Z_bead  <- (1-H)*Z_bead1 + H*Z_bead2
-  df_bead <- tibble(Y = Z_bead, barcode = "Z", type = "beads")
-
-  list(df_real = df_real, df_bead = df_bead, 
-       Z_target = Z_target, Z_spill = Z_spill)
-}
-
-# create parameter combination
-d_c <- expand.grid(
-  tau = seq(from = 0, to = 1, length.out = 60), 
-  replicate = 1:n_rep,
-  title = "Bimodal Spillover"
-  ) 
-d_averages <- mclapply(d_c$tau, function(tau) {
-  data <- generate_data_c(tau)
-  compute_average(data)
-}, mc.cores = n_cores) |> bind_rows()
-d_c <- bind_cols(d_c, d_averages)
-
-# --------- combined data frame ---------
-
-tb_experiment <- bind_rows(d_a, d_b, d_c)
-tb_summary <- tb_experiment |> 
-    group_by(title, tau) |> 
-    summarize(
-      `mean(Y)` = mean(mean_obsv),
-      `mean(Y | Z = 1)` = mean(mean_truth),
-      `spillR mean(Y)` = mean(mean_comp)
-      ) |> 
-    ungroup()
-
-tb_summary_long <- pivot_longer(
-  tb_summary, -c(title, tau), names_to = "mean", values_to = "count"
-  ) |>
-  mutate(mean = factor(mean, levels = c("mean(Y)",
-                                        "mean(Y | Z = 1)", 
-                                        "spillR mean(Y)")))
-```
-
-```{r simulated-experiments-critical-values, echo = FALSE, warning = FALSE, message = FALSE}
-# --------- helper function ---------
-plot_critical <- function(experiment, taus, simulated, reverse = FALSE, custom_tau = "") {
-  
-  var_names <- c(
-    "Y",
-    "Y | Z = 1",
-    "Y | Z = 2"
-    )
-  
-  simulated <- lapply(simulated, function(data) {
-    bind_rows(
-      tibble(count = data$df_real$Y, variable = var_names[1]),
-      tibble(count = data$Z_target,  variable = var_names[2]),
-      tibble(count = data$df_bead$Y, variable = var_names[3])
-    )})
-  
-  df_simulated <- lapply(
-    seq(taus), function(i) mutate(simulated[[i]], tau = taus[i])
-    ) |> 
-    bind_rows() |>
-    mutate(variable = factor(variable, levels = var_names)) |>
-    mutate(tau = factor(tau, levels = taus))
-  
-  g_overview <- tb_summary_long |> 
-    filter(title == experiment) |>
-    ggplot(aes(tau, count, color = mean, linetype = mean)) +
-    geom_line() + 
-    scale_color_manual(values = c("#E69F00", "#000000", "#009E73")) +
-    scale_linetype_manual(values = c("solid", "dashed", "solid")) +
-    ylab("mean") + 
-    xlab(TeX(paste("$\\tau$", custom_tau))) +
-    theme(axis.title.x = element_text(color = "red"))
-  if(reverse) g_overview <- g_overview + scale_x_reverse()
-  
-  g_critical <- df_simulated |>
-    ggplot(aes(count, color = variable, linetype = variable)) + 
-    geom_density(key_glyph = "path") +
-    facet_wrap(~tau, labeller = label_both) +
-    scale_color_manual(values = c("#E69F00", "#000000", "#56B4E9")) +
-    scale_linetype_manual(values = c("solid", "dashed", "solid"))
-  
-  plot_grid(
-    ggdraw() + 
-      draw_label(experiment, x = 0, hjust = 0) + 
-      theme(plot.margin = margin(0, 0, 0, 42)), 
-    plot_grid(g_overview, g_critical, 
-              ncol = 1, rel_heights = c(0.45, 0.55), align = "v", axis = "lr"),
-    ncol = 1, rel_heights = c(0.1, 1)
-    )
-}
-
-# --------- A ---------
-
-experiment <- "Bead Shift"
-taus <- c(0, -5, -10)
-simulated <- lapply(taus, generate_data_a)
-p_a <- plot_critical(experiment, taus, simulated, reverse = TRUE, custom_tau = "(strength of bead distribution shift away from true spillover distribution)")
-
-# --------- B ---------
-
-experiment <- "Model Misspecification"
-taus <- c(0, 0.25, 0.5)
-simulated <- lapply(taus, generate_data_b)
-p_b <- plot_critical(experiment, taus, simulated, custom_tau = "(similarity of target and spillover distribution)")
-
-# --------- C ---------
-experiment <- "Bimodal Spillover"
-taus <- c(0, 0.5, 1.0)
-simulated <- lapply(taus, generate_data_c)
-p_c <- plot_critical(experiment, taus, simulated, custom_tau = "(mixing probability of two modes)")
-```
-
-```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups. \\textcolor{red}{The mean values for \\texttt{spillR} are computed with \\texttt{NA} imputation for spillover counts, so the mean is identical to the true mean without spillover if all spillover counts are correctly identified as such.} The bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \\mid Z = 1$ is the distribution without spillover. $Y \\mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \\mid Z = 1$) is the average count without spillover. \\texttt{spillR} mean($Y$) is the average count after correcting $Y$."}
-plot_grid(p_a, p_b, p_c, labels = c("A", "B", "C"),
-          ncol = 1, align = "v", axis = "lr")
-```
+\caption{Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups. \textcolor{red}{The mean values for \texttt{spillR} are computed with \texttt{NA} imputation for spillover counts, so the mean is identical to the true mean without spillover if all spillover counts are correctly identified as such.} The bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \mid Z = 1$ is the distribution without spillover. $Y \mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \mid Z = 1$) is the average count without spillover. \texttt{spillR} mean($Y$) is the average count after correcting $Y$.}(\#fig:simulated-experiments-plot)
+\end{figure}
 
 We choose three different experiments to test `spillR` against different bead and real cell distributions. We explore a wide range of possible parameter settings. Figure \@ref(fig:simulated-experiments-plot) has three panels, each representing one experimental setup. The first two panels test our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The third panel tests sensitivity of `spillR` to bimodal bead distributions. For all three experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 200$, and 1,000 beads with $\lambda = 70$, and a spillover probability of $0.5$. The bead data are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are given in Appendix \@ref(generative-models). We repeat each simulation 20 times and report averages over the 20 replications. 
 
@@ -581,119 +193,16 @@ In the third experiment (panel C), we model spillover with a bimodal distributio
 
 ## Real Data
 
-```{r spillr-vignette_code, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
-# constants
-bc_key <- c(139, 141:156, 158:176)
 
-# --------- experiment with beads ---------
 
-sce_bead <- prepData(ss_exp)
-sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
-sce_bead <- applyCutoffs(estCutoffs(sce_bead))
-sce_bead <- computeSpillmat(sce_bead)
+\begin{figure}
 
-# --------- experiment with real cells ---------
+{\centering \includegraphics[width=0.95\linewidth]{spillr_paper_files/figure-latex/spillr-vignette-1} 
 
-data(mp_cells, package = "CATALYST")
-sce <- prepData(mp_cells)
+}
 
-# --------- table for mapping markers and barcode ---------
-marker_to_barc <- 
-  rowData(sce_bead)[,c("channel_name", "is_bc")] |>
-  as_tibble() |>
-  dplyr::filter(is_bc == TRUE) |>
-  mutate(barcode = bc_key) |>
-  dplyr::select(marker = channel_name, barcode)
-
-# --------- call compensate from compCytof package ---------
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
-                        impute_value = 0)
-sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
-                             fast = TRUE, impute_value = 0)
-
-# --------- 2d histogram from spillR (for vignette, not for paper) ---------
-# as <- c("counts", "exprs", "compcounts", "compexprs")
-# chs <- c( "Yb171Di", "Yb173Di")
-# ps <- lapply(as, function(a) 
-#     plotScatter(sce_spillr, chs, assay = a))
-# plot_grid(plotlist = ps, nrow = 2)
-
-# --------- run CATALYST ---------
-sm <- metadata(sce_bead)$spillover_matrix
-sce_catalyst <- CATALYST::compCytof(sce, sm, overwrite = FALSE)
-
-# --------- compare spillR and CATALYST (Figure 3B) ---------
-exprs_spillr <- sce_spillr |> 
-  assay("exprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(method = "uncorrected")
-compexprs_spillr <- sce_spillr |> 
-  assay("compexprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(method = "spillR")
-compexprs_spillr_fast <- sce_spillr_fast |> 
-  assay("compexprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(method = "spillR (naive)")
-compexprs_catalyst <- sce_catalyst |> 
-  assay("compexprs") |>
-  t() |>
-  as_tibble() |>
-  mutate(method = "CATALYST")
-combo <- bind_rows(exprs_spillr, compexprs_spillr, 
-                   compexprs_spillr_fast, compexprs_catalyst)
-combo$method <- factor(
-  combo$method, 
-  levels = c("uncorrected", "spillR", "spillR (naive)", "CATALYST")
-  )
-```
-
-```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
-
-# # helper functions
-# colorscale = scale_fill_gradientn(
-#   colors = rev(brewer.pal(9, "YlGnBu")),
-#   values = c(0, exp(seq(-5, 0, length.out = 100)))
-# )
-
-colorscale <- scale_fill_gradientn(
-    colors = c("blue", "green", "yellow", "red"),
-    values = c(0, exp(seq(-5, 0, length.out = 100)))
-    # values = scales::rescale(c(0, 0.33, 0.66, 1))
-)
-
-# row 1
-nbins <- 64
-p1 <- ggplot(combo, aes(x = CD3.2, y = CD8b)) +
-  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
-  xlab("CD3 (Yb173Di)") + ylab("CD8 (Yb174Di)")
-p2 <- ggplot(combo, aes(x = CD3.2, y = CD8)) +
-  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
-  xlab("CD3 (Yb173Di)") + ylab("CD8 (La139Di)")
-
-# row 2
-p3 <- ggplot(combo, aes(x = HLA.ABC, y = CD3.2)) +
-  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
-  xlab("HLA-ABC (Yb172Di)") + ylab("CD3 (Yb173Di)")
-p4 <- ggplot(combo, aes(x = HLA.ABC, y = CD3.1)) +
-  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
-  xlab("HLA-ABC (Yb172Di)") + ylab("CD3 (Sm147Di)")
-
-# row 3
-p5 <- ggplot(combo, aes(x = HLA.ABC, y = HLA.DR.1)) +
-  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
-  xlab("HLA-ABC (Yb172Di)") + ylab("HLA-DR (Yb171Di)")
-p6 <- ggplot(combo, aes(x = HLA.ABC, y = HLA.DR.2)) +
-  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
-  xlab("HLA-ABC (Yb172Di)") + ylab("HLA-DR (Lu175Di)")
-
-plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2, 
-          labels = c("A", "B", "C", "D", "E", "F"))
-
-```
+\caption{Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\protect\hyperlink{ref-bendall2011single}{Bendall \emph{et al.}, 2011}).}(\#fig:spillr-vignette)
+\end{figure}
 
 
 We compare our methods to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset consists of an experiment with real cells and corresponding single-stained bead experiments. The experiment on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels with the number of beads per metal label ranging from 112 to 241.
@@ -726,17 +235,7 @@ The uncorrected counts do not undergo this pre-processing step. `CATALYST` does 
 We leave the decision to apply re-randomization of the count data for downstream analysis up to the user. Our rational is that the user should see the differences in this pre-processing step and how it propagates to the results.
 }
 
-```{r computational-resources, echo=FALSE, eval=FALSE}
-mark <- benchmark(
-  "spillR" = spillR::compCytof(sce, sce_bead, marker_to_barc, n_cores = 8),
-  "spillR (naive)" = spillR::compCytof(sce, sce_bead, marker_to_barc, 
-                                      fast = TRUE, n_cores = 8),
-  "CATALYST" = CATALYST::compCytof(sce, sm),
-  replications = 100,
-  columns = c("test", "replications", "elapsed")
-)
-mark$average = mark$elapsed/mark$replications
-```
+
 
 \textcolor{red}{
 The average computation time with 100 replications on an Apple M1 with 8 cores and 16 GB of RAM is $10.6$ seconds for \texttt{spillR}, $0.43$ seconds for \texttt{CATALYST}, and $0.45$ seconds for \texttt{spillR (naive)}. The computational costs scale linearly in the number of cells and number of spillover markers. This allows for processing large-scale datasets.
@@ -744,139 +243,16 @@ The average computation time with 100 replications on an Apple M1 with 8 cores a
 
 ## Semi-Simulated Data
 
-```{r semi-simulated-computations, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE}
-# --------- helper function ---------
-inv_tfm <- function(x) 5*sinh(x)
 
-# --------- load experiment data of real cells and beads ---------
-sce <- prepData(mp_cells)
 
-semi_synthetic_data <- function(shift) {
+\begin{figure}
 
-  # --------- modify bead data ---------
-  sce_bead <- prepData(ss_exp)
-  
-  sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
-  sce_bead <- applyCutoffs(estCutoffs(sce_bead))
-  sce_bead <- computeSpillmat(sce_bead)
-  
-  counts_bead <- assay(sce_bead, "counts")
-  target_channel <- "Yb173Di"
-  target_barcode <- "172"
-  target_marker <- rowData(sce_bead) |> 
-    as_tibble() |>
-    filter(channel_name == target_channel) |> 
-    pull(marker_name)
-  col_ids <- which(sce_bead$bc_id == target_barcode)
-  
-  counts_real <- assay(sce, "counts")
-  y_real <- counts_real[target_marker, ]
-  y_bead <- y_real[y_real > 10 & y_real < 300]
-  y_bead_shifted <- inv_tfm(tfm(y_bead) - shift)
-  y_bead_shifted <- pmax(y_bead_shifted, 0)
-  y_bead_small <- sample(y_bead_shifted, length(col_ids))
-  counts_bead[target_marker, col_ids] <- y_bead_small
-  assay(sce_bead, "counts") <- counts_bead
-  
-  sce_bead <- assignPrelim(sce_bead, bc_key, verbose = FALSE)
-  sce_bead <- applyCutoffs(estCutoffs(sce_bead))
-  sce_bead <- computeSpillmat(sce_bead)
-  
-  # --------- CATALYST ---------
-  sm <- metadata(sce_bead)$spillover_matrix
-  sce_catalyst <- CATALYST::compCytof(sce, sm, method = "nnls", overwrite = FALSE)
-  
-  # --------- spillR ---------
-  marker_to_barc <- 
-    rowData(sce_bead)[,c("channel_name", "is_bc")] |>
-    as_tibble() |>
-    dplyr::filter(is_bc == TRUE) |>
-    mutate(barcode = bc_key) |>
-    dplyr::select(marker = channel_name, barcode)
-  sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
-  sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                             fast = TRUE)
-  
-  # --------- beads experiment ---------
-  tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
-  tb_bead <- mutate(
-    tb_bead, 
-    barcode = ifelse(barcode == target_channel, paste(target_channel, "(target)"), barcode)
-    )
-  tb_bead <- mutate(tb_bead, shift = shift)
-  
-  # --------- before and after ---------
-  exprs_spillr <- sce_spillr |> 
-    assay("exprs") |>
-    t() |>
-    as_tibble() |>
-    mutate(correction = "none")
-  compexprs_spillr <- sce_spillr |> 
-    assay("compexprs") |>
-    t() |>
-    as_tibble() |>
-    mutate(correction = "spillR")
-  compexprs_spillr_fast <- sce_spillr_fast |> 
-    assay("compexprs") |>
-    t() |>
-    as_tibble() |>
-    mutate(correction = "spillR (naive)")
-  compexprs_catalyst <- sce_catalyst |> 
-    assay("compexprs") |>
-    t() |>
-    as_tibble() |>
-    mutate(correction = "CATALYST")
-  combo <- bind_rows(exprs_spillr, compexprs_spillr, 
-                   compexprs_spillr_fast, compexprs_catalyst)
-  combo <- combo |> select(all_of(c(ch, "correction")))
-  combo$correction <- factor(
-    combo$correction, 
-    levels = c("none", "spillR", "spillR (naive)", "CATALYST")
-    )
-  combo <- mutate(combo, shift = shift)
-  
-  list(tb_bead = tb_bead, combo = combo)
+{\centering \includegraphics[width=1\linewidth]{spillr_paper_files/figure-latex/semi-simulated-plot-1} 
 
 }
-```
 
-```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on semi-synthetic data \textcolor{red}{(\texttt{spillR} and \texttt{spillR (naive)} are set to impute spillover values with $0$)}. The vertical dashed line helps to interpret the spillover correction. It indicates the \textcolor{red}{original mode of the bead distribution of Yb172Di at 2.725, before it overwriting it with the first peak of the real observations of Yb172Di}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
-
-# --------- plotting of semi-simulated data ---------
-
-semi_list <- lapply(c(0, 0.47, 0.94), semi_synthetic_data)
-tb_bead <- lapply(semi_list, function(x) x$tb_bead) |> bind_rows()
-combo <- lapply(semi_list, function(x) x$combo) |> bind_rows()
-
-p_beads <- tb_bead |>
-  ggplot(aes(tfm(.data[[ch_metal]]), color = barcode)) +
-  geom_density(adjust = 1, linewidth = 0.8) +
-  xlim(x_lim) +
-  xlab(ch_name) +
-  ylab("density") + 
-  ggtitle("Semi-Synthetic Beads Experiment") +
-  facet_wrap(~shift, labeller = label_both)
-
-p_before_after <- combo |> 
-  filter(.data[[ch]] > 0) |>
-  ggplot(aes(.data[[ch]], color = correction, linetype = correction)) + 
-  geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
-  xlim(x_lim) +
-  xlab(ch_name) +
-  ggtitle("Spillover Compensation on Real Cells") +
-  facet_wrap(~shift, labeller = label_both)
-
-# --------- combine everything ---------
-
-v <- 2.725
-plot_grid(
-  p_beads + theme(legend.justification = c(0,1)) + 
-    geom_vline(xintercept = v, linetype = "dashed"),
-  p_before_after + theme(legend.justification = c(0,1)) +
-    geom_vline(xintercept = v, linetype = "dashed"), 
-  ncol = 1, align = "v", axis = "lr", labels = c("A", "B")
-)
-```
+\caption{Comparison of compensation methods and uncorrected counts on semi-synthetic data 	extcolor{red}{(	exttt{spillR} and 	exttt{spillR (naive)} are set to impute spillover values with $0$)}. The vertical dashed line helps to interpret the spillover correction. It indicates the 	extcolor{red}{original mode of the bead distribution of Yb172Di at 2.725, before it overwriting it with the first peak of the real observations of Yb172Di}. Counts are arcsinh transformed with cofactor of five (\protect\hyperlink{ref-bendall2011single}{Bendall \emph{et al.}, 2011}).}(\#fig:semi-simulated-plot)
+\end{figure}
 
 
 
@@ -935,16 +311,30 @@ $$
 \end{bmatrix}.
 $$
 
-```{r}
+
+```r
 target    <- c(3, 5, 17,  3,  17, 2)
 spillover <- c(2, 3,  2, NA, NA, NA)
 Y = dplyr::bind_cols(target = target, spillover = spillover)
 Y
 ```
 
+```
+## # A tibble: 6 x 2
+##   target spillover
+##    <dbl>     <dbl>
+## 1      3         2
+## 2      5         3
+## 3     17         2
+## 4      3        NA
+## 5     17        NA
+## 6      2        NA
+```
+
 * Initialization: We initialize our EM algorithm by estimating the conditional probability of observing $y$ given that it belongs to the target marker, and another conditional probability given that it belongs to the spillover marker.
 
-```{r}
+
+```r
 y_min <- min(Y$target)
 y_max <- max(Y$target)
 y_support <- y_min:y_max
@@ -961,7 +351,8 @@ P_YZ <- dplyr::bind_cols(P_Y1 = P_Y1, P_Y2 = P_Y2)
 
 We initialize the mixture probabilities with the discrete uniform.
 
-```{r}
+
+```r
 pi <- c(0.9, 0.1)
 ```
 
@@ -969,7 +360,8 @@ Now, we update these initial values using the E and M-steps.
 
 * E-step: Calculate the posterior probability for the true marker, and the spillover marker.
 
-```{r}
+
+```r
 P_ZY <- dplyr::mutate(P_YZ, 
                       P_Y1 = pi[1] * P_Y1, 
                       P_Y2 = pi[2] * P_Y2)
@@ -979,17 +371,38 @@ P_ZY <- dplyr::bind_cols(target = y_support, P_ZY)
 
 * M-step: Update the mixing probability vector,
 
-```{r}
+
+```r
 n <- nrow(Y)
 YP <- dplyr::left_join(Y, P_ZY, by = "target")
 YP
+```
+
+```
+## # A tibble: 6 x 4
+##   target spillover  P_Y1     P_Y2
+##    <dbl>     <dbl> <dbl>    <dbl>
+## 1      3         2 0.717 2.83e- 1
+## 2      5         3 1.00  5.70e-13
+## 3     17         2 1     9.29e-17
+## 4      3        NA 0.717 2.83e- 1
+## 5     17        NA 1     9.29e-17
+## 6      2        NA 0.550 4.50e- 1
+```
+
+```r
 pi <- c(sum(YP$P_Y1) / n, sum(YP$P_Y2) / n)
 pi
 ```
 
+```
+## [1] 0.8307516 0.1692484
+```
+
 and re-estimate the distribution for the target marker using the posterior probabilities as weights, keep the non-target marker at its initial value,
 
-```{r warning = FALSE}
+
+```r
 fit1 <- density(Y$target, from = y_min, to = y_max, weights = YP$P_Y1)
 f1 <- approxfun(fit1$x, fit1$y)
 P_Y1 <- f1(y_support)
@@ -999,7 +412,8 @@ P_YZ <- bind_cols(P_Y1 = P_Y1, P_Y2 = P_Y2)
 
 and calculate the spillover probability estimate,
 
-```{r}
+
+```r
 P_ZY <- dplyr::mutate(P_YZ, 
                       P_Y1 = pi[1] * P_Y1, 
                       P_Y2 = pi[2] * P_Y2)
@@ -1009,6 +423,14 @@ P_ZY |>
   dplyr::mutate(p_spillover = round(1 - P_Y1, digits = 3)) |>
   dplyr::select(target, p_spillover) |>
   dplyr::filter(target %in% unique(Y$target))
+```
+
+```
+##   target p_spillover
+## 1      2       0.631
+## 2      3       0.449
+## 3      5       0.000
+## 4     17       0.000
 ```
 
 This is the result after one iteration.
