@@ -330,7 +330,7 @@ We compare our mixture method to a naive baseline method that considers only the
 $$
 P(Z_i = k \mid Y_i = y) = 1 - \frac{\widehat{P}(Y_i | Z_i = k)}{\sum_{k'}^K \widehat{P}(Y_i | Z_i = k)}.
 $$
-The spillover decision is the same as in our standard \texttt{spillR} method. This is a computationally efficient and simple naive baseline that, in effect, assigns counts to the marker with the highest density at the count value in the corresponding bead experiment.
+We proceed as in our standard \texttt{spillR} method to decide whether or not to assign a given count to spillover. This is a computationally efficient and simple baseline that assigns counts to the marker with the highest density at that count value in the corresponding bead experiment.
 }
 
 # Results
