@@ -312,7 +312,7 @@ We rely on assumption [(A1)](#assumption1) to justify updating only the distribu
 
 ### Spillover Decision
 
-To perform spillover compensation, we draw from a Bernoulli distribution with the spillover probability as parameter to decide whether or not to assign a given count to spillover. \textcolor{red}{We set counts designated to spillover to a user-specified value. We recommend a value of zero to maintain the overall cellular composition of the sample or a value such as \texttt{NA} or $-1$ to mark them explicitly as spillover for downstream processing.}
+To perform spillover compensation, we draw from a Bernoulli distribution with the spillover probability as parameter to decide whether or not to assign a given count to spillover. \textcolor{red}{We mark counts attributed to spillover by setting them to a user-specified value. We recommend a value of zero to maintain the overall cellular composition of the sample or a value such as \texttt{NA} or $-1$ to enable downstream analyses to treat those values separately (for example, calculating means only over non-spillover counts).}
 
 <!-- 
 
@@ -566,7 +566,7 @@ simulated <- lapply(taus, generate_data_c)
 p_c <- plot_critical(experiment, taus, simulated, custom_tau = "(mixing probability of two modes)")
 ```
 
-```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups. \\textcolor{red}{The mean values for \\texttt{spillR} are computed with \\texttt{NA} imputation for spillover counts, so the mean is identical to the true mean without spillover if all spillover counts are correctly identified as such.} The bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \\mid Z = 1$ is the distribution without spillover. $Y \\mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \\mid Z = 1$) is the average count without spillover. \\texttt{spillR} mean($Y$) is the average count after correcting $Y$."}
+```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups. \\textcolor{red}{The mean values for \\texttt{spillR} are computed on values not marked as \\texttt{NA}, so the mean ignores the counts attributed to spillover.} The bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \\mid Z = 1$ is the distribution without spillover. $Y \\mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \\mid Z = 1$) is the average count without spillover. \\texttt{spillR} mean($Y$) is the average count after correcting $Y$."}
 plot_grid(p_a, p_b, p_c, labels = c("A", "B", "C"),
           ncol = 1, align = "v", axis = "lr")
 ```
@@ -733,7 +733,7 @@ In all six panels (A--F), we observe that `spillR` compensates most strongly in 
 
 
 \textcolor{red}{
-In Panels D and F we can see that \texttt{CATALYST} performs no visible compensation. For the same panels our \texttt{spillR} methods compensate strongly. Our diagnostic plots using function \texttt{plotDiagnostics} in \texttt{spillR} give some indication on why our method compensates that strongly: The original experiment is designed such that we expect no spillover in the channels on the vertical axis, but our diagnostic plots show that the bead distribution of at least one spillover marker---as identified by the spillover matrix in \texttt{CATALYST}---overlaps with the first mode in the distribution of real cells. Thus, the strong compensation by \texttt{spillR} is consistent with our assumption (A1). The results of \texttt{spillR (naive)} fit with this explanation as it completely removes all counts in that area, which occurs when there is only spillover and no signal from the target marker.
+In Panels D and F we can see that \texttt{CATALYST} performs no visible compensation. For the same panels our \texttt{spillR} methods compensate strongly. Our diagnostic plots using function \texttt{plotDiagnostics} in \texttt{spillR} give some indication on why our method compensates that strongly: The original experiment is designed such that we expect no spillover in the channels on the vertical axis, but our diagnostic plots show that the bead distribution of at least one spillover marker---as identified by the spillover matrix in \texttt{CATALYST}---overlaps with the first mode in the distribution of real cells. Thus, the strong compensation by \texttt{spillR} is consistent with our assumption (A1). The results of \texttt{spillR (naive)} fit with this explanation as it marks all counts in that range as spillover, which occurs when in the bead experiments only spillover and no signal from the target marker is observed in that counts range.
 } 
 <!-- [(A1)](#assumption1) -->
 
