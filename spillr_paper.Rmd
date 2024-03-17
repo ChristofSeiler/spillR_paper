@@ -911,7 +911,7 @@ Our baseline method, \texttt{spillR-naive}, illustrates the behavior of more agg
 }
 
 \textcolor{red}{
-In the cell and bead data from \textttCATALYST}, our assumption (A1) seems to hold in some cases, but is violated in others. In our leading example in Figure 1 we can see that the mode of the bead distribution of marker Yb173Di is very close to the mode in the cell data, supporting our assumption. In other cases however, the target marker mode differs more strongly between cell and bead data. We therefore recommend testing our assumptions against the available data and background knowledge. Comparing the target marker mode on cells and beads may serve as a first test for assumption (A1), and background knowledge on the markers may aid in assessing the plausibility of assumption (A2).
+In the cell and bead data from \texttt{CATALYST}, our assumption (A1) seems to hold in some cases, but is violated in others. In our leading example in Figure 1 we can see that the mode of the bead distribution of marker Yb173Di is very close to the mode in the cell data, supporting our assumption. In other cases however, the target marker mode differs more strongly between cell and bead data. We therefore recommend testing our assumptions against the available data and background knowledge. Comparing the target marker mode on cells and beads may serve as a first test for assumption (A1), and background knowledge on the markers may aid in assessing the plausibility of assumption (A2).
 }
 
 \textcolor{red}{
