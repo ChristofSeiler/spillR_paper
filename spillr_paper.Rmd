@@ -52,7 +52,7 @@ In Section \@ref(methods), we present our mixture model and link it to calculati
 # Methods
 
 \textcolor{red}{
-In this section we first illustrate our method \texttt{spillR} (as well as a simple baseline version \texttt{spillR-naive}) by an example, and then describe the algorithm as well as its underlying assumptions. Regarding the terminology, note that in mass cytometry counts are often referred to as dual counts or signal intensity. We call them counts to emphasize that we rely on the fact that they are non-negative integers as opposed to possibly real-valued intensities. 
+In this section we first illustrate our method \texttt{spillR} (as well as a simple baseline \texttt{spillR-naive}) by an example, and then describe the algorithm and its underlying assumptions. Regarding terminology, mass cytometry counts are often referred to as dual counts or signal intensity; we refer to them as counts to emphasize their nature as non-negative integers, as opposed to possibly real-valued intensities. 
 }
 
 ## Example
@@ -160,7 +160,7 @@ combo$correction <- factor(
   )
 ```
 
-```{r method-example, fig.height=7.5, fig.width=8, out.width="90%", fig.align="center", fig.cap='\\textcolor{red}{Panel A shows a density plot of target and spillover markers based on the beads experiment, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation on real cells by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}), zero counts are not shown. As seen in Panel C, our baseline method \\texttt{spillR-naive} performs similarly to \\texttt{CATALYST} and compensates the first peak of the uncorrected data (red) between about 2 and 4 as spillover. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) and the first peak in the real data (Panel C red), and only compensates the part of the red curve as spillover that matches the bead experiment. This figure is an example of the diagnostic plot obtained when using the function \\texttt{plotDiagnostics} in \\texttt{spillR}.}', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
+```{r method-example, fig.height=6.8, fig.width=8, out.width="70%", fig.align="center", fig.cap='\\textcolor{red}{Panel A shows a density plot of target and spillover markers based on the beads experiment, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation on real cells by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}), zero counts are not shown. As seen in Panel C, our baseline method \\texttt{spillR-naive} performs similarly to \\texttt{CATALYST} and compensates the first peak of the uncorrected data (red) between about 2 and 4 as spillover. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) and the first peak in the real data (Panel C red), and only compensates the part of the red curve as spillover that matches the bead experiment. This figure is an example of the diagnostic plot obtained when using the function \\texttt{plotDiagnostics} in \\texttt{spillR}.}', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
 
 # --------- before_after plot and combining the three plots ---------
 
@@ -603,7 +603,7 @@ In the third experiment (panel C), we model spillover with a bimodal distributio
 
 ## Real Data
 
-```{r spillr-vignette_code, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+```{r spillr-vignette_code, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 
