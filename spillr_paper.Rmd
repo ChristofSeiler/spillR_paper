@@ -262,7 +262,7 @@ As spillover correction is a pre-processing step followed by downstream analyses
 * <div id='assumption1'>(A1) Spillover distributions are the same in bead and real experiments.</div> 
 The distribution of $Y_i \mid Z_i = k$ for all $k > 1$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_i \mid Z_i = k$ for all $k > 1$ from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality single-stained bead experiments that measure spillover in the same range as the target biological experiment. In other words, a bead experiment for our method works best if the distribution of bead cells is similar to the distribution of real cells.
 
-* <div id='assumption2'>(A2) For each cell $i$, the observed count $Y_i$ can only be due to one distribution.</div> 
+* <div id='assumption2'>(A2) For each cell $i$, the observed count $Y_i$ can only be due to one marker.</div> 
 This assumption is already implied by the statement of the mixture model. It allows us to calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from markers $k > 1$,
 $$
 P(\text{spillover} \mid Y_i = y) = P(Z_i > 1 \mid Y_i = y) = 
@@ -912,7 +912,7 @@ Our baseline method, \texttt{spillR-naive}, illustrates the behavior of more agg
 }
 
 \textcolor{red}{
-Our assumption (A1) is sometimes true and sometimes violated in the bead and cell data from \texttt{CATALYST}. In particular, in our leading example in Figure \ref{fig:method-example}, we can see that the mode of the bead distribution for marker Yb173Di is very close to the mode in the cell data. So, for this marker our assumption is valid. There are other markers where we see a violation of this assumption.
+In the cell and bead data fom CATALYST, our assumption A1 seems to hold in some cases, but is violated in others. In our leading example in Figure 1 we can see that the mode of the bead distribution of marker Yb173Di is very close to the mode in the cell data, supporting our assumption. In other cases however, the target marker mode differs more strongly between cell and bead data. We therefore recommend testing our assumptions against the available data and background knowledge. Comparing the target marker mode on cells and beads may serve as a first test for assumption 1, and background knowledge on the markers may aid in assessing the plausibility of assumption 2.
 }
 
 \textcolor{red}{
