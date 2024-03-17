@@ -659,9 +659,14 @@ combo$method <- factor(
 #   values = c(0, exp(seq(-5, 0, length.out = 100)))
 # )
 
+log_breaks <- c(0, 10, 100, 1000)
 colorscale <- scale_fill_gradientn(
     colors = c("blue", "green", "yellow", "red"),
-    values = c(0, exp(seq(-5, 0, length.out = 100)))
+    values = c(0, 2^(seq(-5, 0, length.out = 100))),
+    trans = 'log10',
+    breaks = log_breaks,
+    # trans = "log"
+    # values = c(0, 1/seq(0:1500))
     # values = scales::rescale(c(0, 0.33, 0.66, 1))
 )
 
