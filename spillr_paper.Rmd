@@ -313,7 +313,7 @@ We rely on assumption [(A1)](#assumption1) to justify updating only the distribu
 
 ### Spillover Decision
 
-To perform spillover compensation, we draw from a Bernoulli distribution with the spillover probability as parameter to decide whether or not to assign a given count to spillover. \textcolor{red}{We set counts designated to spillover to a user-specified value. We recommend a value of zero to maintain the overall cellular composition of the sample or a value such as \texttt{NA} or $-1$ to mark them explicitly as spillover for downstream processing.}
+To perform spillover compensation, we draw from a Bernoulli distribution with the spillover probability as parameter to decide whether or not to assign a given count to spillover. \textcolor{red}{We mark counts attributed to spillover by setting them to a user-specified value. We recommend a value of zero to maintain the overall cellular composition of the sample or a value such as \texttt{NA} or $-1$ to enable downstream analyses to treat those values separately (for example, calculating means only over non-spillover counts).}
 
 <!-- 
 
@@ -567,7 +567,7 @@ simulated <- lapply(taus, generate_data_c)
 p_c <- plot_critical(experiment, taus, simulated, custom_tau = "(mixing probability of the two modes)")
 ```
 
-```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups. \\textcolor{red}{The mean values for \\texttt{spillR} are computed with \\texttt{NA} imputation for spillover counts, so the mean is identical to the true mean without spillover if all spillover counts are correctly identified as such.} The bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \\mid Z = 1$ is the distribution without spillover. $Y \\mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \\mid Z = 1$) is the average count without spillover. \\texttt{spillR} mean($Y$) is the average count after correcting $Y$."}
+```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups. \\textcolor{red}{The mean values for \\texttt{spillR} are computed on values not marked as \\texttt{NA}, so the mean ignores the counts attributed to spillover.} The bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \\mid Z = 1$ is the distribution without spillover. $Y \\mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \\mid Z = 1$) is the average count without spillover. \\texttt{spillR} mean($Y$) is the average count after correcting $Y$."}
 plot_grid(p_a, p_b, p_c, labels = c("A", "B", "C"),
           ncol = 1, align = "v", axis = "lr")
 ```
