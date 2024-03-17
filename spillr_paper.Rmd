@@ -910,7 +910,7 @@ For future work, we plan to apply our methodology to imaging mass cytometry (Ang
 
 # Acknowledgments {-}
 
-We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved the paper. Alexander G. Reisach received funding from the European Union's Horizon 2020 research and innovation program under the Marie Sk\l{}odowska-Curie grant agreement No 945 nbins \euflag.
+We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved the paper. Alexander G. Reisach received funding from the European Union's Horizon 2020 research and innovation program under the Marie Sk\l{}odowska-Curie grant agreement No 945332 \euflag.
 
 # References {-}
 
