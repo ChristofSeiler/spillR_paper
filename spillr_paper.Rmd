@@ -332,7 +332,7 @@ We compare our mixture method to a naive baseline method that considers only the
 $$
 P(Z_i = k \mid Y_i = y) = 1 - \frac{\widehat{P}(Y_i | Z_i = k)}{\sum_{k'}^K \widehat{P}(Y_i | Z_i = k)}.
 $$
-We proceed as in our standard \texttt{spillR} method to decide whether or not to assign a given count to spillover. This is a computationally efficient and simple baseline that assigns counts to the marker with the highest density at that count value in the corresponding bead experiment.
+We proceed as in our standard \texttt{spillR} method to decide whether or not to assign a given count to spillover. This is a computationally efficient and simple baseline that assigns counts to markers in proportion to their density at that count value in the corresponding bead experiment.
 }
 
 # Results
@@ -919,9 +919,10 @@ In the cell and bead data from \texttt{CATALYST}, our assumption (A1) seems to h
 
 \textcolor{red}{
 The original experiment from Figure \ref{fig:spillr-vignette} is designed such that we expect no spillover in the channels on the vertical axis, but our diagnostic plots show that the bead distribution of at least one spillover marker---as identified by the spillover matrix in \texttt{CATALYST}---overlaps with the first mode in the distribution of real cells. Thus, the strong compensation by \texttt{spillR} is consistent with our assumption (A1). The results of \texttt{spillR-naive} fit with this explanation as it considers all counts in that low count range as spillover, which occurs when there is only spillover and no target marker signal for these counts in the bead experiment.
+We also expect little spillover in the second column of Figure 3 due to the metals used being very different. Nonetheless, we find that \texttt{CATALYST} compensates substantially in panel B, and \texttt{spillR} compensates substantially in panels D and F. This indicates that the performance of both methods rests on the plausibility of the respective assumptions in each individual case.
 }
 
-An additional advantage of our method is the diagnostic plot (Figure \@ref(fig:method-example)) of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares \textcolor{red}{such as \texttt{CATALYST}} are harder to diagnose as they minimize a cost function with no clear biological interpretation. In our view, one strength of \texttt{spillR} is that it does not assume a specific parametric model for count data. We believe that this is crucial because spillover compensation precedes many downstream analysis steps, and avoiding the introduction of bias is thus our top priority.
+\textcolor{red}{To understand and assess its applicability and performance, \texttt{spillR}} offers a diagnostic plot (Figure \@ref(fig:method-example)) of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares \textcolor{red}{such as \texttt{CATALYST}} are harder to diagnose as they minimize a cost function with no clear biological interpretation. In our view, one strength of \texttt{spillR} is that it does not assume a specific parametric model for count data. We believe that this is crucial because spillover compensation precedes many downstream analysis steps, and avoiding the introduction of bias is thus our top priority.
 
 <!-- [@angelo2014multiplexed; @giesen2014highly; @bodenmiller2016multiplexed] -->
 \textcolor{red}{
