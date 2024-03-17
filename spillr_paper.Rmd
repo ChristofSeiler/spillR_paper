@@ -922,7 +922,7 @@ The original experiment from Figure \ref{fig:spillr-vignette} is designed such t
 An additional advantage of our method is the diagnostic plot (Figure \@ref(fig:method-example)) of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares \textcolor{red}{such as \texttt{CATALYST}} are harder to diagnose as they minimize a cost function with no clear biological interpretation. In our view, one strength of \texttt{spillR} is that it does not assume a specific parametric model for count data. We believe that this is crucial because spillover compensation precedes many downstream analysis steps, and avoiding the introduction of bias is thus our top priority.
 
 \textcolor{red}{
-For future work, we plan to apply our methodology to imaging mass cytometry (Angeloet al., 2014; Giesenet al., 2014; Bodenmiller, 2016). The basic method can be applied as is, but it will be beneficial to incorporate a spatial regularization term that enforces neighboring spillover to be similar to one another.
+Our basic method can also be applied to imaging mass cytometry (Angelo \textit{et al.}, 2014; Giesen \textit{et al.}, 2014; Bodenmiller, 2016), although it will likely be beneficial to incorporate a spatial regularization term that enforces similarity betwen neighboring spillover estimates. We consider the design and evaluation of such an extension of our method a promising direction for future work.
 }
 
 # Acknowledgments {-}
