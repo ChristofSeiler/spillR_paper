@@ -911,7 +911,7 @@ Our baseline method, \texttt{spillR-naive}, illustrates the behavior of more agg
 }
 
 \textcolor{red}{
-In the cell and bead data fom CATALYST, our assumption A1 seems to hold in some cases, but is violated in others. In our leading example in Figure 1 we can see that the mode of the bead distribution of marker Yb173Di is very close to the mode in the cell data, supporting our assumption. In other cases however, the target marker mode differs more strongly between cell and bead data. We therefore recommend testing our assumptions against the available data and background knowledge. Comparing the target marker mode on cells and beads may serve as a first test for assumption (A1), and background knowledge on the markers may aid in assessing the plausibility of assumption (A2).
+In the cell and bead data from \texttt{CATALYST}, our assumption (A1) seems to hold in some cases, but is violated in others. In our leading example in Figure 1 we can see that the mode of the bead distribution of marker Yb173Di is very close to the mode in the cell data, supporting our assumption. In other cases however, the target marker mode differs more strongly between cell and bead data. We therefore recommend testing our assumptions against the available data and background knowledge. Comparing the target marker mode on cells and beads may serve as a first test for assumption (A1), and background knowledge on the markers may aid in assessing the plausibility of assumption (A2).
 }
 
 \textcolor{red}{
@@ -920,8 +920,9 @@ The original experiment from Figure \ref{fig:spillr-vignette} is designed such t
 
 An additional advantage of our method is the diagnostic plot (Figure \@ref(fig:method-example)) of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares \textcolor{red}{such as \texttt{CATALYST}} are harder to diagnose as they minimize a cost function with no clear biological interpretation. In our view, one strength of \texttt{spillR} is that it does not assume a specific parametric model for count data. We believe that this is crucial because spillover compensation precedes many downstream analysis steps, and avoiding the introduction of bias is thus our top priority.
 
+<!-- [@angelo2014multiplexed; @giesen2014highly; @bodenmiller2016multiplexed] -->
 \textcolor{red}{
-Our basic method can also be applied to imaging mass cytometry (Angelo \textit{et al.}, 2014; Giesen \textit{et al.}, 2014; Bodenmiller, 2016), although it will likely be beneficial to incorporate a spatial regularization term that enforces similarity betwen neighboring spillover estimates. We consider the design and evaluation of such an extension of our method a promising direction for future work.
+Our basic method can also be applied to imaging mass cytometry (Angelo \textit{et al.}, 2014; Giesen \textit{et al.}, 2014; Bodenmiller, 2016), although it will likely be beneficial to incorporate a spatial regularization term that enforces similarity between neighboring spillover estimates. We consider the design and evaluation of such an extension of our method a promising direction for future work.
 }
 
 # Acknowledgments {-}
