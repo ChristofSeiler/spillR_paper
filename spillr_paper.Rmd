@@ -163,6 +163,22 @@ combo$correction <- factor(
 
 # --------- before_after plot and combining the three plots ---------
 
+
+# add zero percentage to legend
+names <- c("none", "spillR", "spillR (naive)", "CATALYST")
+percentages <- as.character(sapply(names, function(name) {
+    nrow(combo[(as.character(combo$correction) == name) & (combo[[ch]] == 0),]) / nrow(combo[(as.character(combo$correction) == name),]) * 100
+}))
+# name_length <- max(nchar(names)) + 4
+# formatted <- sprintf(paste0("%-",name_length,"s%s") , names, percentages)
+# for (i in 1:length(names)) {
+#     levels(combo$correction)[levels(combo$correction) == names[i]] <- formatted[i]
+# }
+levels(combo$correction)[levels(combo$correction) == "none"] <- paste0("none                   ", percentages[1], "% zero counts")
+levels(combo$correction)[levels(combo$correction) == "spillR"] <- paste0("spillR                ", percentages[2], "% zero counts")
+levels(combo$correction)[levels(combo$correction) == "spillR (naive)"] <- paste0("spillR (naive)    ", percentages[3], "% zero counts")
+levels(combo$correction)[levels(combo$correction) == "CATALYST"] <- paste0("CATALYST        ", percentages[4], "% zero counts")
+
 p_before_after <- combo |> 
     filter(.data[[ch]] > 0) |>
     ggplot() + 
@@ -170,6 +186,7 @@ p_before_after <- combo |>
                   alpha = 1.0, bins = 50, linewidth = 0.8) +
     xlim(x_lim) +
     xlab(ch_name) +
+    ylab("count\n(nonzero values)") +
     ggtitle("Spillover Compensation on Real Cells")
 
 # p_before_after <- p_before_after +
@@ -659,7 +676,7 @@ combo$method <- factor(
 #   values = c(0, exp(seq(-5, 0, length.out = 100)))
 # )
 
-log_breaks <- c(0, 10, 100, 1000)
+log_breaks <- c(1, 10, 100, 1000)
 colorscale <- scale_fill_gradientn(
     colors = c("blue", "green", "yellow", "red"),
     values = c(0, 2^(seq(-5, 0, length.out = 100))),
