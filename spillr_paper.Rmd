@@ -723,7 +723,12 @@ In Figure \@ref(fig:spillr-vignette), we show the comparison of our methods to `
 <!-- layouting reasons -->
 \newpage
 
-\textcolor{red}{In all six panels (A--F), we observe that \texttt{spillR} compensates most strongly in the low counts, whereas \texttt{CATALYST} compensates strongly in the middle range. In the second column, where we expect spillover to be less pronounced, \texttt{CATALYST} compensates strongly in the first row, but little in rows two and three. \texttt{spillR} does the opposite: it compensates little in the first row, and more in rows two and three. \texttt{spillR-naive} compensates strongly in all instances. A characteristic pattern can be seen in panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di). \texttt{CATALYST}  compensates strongly in the middle range and removes the spherical pattern that shows correlation between the two markers. \texttt{spillR} preserves this correlation structure and only compensates the lower counts of CD3 (Yb173Di). This highlights a key difference between \texttt{spillR} and \texttt{CATALYST}: \texttt{spillR} identifies counts that may arise from spillover and replaces them with a user-specified value (e.g. 0, \texttt{NA}, or -1), whereas \texttt{CATALYST} shrinks counts across the entire range to compensate for spillover. \texttt{spillR-naive} compensates most aggressively, assigning a wide range of counts outside the target marker bead distribution to spillover.}
+\textcolor{red}{In all six panels (A--F), we observe that \texttt{spillR} compensates most strongly in the low counts, whereas \texttt{CATALYST} compensates strongly in the middle range. 
+From the experimental setup, we expect strong spillover in the first column where the metals are close to one another, and little spillover in second column where the metals are far from one another.
+In the first column, \texttt{spillR} seems to undercompensate in panels A and C, but compensates strongly in panel E, whereas we observe the opposite trend for \texttt{CATALYST}. 
+In the second column, we find that \texttt{CATALYST} compensates substantially in panel B, and \texttt{spillR} compensates substantially in panels D and F, even though we expect little spillover.
+The baseline method \texttt{spillR-naive} can be seen to compensate strongly in all cases.
+A characteristic pattern can be seen in panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di). \texttt{CATALYST}  compensates strongly in the middle range and removes the spherical pattern that shows correlation between the two markers. \texttt{spillR} preserves this correlation structure and only compensates the lower counts of CD3 (Yb173Di). This highlights a key difference between \texttt{spillR} and \texttt{CATALYST}: \texttt{spillR} identifies counts that may arise from spillover and replaces them with a user-specified value (e.g. 0, \texttt{NA}, or -1), whereas \texttt{CATALYST} shrinks counts across the entire range to compensate for spillover. \texttt{spillR-naive} compensates most aggressively, assigning a wide range of counts outside the target marker bead distribution to spillover.}
 
 <!-- [(A1)](#assumption1) -->
 
@@ -928,11 +933,12 @@ We also expect little spillover in the second column of Figure 3 due to the meta
 
 \textcolor{red}{
 In our experiments, we observe that the different methods may over- or undercompensate in different cases.
-The original experiment shown in Figure \ref{fig:spillr-vignette} is designed to produce little spillover in the settings shown in the second column due to the metals used on the horizontal and vertical axes being very different.
-Nonetheless, we find that \texttt{CATALYST} compensates substantially in panel B, and \texttt{spillR} compensates substantially in panels D and F.
-Our diagnostic plots show overlap between the distribution of at least one spillover marker (as identified by the spillover matrix in \texttt{CATALYST}) on beads and the first mode real cell distribution.
-Thus, the compensation by \texttt{spillR} is consistent with assumption (A1). This can also be seen in the results of \texttt{spillR-naive}, which considers all low counts as spillover, which happens if there is only spillover and no target marker signal for these counts in the bead experiment.
-These results results indicate that the performance of both \texttt{spillR} and \texttt{CATALYST} rests on the plausibility of their respective assumptions in the individual case. Since \texttt{spillR} relies on a different set of assumptions, it may offer a complementary solution. Note that in principle it is also possible to combine the methods, for example by using \texttt{spillR} to identify spillover, and \texttt{CATALYST} to compensate for it.
+The original experiment shown in Figure \ref{fig:spillr-vignette} is designed to produce considerable spillover in the settings of the first column, and little spillover in the second column.
+Nonetheless, we observe weak and strong compensation by both \texttt{spillR} and \texttt{CATALYST} in both columns.
+Our diagnostic plots show overlap between the spillover marker distributions on beads and the first mode real cell distribution, thus the compensation by \texttt{spillR} is consistent with assumption (A1). 
+The strong compensation performed by \texttt{spillR-naive} in both columns highlights the difficulty of balancing necessary and excessive compensation.
+\texttt{spillR} is designed to err on the side of preserving potentially meaningful pattern unless the bead distributions clearly suggest spillover.
+Overall, our results results indicate that the performance of both \texttt{spillR} and \texttt{CATALYST} rests on the plausibility of their respective assumptions in the individual case. Since \texttt{spillR} relies on a different set of assumptions, it offers a complementary solution. Note that in principle it is also possible to combine the methods, for example by using \texttt{spillR} to identify spillover, and \texttt{CATALYST} to compensate for it.
 }
 
 <!-- [@angelo2014multiplexed; @giesen2014highly; @bodenmiller2016multiplexed] -->
