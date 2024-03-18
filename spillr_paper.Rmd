@@ -120,7 +120,7 @@ p_beads <- tb_bead |>
 tb_spill_prob <- metadata(sce_spillr)$spillover_est[[ch_metal]]
 
 p_spill <- tb_spill_prob |>
-  ggplot(aes(tfm(.data[[ch_metal]]), spill_prob, color="Spillover probability")) +
+  ggplot(aes(tfm(.data[[ch_metal]]), spill_prob, color="spillover probability")) +
   geom_line(linewidth = 0.8) +
   scale_color_manual(values = "black") +
   labs(color = "") +
@@ -593,13 +593,6 @@ sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
 sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
                              fast = TRUE, impute_value = 0)
 
-# --------- 2d histogram from spillR (for vignette, not for paper) ---------
-# as <- c("counts", "exprs", "compcounts", "compexprs")
-# chs <- c( "Yb171Di", "Yb173Di")
-# ps <- lapply(as, function(a) 
-#     plotScatter(sce_spillr, chs, assay = a))
-# plot_grid(plotlist = ps, nrow = 2)
-
 # --------- run CATALYST ---------
 sm <- metadata(sce_bead)$spillover_matrix
 sce_catalyst <- CATALYST::compCytof(sce, sm, overwrite = FALSE)
@@ -671,26 +664,23 @@ p6 <- ggplot(combo, aes(x = HLA.ABC, y = HLA.DR.2)) +
 
 plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2, 
           labels = c("A", "B", "C", "D", "E", "F"))
-
 ```
 
 We compare our methods to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset consists of an experiment with real cells and corresponding single-stained bead experiments. The experiment on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels with the number of beads per metal label ranging from 112 to 241.
 
-In Figure \@ref(fig:spillr-vignette), we show the comparison of our methods to `CATALYST` on the same markers as their original paper [@catalyst] in their Figure \@ref(fig:spillr-vignette)B. In the original experiment, they conjugate the three proteins CD3, CD8, and HLA-DR with two different metal labels. \textcolor{red}{For example, they conjugate CD8 with Yb174Di (Yb is the metal and the number indicates the number of nucleons of the isotope) and La139Di. As in their plot, our columns correspond to the different metal labels. In the first column are isotopes that are close to one another, which can cause spillover. In the second column are isotopes that are far from one another, which should not cause spillover. Each row represents a comparison for a target channel (on the horizontal axis) and the potential spillover channel (on the vertical axis).} We visualize the joint distributions using two-dimensional histograms.
-
-<!-- layouting reasons -->
-\newpage
+In Figure \@ref(fig:spillr-vignette), we show the comparison of our methods to `CATALYST` on the same markers as their original paper [@catalyst] in their Figure 3B. In the original experiment, they conjugate the three proteins CD3, CD8, and HLA-DR with two different metal labels. \textcolor{red}{For example, they conjugate CD8 with Yb174Di (Yb is the metal and the number indicates the number of nucleons of the isotope) and La139Di. As in their plot, our columns correspond to the different metal labels. In the first column are isotopes that are close to one another, which can cause spillover. In the second column are isotopes that are far from one another, which should not cause spillover. Each row represents a comparison for a target channel (on the horizontal axis) and the potential spillover channel (on the vertical axis).} We visualize the joint distributions using two-dimensional histograms.
 
 \textcolor{red}{In all six panels (A--F), we observe that \texttt{spillR} compensates most strongly in the low counts, whereas \texttt{CATALYST} compensates strongly in the middle range. 
-From the experimental setup, we expect strong spillover in the first column, and little spillover in second column.
+From the experimental setup, we expect strong spillover in the first column, and little spillover in the second column.
 In the first column, \texttt{spillR} seems to undercompensate in panels A and C, but compensates strongly in panel E, whereas we observe the opposite trend for \texttt{CATALYST}. 
 In the second column, we find that \texttt{CATALYST} compensates substantially in panel B, and \texttt{spillR} compensates substantially in panels D and F, even though we expect little spillover.
-The baseline method \texttt{spillR-naive} can be seen to compensate strongly in all cases.
-A characteristic pattern can be seen in panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di). \texttt{CATALYST}  compensates strongly in the middle range and removes the spherical pattern that shows correlation between the two markers. \texttt{spillR} preserves this correlation structure and only compensates the lower counts of CD3 (Yb173Di). This highlights a key difference between \texttt{spillR} and \texttt{CATALYST}: \texttt{spillR} identifies counts that may arise from spillover and replaces them with a user-specified value (e.g. 0, \texttt{NA}, or -1), whereas \texttt{CATALYST} shrinks counts across the entire range to compensate for spillover. \texttt{spillR-naive} compensates most aggressively, assigning a wide range of counts outside the target marker bead distribution to spillover.}
+The baseline method \texttt{spillR-naive} can be seen to compensate strongly in all cases.}
+
+\textcolor{red}{A characteristic pattern can be seen in panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di). \texttt{CATALYST}  compensates strongly in the middle range and removes the spherical pattern that shows correlation between the two markers. \texttt{spillR} preserves this correlation structure and only compensates the lower counts of CD3 (Yb173Di). This highlights a key difference between \texttt{spillR} and \texttt{CATALYST}: \texttt{spillR} identifies counts that may arise from spillover and replaces them with a user-specified value (e.g. 0, \texttt{NA}, or -1), whereas \texttt{CATALYST} shrinks counts across the entire range to compensate for spillover.}
 
 <!-- [(A1)](#assumption1) -->
 
-The color code of the two-dimensional histograms indicates the absolute number of cells that fall into one hexagon bin. The uncorrected and `spillR` corrected histograms can contain different absolute numbers of cells, even for identical distributions. \textcolor{red}{This is due to a rounding step in \texttt{spillR} that converts raw counts to integers. Raw mass cytometry data may not be true count data because the proprietary post-processing of the manufacturer often performs a randomization step when exporting the data.} The uncorrected counts do not undergo this pre-processing step, and `CATALYST` does not perform this pre-processing step either. This also explains the different patterns in panel B. `spillR` has horizontal stripes that correspond to non-integer values not in the support of the distribution for `spillR`. \textcolor{red}{We leave the decision to apply re-randomization of the count data for downstream analysis up to the user. Our rational is that the user should see the differences in this pre-processing step and how it propagates to the results.}
+The color code of the two-dimensional histograms indicates the absolute number of cells that fall into one hexagon bin. The uncorrected and `spillR` corrected histograms can contain different absolute numbers of cells, even for identical distributions. \textcolor{red}{This is due to a rounding step in \texttt{spillR} that converts raw counts to integers. Raw mass cytometry data may not be true count data because the proprietary post-processing of the manufacturer often performs a randomization step when exporting the data.} The uncorrected counts do not undergo this pre-processing step, and `CATALYST` does not perform this pre-processing step either. This also explains the different patterns in panel B. `spillR` has horizontal stripes that correspond to non-integer values not in the support of the distribution for `spillR`. \textcolor{red}{We leave the decision to apply re-randomization of the count data for downstream analysis up to the user. Our rationale is that the user should see the differences in this pre-processing step and how it propagates to the results.}
 
 ```{r computational-resources, echo=FALSE, eval=FALSE}
 mark <- benchmark(
