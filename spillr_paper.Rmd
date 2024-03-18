@@ -285,14 +285,6 @@ We rely on assumption [(A1)](#assumption1) to justify updating only the distribu
 
 To perform spillover compensation, we draw from a Bernoulli distribution with the spillover probability as parameter to decide whether or not to assign a given count to spillover. \textcolor{red}{We mark counts attributed to spillover by setting them to a user-specified value. We recommend a value of zero to maintain the overall cellular composition of the sample, or a value such as \texttt{NA} or $-1$ to mark spillover counts for separate treatment in downstream analyses (for example, calculating means only over non-spillover counts).}
 
-<!-- 
-
-## Identifiability
-
-[TODO] Need to think if our model assumptions guarantee identifiability and if our procedure is guaranteed to converge. I think if it is identifiable, then convergence follows from the property of the EM algorithm. Some related work [@hall2003nonparametric; @aragam2020identifiability] that might help. 
-
--->
-
 ## Baseline Method `spillR-naive`
 
 \textcolor{red}{
