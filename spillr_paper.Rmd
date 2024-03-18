@@ -213,38 +213,9 @@ Figure \@ref(fig:method-example) illustrates our procedure using a dataset from 
 
 Panel A depicts the marker distributions from the beads experiment. We see that for this marker the bead experiments are high-quality as the target marker Yb173Di is concentrated around six, similarly to the experiment with real cells. This suggests that the spillover marker values can be transferred to the real experiments. Marker Yb172Di shows large spillover into Yb173Di, and suggests that the left tail of the first mode of the distribution observed on real cells may be attributed to that marker. The other spillover markers have low counts in the bead experiment, making it justifiable to set some or all of the low counts on real cells to zero.
 
-\textcolor{red}{Panel B shows a curve representing our spillover probability estimates. We can see that the probability of spillover is high for counts with a high density of spillover markers and a low target marker density in Panel A. If the spillover probability is close to one, our correction step assigns most cells to spillover.} Counts above $4$ stem from spillover with probability zero (and from the actual target with probability one), which means that our procedure keeps them at their raw uncorrected value.
+\textcolor{red}{Panel B shows a curve representing our spillover probability estimates. We can see that the probability of spillover is high for counts with a high density of spillover markers (panel A) and a low density of the target marker (panel C). If the spillover probability is close to one, our correction step assigns most cells to spillover.} Counts above $4$ stem from spillover with probability zero (and from the actual target with probability one), which means that our procedure keeps them at their raw uncorrected value.
 
-```{r method-example-summary, echo=FALSE, warning=FALSE, message=FALSE}
-zeros <- combo |>
-  filter(.data[[ch]] == 0 | is.na(.data[[ch]])) |> 
-  group_by(correction) |> 
-  tally(name = "zeros or \\texttt{NA}'s")
-
-means <- combo |> 
-  filter(!is.na(.data[[ch]])) |> 
-  group_by(correction) |>
-  summarize(mean = mean(.data[[ch]]))
-
-zeros_means <- left_join(zeros, means, by = "correction")
-levels(zeros_means$correction)[2] <- "\\texttt{spillR}"
-levels(zeros_means$correction)[3] <- "\\texttt{spillR-naive}"
-levels(zeros_means$correction)[4] <- "\\texttt{CATALYST}"
-
-# zeros_means |>
-#   kableExtra::kbl(
-#     caption = "Additional summaries of the data underlying Figure \\ref{fig:method-example}C.", 
-#     booktabs = TRUE, digits = 2, escape = FALSE
-#     )
-```
-
-Panel C displays the distribution of our target marker, CD3 (Yb173Di) before and after spillover correction. \textcolor{red}{We observe few real counts (red) below $2$, so although all methods perform strong compensation in this range, there is little visible difference between uncompensated and compensated counts. Above $2$ there is a clear distinction between the compensation methods. \texttt{CATALYST}, like our baseline \texttt{spillR-naive}, compensates nearly all counts forming the first peak of the raw counts (red, between 2 and 4) as spillover. By contrast, \texttt{spillR} compensates only where the density of spillover markers in the bead experiment shown in panel A is high (e.g. Yb172Di spillover peaks at around 2.7). As a result, it does not compensate all of the counts forming the first peak of the red curve and compensates more counts between 2 and 3 than between 3 and 4. While \texttt{CATALYST} shifts large counts (around 6) slightly to the left, our methods leave them unchanged as the bead experiment shows no spillover in this range.}
-<!-- Zero counts (or equivalently `NA` counts for `spillR`) and mean counts are shown in Table \@ref(tab:method-example-summary). 
-As we do not know the true mean in this case, the comparison of means here serves merely as an illustration of the main differences between \texttt{spillR} and \texttt{CATALYST} and not to identify the correct method.
--->
-\textcolor{red}{
-Our baseline method \texttt{spillR-naive} is similar to \texttt{CATALYST} in the low and medium range, but keeps higher counts unchanged.
-}
+Panel C displays the distribution of our target marker, CD3 (Yb173Di) before and after spillover correction. \textcolor{red}{We observe few real counts (red) below $2$, so although all methods perform strong compensation in this range, there is little visible difference between uncompensated and compensated counts. Above $2$ there is a clear distinction between the compensation methods. \texttt{CATALYST}, like our baseline \texttt{spillR-naive}, compensates nearly all counts forming the first peak of the raw counts (red, between $2$ and $4$) as spillover. By contrast, \texttt{spillR} compensates only where the density of spillover markers in the bead experiment shown in panel A is high (e.g. Yb172Di spillover peaks at around $2.7$). As a result, it does not compensate for all of the counts forming the first peak of the red curve and compensates more counts between $2$ and $3$ than between $3$ and $4$. While \texttt{CATALYST} shifts large counts (around $6$) slightly to the left, our methods leave them unchanged as the bead experiment shows no spillover in this range. Our baseline method \texttt{spillR-naive} is similar to \texttt{CATALYST} in the low and medium range, but keeps higher counts unchanged.}
 
 ## Definition of Spillover Probability and Assumptions
 
