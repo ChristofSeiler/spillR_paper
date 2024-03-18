@@ -546,7 +546,6 @@ The goal of the experiment is to estimate the mean of the true counts (black den
 -->
 
 In the first experiment (panel A), we shift the spillover in the beads experiment away from the true spillover to probe [(A1)](#assumption1). We test a range of bead shifts from no shift at $\tau = 0$ to \textcolor{red}{$\tau = -10$. At $\tau = -10$,} the measured spillover (the first mode of the yellow density) is shifted away from the actual spillover (the blue density), causing both the observed and compensated mean to be lower than the true mean. This may be the case in a low-quality bead experiment. As $\tau$ gets closer to zero, the first mode of the yellow density moves towards the blue density (as may be the case in a higher quality bead experiment), and the compensated signal moves closer to the true mean.
-<!-- Our compensation also increases means, as it should, in contrast to e.g. @catalyst. -->
 
 <!--
 ### Model Misspecification (A2)
@@ -554,7 +553,6 @@ In the first experiment (panel A), we shift the spillover in the beads experimen
 
 In the second experiment (panel B), we mix target and spillover to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the mixture is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the beads experiment. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct, but for $\tau = 0.5$ the assumption [(A2)](#assumption2) is maximally violated. The true mean decreases with increasing $\tau$. 
 \textcolor{red}{\texttt{spillR} compensates well as long as $\tau$ is close to zero, but does not adapt immediately as the spillover distribution gets closer to the target distribution for increasing $\tau$. When the mean of the spillover distribution crosses the mid-way point to that of the target marker distribution at $\tau \approx 0.25$, the mean of counts compensated by \texttt{spillR} flips to the mean of the observed data, until}
-<!-- Our compensation is closer to the true mean across the tested range. -->
 at $\tau = 0.5$ all three distributions and their means are the same.
 
 <!--
