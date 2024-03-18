@@ -795,7 +795,7 @@ semi_synthetic_data <- function(shift) {
 }
 ```
 
-```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap='Comparison of compensation methods and uncorrected counts on semi-synthetic data \\textcolor{red}{(\\texttt{spillR} and \\texttt{spillR-naive} are set to impute spillover values with $0$)}. The vertical dashed line helps to interpret the spillover correction. It indicates the \\textcolor{red}{original mode of the bead distribution of Yb172Di at 2.725, before overwriting it with the first peak of the real observations of Yb173Di}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}). The zero percentages are averages over all three experiments.', cache = TRUE}
+```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap='\\textcolor{red}{Comparison of compensation methods and uncorrected counts on semi-synthetic data (\\texttt{spillR} and \\texttt{spillR-naive} are set to impute spillover values with $0$). The vertical dashed line helps to interpret the spillover correction. It indicates the original mode of the bead distribution of Yb172Di at $2.7$, before overwriting it with the first peak of the real observations of Yb173Di. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}). The zero percentages are averages over all three experiments.}', cache = TRUE}
 # --------- plotting of semi-simulated data ---------
 
 semi_list <- lapply(c(0, 0.47, 0.94), semi_synthetic_data)
