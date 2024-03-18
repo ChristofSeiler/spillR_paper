@@ -288,9 +288,9 @@ To perform spillover compensation, we draw from a Bernoulli distribution with th
 ## Baseline Method `spillR-naive`
 
 \textcolor{red}{
-We compare our mixture method to a naive baseline method that considers only the bead distributions. Similarly to our standard \texttt{spillR} method, we estimate the bead PMF of each bead $k$ with the kernel density estimator \texttt{density}, $\widehat{P}(Y_i | Z_i = k)$. Then, for all count values $y$ in the range of the bead counts, we separately normalize the PMF at each value $Y_i = y$ and calculate the spillover probability as
+We compare our mixture method to a naive baseline method that considers only the bead distributions. We replace the real cells in the first component $k = 1$ with their bead distribution. Similarly to our standard \texttt{spillR} method, we estimate the bead PMF of each bead $k$ with the kernel density estimator \texttt{density}, $\widehat{P}(Y_i = y \mid Z_i = k)$. Then, for all count values $y$ in the range of the bead counts, we separately normalize the PMF at each value $Y_i = y$ and calculate the spillover probability as
 $$
-P(Z_i = k \mid Y_i = y) = 1 - \frac{\widehat{P}(Y_i | Z_i = k)}{\sum_{k'}^K \widehat{P}(Y_i | Z_i = k)}.
+\widehat{P}(\text{spillover} \mid Y_i = y) = 1 - \frac{\widehat{P}(Y_i = y \mid Z_i = 1)}{\sum_{k' = 1}^K \widehat{P}(Y_i = y \mid Z_i = k')}.
 $$
 We proceed as in our standard \texttt{spillR} method to decide whether or not to assign a given count to spillover. This is a computationally efficient and simple baseline that assigns counts to markers in proportion to their density at that count value in the corresponding bead experiment.
 }
