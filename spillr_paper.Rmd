@@ -931,7 +931,7 @@ Nonetheless, we observe weak and strong compensation by both \texttt{spillR} and
 Our diagnostic plots show overlap between the spillover marker distributions on beads and the first mode real cell distribution, thus the compensation by \texttt{spillR} is consistent with assumption (A1). 
 The strong compensation performed by \texttt{spillR-naive} in both columns highlights the difficulty of balancing necessary and excessive compensation.
 \texttt{spillR} is designed to err on the side of preserving potentially meaningful pattern unless the bead distributions clearly suggest spillover.
-Overall, our results results indicate that the performance of both \texttt{spillR} and \texttt{CATALYST} rests on the plausibility of their respective assumptions in the individual case. Since \texttt{spillR} relies on a different set of assumptions, it offers a complementary solution. Note that in principle it is also possible to combine the methods, for example by using \texttt{spillR} to identify spillover, and \texttt{CATALYST} to compensate for it.
+Overall, our results indicate that the performance of both \texttt{spillR} and \texttt{CATALYST} rests on the plausibility of their respective assumptions in the individual case. Since \texttt{spillR} relies on a different set of assumptions, it offers a complementary solution. Note that in principle it is also possible to combine the methods, for example by using \texttt{spillR} to identify spillover, and \texttt{CATALYST} to compensate for it.
 }
 
 <!-- [@angelo2014multiplexed; @giesen2014highly; @bodenmiller2016multiplexed] -->
