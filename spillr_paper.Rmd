@@ -7,10 +7,12 @@ output:
     toc: false
     extra_dependencies: ["euflag"]
 bibliography: spillr_paper.bib
+nocite: |
+    @angelo2014multiplexed, @giesen2014highly, @bodenmiller2016multiplexed
 csl: style.csl
 link-citations: true
 abstract: |
-  Channel interference in mass cytometry can cause spillover and may result in miscounting of protein markers. @catalyst introduce an experimental and computational procedure to estimate and compensate for spillover implemented in their R package `CATALYST`. They assume spillover can be described by a spillover matrix that encodes the ratio between unstained and stained channels. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model, and use the mixture components to estimate the probability of spillover. Spillover correction is often a pre-processing step followed by downstream analyses, and choosing a flexible model reduces the chance of introducing biases that can propagate downstream. We implement our method in an R package `spillR` using expectation-maximization to fit the mixture model. We test our method on synthetic and real data from `CATALYST`. We find that our method compensates low counts accurately, does not introduce negative counts, avoids overcompensating high counts, and preserves correlations between markers that may be biologically meaningful.
+  Channel interference in mass cytometry can cause spillover and may result in miscounting of protein markers. @catalyst introduce an experimental and computational procedure to estimate and compensate for spillover implemented in their R package `CATALYST`. They assume spillover can be described by a spillover matrix that encodes the ratio between the signal in the unstained spillover receiving and stained spillover emitting channel. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model and use the mixture components to estimate the probability of spillover. Spillover correction is often a pre-processing step followed by downstream analyses, and choosing a flexible model reduces the chance of introducing biases that can propagate downstream. We implement our method in an R package `spillR` using expectation-maximization to fit the mixture model. We test our method on simulated, semi-simulated, and real data from `CATALYST`. We find that our method compensates low counts accurately, does not introduce negative counts, avoids overcompensating high counts, and preserves correlations between markers that may be biologically meaningful.
 ---
 
 ```{r setup, include=FALSE}
@@ -35,23 +37,28 @@ library(parallel)
 library(kableExtra)
 library(hexbin)
 library(rbenchmark)
+library(latex2exp)
 set.seed(23)
 tfm <- function(x) asinh(x/5)
 ```
 
 # Introduction
 
-Mass cytometry makes it possible to count a large number of proteins simultaneously on individual cells [@bandura2009mass; @bendall2011single]. Although mass cytometry has less spillover---measurements from one channel overlap less with those of another---than flow cytometry [@sp-c; @novo2013generalized], spillover is still a problem and affects downstream analyses such as differential testing [@diffcyt; @seiler2021cytoglmm] or dimensionality reduction [@scater]. Reducing spillover by careful design of experiment is possible [@takahashi2017mass], but a purely experimental approach may be neither sufficient nor efficient [@lun2017influence].
+Mass cytometry makes it possible to count a large number of proteins simultaneously on individual cells [@bandura2009mass; @bendall2011single]. Although mass cytometry has less spillover---measurements from one channel overlap less with those of another---than flow cytometry [@sp-c; @novo2013generalized], spillover is still a problem and affects downstream analyses such as differential testing [@diffcyt; @seiler2021cytoglmm] or dimensionality reduction [@scater]. Reducing spillover by careful design of experiment is possible [@takahashi2017mass], but a purely experimental approach may be neither efficient nor sufficient [@lun2017influence].
 
-@catalyst propose a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single type of antibody. The slope of the regression line between target antibody and non-target antibodies represents the spillover proportion between channels. @miao2021ab attempt to solve spillover by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous versions rely on an estimate for the spillover matrix. The spillover matrix encodes the pairwise spillover proportion between channels. We avoid estimating a spillover matrix and instead model spillover by fitting a mixture model to the observed counts. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we transfer the spillover distribution to the real experiment instead of just the spillover proportion encoded in the spillover matrix. The main difference between our method and the one by @catalyst is the average count after correcting for spillover. Our method will increase the average count after correction. By contrast, the method by @catalyst will shrink all the counts towards zero. As a consequence, the average count will be lower after correction.
+@catalyst propose a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single type of antibody. The slope of the regression line between target antibodies and non-target antibodies represents the spillover proportion between channels. @miao2021ab attempt to solve spillover by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous works rely on an estimate for the spillover matrix, which encodes the pairwise spillover proportion between channels. We avoid estimating a spillover matrix and instead model spillover by fitting a mixture model to the counts observed in the bead experiment. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we transfer the spillover distribution to the real experiment instead of just the spillover proportion encoded in the spillover matrix.
 
-In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm and logistic regression, and implemented in our new R package `spillR`^[\textcolor{red}{https://bioconductor.org/packages/spillR}]. In Section \@ref(results), we conduct experiments on simulated, \textcolor{red}{semi-simulated}, and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) discusses our experiments and relates our findings to `CATALYST`.
+In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm, and implemented in our new R package `spillR`^[\textcolor{red}{https://bioconductor.org/packages/spillR}]. In Section \@ref(results), we conduct experiments on simulated, \textcolor{red}{semi-simulated}, and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) discusses our experiments and relates our findings to `CATALYST`.
 
 # Methods
 
+\textcolor{red}{
+In this section we first illustrate our method \texttt{spillR} (as well as a simple baseline \texttt{spillR-naive}) by an example, and then describe the algorithm and its underlying assumptions. Regarding terminology, mass cytometry counts are often referred to as dual counts or signal intensity; we refer to them as counts to emphasize their nature as non-negative integers, as opposed to possibly real-valued intensities. 
+}
+
 ## Example
 
-```{r method-example, fig.height=7, fig.width=7, out.width="75%", fig.align="center", fig.cap='A: Gaussian kernel density plot of target and spillover markers. B: The solid black curve represents the spillover probability estimated with our method. C: Frequency polygons of marker CD3 (Yb173Di) comparing no correction, our methods, and \\texttt{CATALYST}. Zero counts are not plotted. See Table \\ref{tab:method-example-summary} for the zero counts and means. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}). The vertical dashed line helps to interpret the spillover correction when CD3 (Yb173Di) is $2.725$. This is an interesting point as it balances between spillover counts from Yb172Di measured in beads (panel A) and the counts measured on real cells (panel C). \\textcolor{red}{The spillover probability at $2.725$ is close to one. This means we will set most counts to \\texttt{NA}\'s at this point.} After correction the read curve (panel C) will be adjusted downwards to the green curve (panel C) with our method \\texttt{spillR}. \\textcolor{red}{Our baseline method \\texttt{spillR} (fast) in cyan (panel C) is similar to \\texttt{CATALYST} for low and medium counts, and similar to \\texttt{spillR} for high counts.}', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
+```{r method-example_comp, echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
 ch <- "CD3.2"
@@ -82,9 +89,10 @@ marker_to_barc <-
 
 # --------- call compensate from compCytof package ---------
 
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
+sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
+                        impute_value = 0)
 sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                             fast = TRUE)
+                             fast = TRUE, impute_value = 0)
 
 # --------- run CATALYST ---------
 
@@ -112,15 +120,17 @@ p_beads <- tb_bead |>
 tb_spill_prob <- metadata(sce_spillr)$spillover_est[[ch_metal]]
 
 p_spill <- tb_spill_prob |>
-  ggplot(aes(tfm(.data[[ch_metal]]), spill_prob)) +
+  ggplot(aes(tfm(.data[[ch_metal]]), spill_prob, color="spillover probability")) +
   geom_line(linewidth = 0.8) +
+  scale_color_manual(values = "black") +
+  labs(color = "") +
   xlim(x_lim) +
   ylim(c(0, 1)) +
   xlab(ch_name) +
   ylab("probability") +
-  ggtitle("Estimated Spillover")
+  ggtitle("Spillover Estimation")
 
-# --------- before and after ---------
+# --------- before and after data ---------
 
 exprs_spillr <- sce_spillr |> 
   assay("exprs") |>
@@ -136,7 +146,7 @@ compexprs_spillr_fast <- sce_spillr_fast |>
   assay("compexprs") |>
   t() |>
   as_tibble() |>
-  mutate(correction = "spillR (fast)")
+  mutate(correction = "spillR-naive")
 compexprs_catalyst <- sce_catalyst |> 
   assay("compexprs") |>
   t() |>
@@ -147,67 +157,65 @@ combo <- bind_rows(exprs_spillr, compexprs_spillr,
 combo <- combo |> select(all_of(c(ch, "correction")))
 combo$correction <- factor(
   combo$correction, 
-  levels = c("none", "spillR", "spillR (fast)", "CATALYST")
+  levels = c("none", "spillR", "spillR-naive", "CATALYST")
   )
+```
+
+```{r method-example, fig.height=6.8, fig.width=8, out.width="70%", fig.align="center", fig.cap='\\textcolor{red}{Panel A shows a density plot of target and spillover markers based on the beads experiment, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation on real cells by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}), zero counts are not shown. As seen in Panel C, our baseline method \\texttt{spillR-naive} performs similarly to \\texttt{CATALYST} and compensates the first peak of the uncorrected data (red) between about 2 and 4 as spillover. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) and the first peak in the real data (Panel C red), and only compensates the part of the red curve as spillover that matches the bead experiment. This figure is an example of the diagnostic plot obtained when using the function \\texttt{plotDiagnostics} in \\texttt{spillR}.}', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
+# --------- add zero percentage to legend ---------
+
+names <- c("none", "spillR", "spillR-naive", "CATALYST")
+percentages <- as.character(sapply(names, function(name) {
+  
+  n_zeros <- nrow(combo[(as.character(combo$correction) == name) & (combo[[ch]] == 0),])
+  n_cell <- nrow(combo[(as.character(combo$correction) == name),])
+  round(n_zeros / n_cell * 100, 2)
+
+}))
+
+levels(combo$correction)[levels(combo$correction) == "none"] <- 
+  paste0("none                  ", percentages[1], "% zeros")
+levels(combo$correction)[levels(combo$correction) == "spillR"] <- 
+  paste0("spillR               ", percentages[2], "% zeros")
+levels(combo$correction)[levels(combo$correction) == "spillR-naive"] <- 
+  paste0("spillR-naive    ", percentages[3], "% zeros")
+levels(combo$correction)[levels(combo$correction) == "CATALYST"] <- 
+  paste0("CATALYST       ", percentages[4], "% zeros")
+
+# --------- before and after plot ---------
 
 p_before_after <- combo |> 
-  filter(.data[[ch]] > 0) |>
-  ggplot(aes(.data[[ch]], color = correction, linetype = correction)) + 
-  geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
-  xlim(x_lim) +
-  xlab(ch_name) +
-  ggtitle("Spillover Compensation on Real Cells")
+    filter(.data[[ch]] > 0) |>
+    ggplot() + 
+    geom_freqpoly(aes(.data[[ch]], color = correction, linetype = correction),
+                  alpha = 1.0, bins = 50, linewidth = 0.8) +
+    xlim(x_lim) +
+    xlab(ch_name) +
+    ylab("count\n(nonzero values)") +
+    ggtitle("Spillover Compensation on Real Cells")
 
-# --------- combine everything ---------
-v <- 2.725
+# --------- combine plots ---------
+
+offset <- -7
 plot_grid(
-  p_beads + theme(legend.justification = c(0,1)) + 
-    geom_vline(xintercept = v, linetype = "dashed"),
-  p_spill + theme(legend.justification = c(0,1)) +
-    geom_vline(xintercept = v, linetype = "dashed"), 
-  p_before_after + theme(legend.justification = c(0,1)) +
-    geom_vline(xintercept = v, linetype = "dashed"), 
-  ncol = 1, align = "v", axis = "lr", labels = c("A", "B", "C")
+    p_beads + theme(legend.justification = c(0,1)) + 
+        theme(legend.box.margin = margin(offset, 0, 0, 0, unit = "pt")),
+    p_spill + theme(legend.justification = c(0,1)) +
+        theme(legend.box.margin = margin(offset, 0, 0, 0, unit = "pt")),
+    p_before_after + theme(legend.justification = c(0,1)) +
+        theme(legend.box.margin = margin(offset, 0, 0, 0, unit = "pt")),
+  ncol = 1, align = "v", axis = "lr", labels = c("A", "B", "C"),
+  rel_widths = c(1, 1, 1)
 )
 ```
 
 Figure \@ref(fig:method-example) illustrates our procedure using a dataset from the `CATALYST` package as an example. There are four markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). The markers have two names: the first name is the protein name and the second name in brackets is the conjugated metal. There are bead experiments for each of the spillover markers.
 
-Panel A depicts the marker distributions from the beads experiment. We see that for this marker the bead experiments are high-quality as the target marker Yb173Di is concentrated around six, similarly to the experiment with real cells. This suggests that the spillover marker values can be transferred to the real experiments. Marker Yb172Di shows large spillover into Yb173Di, and suggests that the left tail of the first mode of the distribution may be attributed to that marker. The other spillover markers have low counts, making it justifiable to set some or all the low counts to zero.
+Panel A depicts the marker distributions from the beads experiment. We see that for this marker the bead experiments are high-quality as the target marker Yb173Di is concentrated around six, similarly to the experiment with real cells. This suggests that the spillover marker values can be transferred to the real experiments. Marker Yb172Di shows large spillover into Yb173Di, and suggests that the left tail of the first mode of the distribution observed on real cells may be attributed to that marker. The other spillover markers have low counts in the bead experiment, making it justifiable to set some or all of the low counts on real cells to zero.
 
-Panel B has a solid black and gray curves representing our spillover probability estimates. \textcolor{red}{We can see that the probability of spillover is close to one. In that case, our correction step assigns most cells to spillover, and keeps only few at the current value.} We add a black dashed line to all plots at the position $2.725$ to illustrate this point. Low counts have spillover probability of one, which means that our procedure assigns them to spillover and masks them from the sample by setting them to `NA` values. Counts above four stem from spillover with probability zero (and from the actual target with probability one), which means that our procedure keeps them at their raw uncorrected value.
+\textcolor{red}{Panel B shows a curve representing our spillover probability estimates. We can see that the probability of spillover is high for counts with a high density of spillover markers (panel A) and a low density of the target marker (panel C). If the spillover probability is close to one, our correction step assigns most cells to spillover.} Counts above $4$ stem from spillover with probability zero (and from the actual target with probability one), which means that our procedure keeps them at their raw uncorrected value.
 
-```{r method-example-summary, echo=FALSE, warning=FALSE, message=FALSE}
-zeros <- combo |>
-  filter(.data[[ch]] == 0 | is.na(.data[[ch]])) |> 
-  group_by(correction) |> 
-  tally(name = "zeros or \\texttt{NA}'s")
-
-means <- combo |> 
-  filter(!is.na(.data[[ch]])) |> 
-  group_by(correction) |>
-  summarize(mean = mean(.data[[ch]]))
-
-zeros_means <- left_join(zeros, means, by = "correction")
-levels(zeros_means$correction)[2] <- "\\texttt{spillR}"
-levels(zeros_means$correction)[3] <- "\\texttt{spillR} (fast)"
-levels(zeros_means$correction)[4] <- "\\texttt{CATALYST}"
-
-zeros_means |>
-  kableExtra::kbl(
-    caption = "Additional summaries of the data underlying Figure \\ref{fig:method-example}C.", 
-    booktabs = TRUE, digits = 2, escape = FALSE
-    )
-```
-
-Panel C displays the distribution of our target marker, CD3 (Yb173Di), before and after spillover correction. Our compensation method, `spillR`, masks most markers in the low counts up to two, \textcolor{red}{between 50\% to 100\% in the medium counts range between two and four}, and keeps counts above four. Larger counts are not affected by the correction, as can be seen by the overlap of both curves. In contrast, `CATALYST` shifts large counts to the left, and shifts medium counts to low counts or zero counts. Zero counts (or equivalently `NA` counts for `spillR`) and mean counts are shown in Table \@ref(tab:method-example-summary). 
-\textcolor{red}{
-As we do not know the true mean in this case, the comparison of means here serves merely as an illustration of the main differences between \texttt{spillR} and \texttt{CATALYST} and not to identify the correct method. Our baseline method \texttt{spillR} (fast) is similar to \texttt{CATALYST} in low and medium range, but keeps higher counts unchanged.
-}
-
-\textcolor{red}{
-Note on the terminology: In mass cytometry, counts are called dual counts as they are calculated from real pulse ion counts for lower values and converted from intensity values for higher values using the dual count coefficient. Some authors refer to dual counts as signal intensity. We will call them counts in this paper as a reminder that we rely heavily on the fact that they are non-negative integers as opposed to possibly real valued intensities. 
-}
+Panel C displays the distribution of our target marker, CD3 (Yb173Di) before and after spillover correction. \textcolor{red}{We observe few real counts (red) below $2$, so although all methods perform strong compensation in this range, there is little visible difference between uncompensated and compensated counts. Above $2$ there is a clear distinction between the compensation methods. \texttt{CATALYST}, like our baseline \texttt{spillR-naive}, compensates nearly all counts forming the first peak of the raw counts (red, between $2$ and $4$) as spillover. By contrast, \texttt{spillR} compensates only where the density of spillover markers in the bead experiment shown in panel A is high (e.g. Yb172Di spillover peaks at around $2.7$). As a result, it does not compensate for all of the counts forming the first peak of the red curve and compensates more counts between $2$ and $3$ than between $3$ and $4$. While \texttt{CATALYST} shifts large counts (around $6$) slightly to the left, our methods leave them unchanged as the bead experiment shows no spillover in this range. Our baseline method \texttt{spillR-naive} is similar to \texttt{CATALYST} in the low and medium range, but keeps higher counts unchanged.}
 
 ## Definition of Spillover Probability and Assumptions
 
@@ -215,14 +223,16 @@ We observe a count $Y_i$ of a target marker in cell $i$. We model the observed $
 $$
 P(Y_i = y) = \sum_{k = 1}^K \pi_k \, P(Y_i = y \mid Z_i = k).
 $$
-The first mixing probability is the proportion of true signal in the observed counts. The other $K-1$ mixing probabilities are the proportions of spillover. The total sum of mixing probabilities equals one, $\sum_k \pi_k = 1$. The total number of markers in mass cytometry panels is between 30 and 40 [@bendall2011single], but only a small subset of three to four markers spill over into the target marker [@catalyst]. So, typically $K = 1+3$ or $K = 1+4$.
+The mixing probability $\pi_1$ is the proportion of true signal in the observed counts. The other $K-1$ mixing probabilities are the proportions of spillover. The total sum of mixing probabilities equals one, $\sum_k \pi_k = 1$. The total number of markers in mass cytometry panels is between 30 and 40 [@bendall2011single], but only a small subset of three to four markers spill over into the target marker [@catalyst]. So, typically $K = 1+3$ or $K = 1+4$.
 
-Experimentally, we only measure a sample from the distribution of $Y_i$. The probabilities $\pi_k$ and true distributions $P(Y_i = y \mid Z_i = k)$ are unobserved, and we need to estimate them from data. In many applications, the mixture components are in a parametric family, for example, the negative binomial distribution. As spillover correction is a pre-processing step followed by downstream analyses, choosing the wrong model can introduce biases in the next analysis step. To mitigate such biases, we propose to fit nonparametric mixture components. We make two assumptions that render the components and mixture probabilities identifiable:
+Experimentally, we only measure samples from the distribution of $Y_i$. The probabilities $\pi_k$ and true distributions $P(Y_i = y \mid Z_i = k)$ are unobserved, and we need to estimate them from data. 
+In many applications, the mixture components are \textcolor{red}{modeled to be} in a parametric family, for example, the negative binomial distribution.
+As spillover correction is a pre-processing step followed by downstream analyses, choosing the wrong model can introduce biases in the next analysis step. To mitigate such biases, we propose to fit nonparametric mixture components. We make two assumptions that render the components and mixture probabilities identifiable:
 
 * <div id='assumption1'>(A1) Spillover distributions are the same in bead and real experiments.</div> 
-The distribution of $Y_i \mid Z_i = k$ for all $k > 1$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_i \mid Z_i = k$ for all $k > 1$ from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality single stained bead experiments that measure spillover in the same range as the target biological experiment. In other words, a high-quality bead experiment for our method works best if the distribution of bead cells is similar to the distribution of real cells.
+The distribution of $Y_i \mid Z_i = k$ for all $k > 1$ is the same in beads and real cells. This assumption allows us to learn the spillover distributions of $Y_i \mid Z_i = k$ for all $k > 1$ from experiments with beads, and transfer them to the experiment with real cells. This assumption relies on high-quality single-stained bead experiments that measure spillover in the same range as the target biological experiment. In other words, a bead experiment for our method works best if the distribution of bead cells is similar to the distribution of real cells.
 
-* <div id='assumption2'>(A2) For each cell $i$, the observed count $Y_i$ can only be due to one distribution.</div> 
+* <div id='assumption2'>(A2) For each cell $i$, the observed count $Y_i$ can only be due to one marker.</div> 
 This assumption is already implied by the statement of the mixture model. It allows us to calculate the spillover probability for a given count $Y_i = y$ from the posterior probability that it arises through spillover from markers $k > 1$,
 $$
 P(\text{spillover} \mid Y_i = y) = P(Z_i > 1 \mid Y_i = y) = 
@@ -233,13 +243,13 @@ To parse this calculation, recall that in mixture models the $\pi_1$ is the prio
 
 ## Estimation of Spillover Probability
 
-We propose a two step procedure for estimating the spillover probability. In step 1, we estimate mixture components and mixture probabilities. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 2, we use these probability estimates to assign counts to spillover or signal.
+We propose a two-step procedure for estimating the spillover probability. In step 1, we estimate mixture components and mixture probabilities. We refine these estimates using the EM algorithm [@dempster1977maximum]. In step 2, we use these probability estimates to assign counts to spillover or target marker signal.
 
 We denote the $n \times K$ count matrix as $\mathbf{Y} = (y_{ik})$ with real cells in the first column and beads in columns two and higher. To simplify mathematical notation but without loss of generality, we assume that the number of 
 \textcolor{red}{events}
 from real and bead experiments have the same $n$. In practice, the number of 
 \textcolor{red}{events}
-from bead experiments is much smaller than from real experiments. The $k$th column of $\mathbf{Y}$ contains marker counts for the $k$th spillover marker, which represents the empirical spillover distribution of marker $k$ into the target marker, that is, the marker in the first column of $\mathbf{Y}$.
+from bead experiments is much smaller than from real experiments. For $k > 1$, the $k$th column of $\mathbf{Y}$ contains marker counts for a given spillover marker, which represents the empirical spillover distribution of marker $k$ into the target marker represented by the first column of $\mathbf{Y}$.
 
 ### EM Algorithm
 
@@ -247,7 +257,7 @@ from bead experiments is much smaller than from real experiments. The $k$th colu
 $$
 \hat{\pi}_{1} = 0.9 \text{ and } \hat{\pi}_i = 0.1/(K-1) \text{ for all } i > 1.
 $$ 
-The procedure is not sensitive to the choice of the initial mixture probability vector. Other settings are possible but may be slower to converge, e.g., setting all probabilities to the same value. Then, we initialize the $k$th mixture component using \textcolor{red}{its probability mass function (PMF) after smoothing and normalizing, $\widehat{P}(Y_i = y \mid Z_i = k)$. We smooth the PMF using kernel density estimation implemented in R function \texttt{density} with the default option for selecting the bandwith of the Gaussian kernel.}
+The procedure is not sensitive to the choice of the initial mixture probability vector and other initializations are possible but may be slower to converge. Then, we initialize the $k$th mixture component using \textcolor{red}{its probability mass function (PMF) after smoothing and normalizing, $\widehat{P}(Y_i = y \mid Z_i = k)$. We smooth the PMF using kernel density estimation implemented in the R function \texttt{density} with the default option for selecting the bandwith of a Gaussian kernel.}
 
 * E-step: We evaluate the posterior probability of a count $y$ belonging to component $k$ (that is, originating from marker $k$),
 $$
@@ -262,7 +272,7 @@ $$
 \hat{\pi}_k = 
 \frac{1}{n} \sum_{i = 1}^n \widehat{P}\left(Z_i = k \mid Y_i = y \right),
 $$
-and estimate the new target marker distribution \textcolor{red}{by smoothing and normalizing. Here, we use \texttt{density} function from R again}, but weight each observations according to their posterior probabilities, $\widehat{P} \left(Z_i = 1 \mid Y_i = y \right)$. We only update the target marker, $\widehat{P}(Y_i = y \mid Z_i = 1)$, and keep the other bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
+and estimate the new target marker distribution \textcolor{red}{by smoothing and normalizing. Here, we use the R function \texttt{density} again, weighing} each observation according to its posterior probability $\widehat{P} \left(Z_i = 1 \mid Y_i = y \right)$. We only update the target marker distribution, $\widehat{P}(Y_i = y \mid Z_i = 1)$, and keep the other bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
 
 To refine our estimates, we iterate over the E and M-steps until estimates stabilize. We stop iterating when $\hat{\pi}_1$ changes less than $10^{-5}$ from the previous iteration. The final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
@@ -273,24 +283,16 @@ We rely on assumption [(A1)](#assumption1) to justify updating only the distribu
 
 ### Spillover Decision
 
-To perform the spillover compensation, we draw from a Bernoulli distribution with the spillover probability as parameter to decide whether or not to assign a given count to spillover. We consider spillover counts as having no clear biological interpretation and mask them from our dataset while keeping all other counts. By default, we choose to set spillover counts to `NA` instead of zero to avoid zero-inflated distributions, \textcolor{red}{but the user can specify to set the spillover to any other value.}
+To perform spillover compensation, we draw from a Bernoulli distribution with the spillover probability as parameter to decide whether or not to assign a given count to spillover. \textcolor{red}{We mark counts attributed to spillover by setting them to a user-specified value. We recommend a value of zero to maintain the overall cellular composition of the sample, or a value such as \texttt{NA} or $-1$ to mark spillover counts for separate treatment in downstream analyses (for example, calculating means only over non-spillover counts).}
 
-<!-- 
-
-## Identifiability
-
-[TODO] Need to think if our model assumptions guarantee identifiability and if our procedure is guaranteed to converge. I think if it is identifiable, then convergence follows from the property of the EM algorithm. Some related work [@hall2003nonparametric; @aragam2020identifiability] that might help. 
-
--->
-
-## Baseline Method `spillR` (fast)
+## Baseline Method `spillR-naive`
 
 \textcolor{red}{
-We compare our mixture method to a fast baseline method that considers only the bead distributions. Similarly to our standard \texttt{spillR} method, we estimate the bead PMF of each bead $k$ with the kernel density estimator \texttt{density}, $\widehat{P}(Y_i | Z_i = k)$. Then, for all count values $y$ in the range of the bead counts, we separately normalize the PMF at each value $Y_i = y$ and calculate the spillover probability as, 
+We compare our mixture method to a naive baseline method that considers only the bead distributions. We replace the real cells in the first component $k = 1$ with their bead distribution. Similarly to our standard \texttt{spillR} method, we estimate the bead PMF of each bead $k$ with the kernel density estimator \texttt{density}, $\widehat{P}(Y_i = y \mid Z_i = k)$. Then, for all count values $y$ in the range of the bead counts, we separately normalize the PMF at each value $Y_i = y$ and calculate the spillover probability as
 $$
-P(Z_i = k \mid Y_i = y) = 1 - \frac{\widehat{P}(Y_i | Z_i = k)}{\sum_{k'}^K \widehat{P}(Y_i | Z_i = k)}.
+\widehat{P}(\text{spillover} \mid Y_i = y) = 1 - \frac{\widehat{P}(Y_i = y \mid Z_i = 1)}{\sum_{k' = 1}^K \widehat{P}(Y_i = y \mid Z_i = k')}.
 $$
-The spillover decision is the same as in our standard \texttt{spillR} method.
+We proceed as in our standard \texttt{spillR} method to decide whether or not to assign a given count to spillover. This is a computationally efficient and simple baseline that assigns counts to markers in proportion to their density at that count value in the corresponding bead experiment.
 }
 
 # Results
@@ -456,7 +458,7 @@ tb_summary_long <- pivot_longer(
 
 ```{r simulated-experiments-critical-values, echo = FALSE, warning = FALSE, message = FALSE}
 # --------- helper function ---------
-plot_critical <- function(experiment, taus, simulated, reverse = FALSE) {
+plot_critical <- function(experiment, taus, simulated, reverse = FALSE, custom_tau = "") {
   
   var_names <- c(
     "Y",
@@ -484,7 +486,9 @@ plot_critical <- function(experiment, taus, simulated, reverse = FALSE) {
     geom_line() + 
     scale_color_manual(values = c("#E69F00", "#000000", "#009E73")) +
     scale_linetype_manual(values = c("solid", "dashed", "solid")) +
-    ylab("mean")
+    ylab("mean") + 
+    xlab(TeX(paste("$\\tau$", custom_tau))) +
+    theme(axis.title.x = element_text(color = "red"))
   if(reverse) g_overview <- g_overview + scale_x_reverse()
   
   g_critical <- df_simulated |>
@@ -509,58 +513,59 @@ plot_critical <- function(experiment, taus, simulated, reverse = FALSE) {
 experiment <- "Bead Shift"
 taus <- c(0, -5, -10)
 simulated <- lapply(taus, generate_data_a)
-p_a <- plot_critical(experiment, taus, simulated, reverse = TRUE)
+p_a <- plot_critical(experiment, taus, simulated, reverse = TRUE, custom_tau = "(strength of bead distribution shift away from true spillover distribution)")
 
 # --------- B ---------
 
 experiment <- "Model Misspecification"
 taus <- c(0, 0.25, 0.5)
 simulated <- lapply(taus, generate_data_b)
-p_b <- plot_critical(experiment, taus, simulated)
+p_b <- plot_critical(experiment, taus, simulated, custom_tau = "(similarity of target and spillover distribution)")
 
 # --------- C ---------
 experiment <- "Bimodal Spillover"
 taus <- c(0, 0.5, 1.0)
 simulated <- lapply(taus, generate_data_c)
-p_c <- plot_critical(experiment, taus, simulated)
+p_c <- plot_critical(experiment, taus, simulated, custom_tau = "(mixing probability of the two modes)")
 ```
 
-```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups, and the bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \\mid Z = 1$ is the distribution without spillover. $Y \\mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \\mid Z = 1$) is the average count without spillover. \\texttt{spillR} mean($Y$) is the average count after correcting $Y$."}
+```{r simulated-experiments-plot, fig.height = 12, fig.width = 9, out.width = "90%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups. \\textcolor{red}{The mean values for \\texttt{spillR} are computed on values not marked as \\texttt{NA}, so the mean ignores the counts attributed to spillover.} The bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \\mid Z = 1$ is the distribution without spillover. $Y \\mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \\mid Z = 1$) is the average count without spillover. \\texttt{spillR} mean($Y$) is the average count after correcting $Y$."}
 plot_grid(p_a, p_b, p_c, labels = c("A", "B", "C"),
           ncol = 1, align = "v", axis = "lr")
 ```
 
-We choose three different experiments to test `spillR` against different bead and real cell distributions. We explore a wide range of possible parameter settings. Figure \@ref(fig:simulated-experiments-plot) has three panels, each representing one experimental setup. The first two panels test our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The third panel tests sensitivity of `spillR` to bimodal bead distributions. For all three experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 200$, and 1,000 beads with $\lambda = 70$, and spillover probability of $0.5$. Beads are an independent copy of the true spillover. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are given in Appendix \@ref(generative-models). We repeat each simulation 20 times and report averages over the 20 replications. Each panel of Figure \@ref(fig:simulated-experiments-plot) has two rows of plots. The plot on the first row represents the summary of the means for each experimental setup as a function of their respective parameter $\tau$. This parameter has a different meaning in each setup. To visualize the different experiments, we summarize the full distributions with the true simulated signal mean (black), the uncorrected mean (orange), and the `spillR` corrected mean (green). Plots on the second row illustrate the simulated data distributions for three selected parameters $\tau$ picked from the experimental setup. The yellow density curve is the observed count $Y$. The black density curve is the target cell count. The blue density curve is the spillover distribution. The goal of the experiment is to estimate the mean of the black density as accurately as possible from the yellow density curve, which represents the data $Y$ that we would observe in practice. We simulate this data ourselves with the models in Appendix \@ref(generative-models).
+We choose three different experiments to test `spillR` under different bead and real cell distributions. We explore a wide range of possible parameter settings. Figure \@ref(fig:simulated-experiments-plot) has three panels, each representing one experimental setup. The first two panels test our assumptions [(A1)](#assumption1) and [(A2)](#assumption2). The third panel tests the sensitivity of `spillR` to bimodal bead distributions. For all three experiments, we model counts using a Poisson distribution with parameter $\lambda$. We simulate 10,000 real cells with $\lambda = 200$, and 1,000 beads with $\lambda = 70$, and a spillover probability of $0.5$. Unless otherwise specified, the bead data are drawn from the true spillover distribution. The other parameters and statistical dependencies are specific to each experiment. The details of the generative models are given in Appendix \@ref(generative-models). We repeat each simulation 20 times and report averages over the 20 replications. 
+
+Each panel of Figure \@ref(fig:simulated-experiments-plot) has two rows of plots. The plot in the first row represents the summary of the means for each experimental setup as a function of their respective parameter $\tau$. This parameter has a different meaning in each setup. To visualize the different experiments, we summarize the full distributions with the true simulated signal mean (black), the uncorrected mean (orange), and the `spillR` corrected mean (green). Plots on the second row illustrate the simulated data distributions for three selected parameters $\tau$ picked from the experimental setup. The yellow density curve shows the observed counts $Y$. The black density curve shows the distribution of target cell counts. The blue density curve shows the distribution of spillover counts. The yellow density curve represents the data $Y$ we would observe in practice. We simulate this data using the models in Appendix \@ref(generative-models).
+\textcolor{red}{
+The goal of the experiment is to estimate the mean of the true counts (black density curve) as accurately as possible from the observed counts (yellow density curve). Using \texttt{NA} imputation for spillover counts, the average of the compensated observed counts when ignoring \texttt{NA} values is equal to the mean of the true counts if all spillover counts are correctly identified as such.
+}
 
 <!--
 ### Bead Shift (A1)
 -->
 
-In the first experiment (panel A), we shift the measured beads spillover away from the true bead spillover to probe [(A1)](#assumption1). We test a wide range of bead shifts from no shift at $\tau = 0$ to \textcolor{red}{$\tau = -10$. At $\tau = -10$,} the measured spillover (the first mode of the yellow density) is shifted away from the actual spillover (the blue density). Such low-quality beads cause both the observed and compensated mean to be below the true mean. As the beads quality improves, the compensated signal moves closer to the true mean. As we increase $\tau$ the first mode of the yellow density moves towards the blue density. This represents high-quality bead experiments. In all cases, even for bad beads experiments, our compensation improves the means. Our compensation also increases means, as it should, in contrast to e.g. @catalyst.
+In the first experiment (panel A), we shift the spillover in the beads experiment away from the true spillover to probe [(A1)](#assumption1). We test a range of bead shifts from no shift at $\tau = 0$ to \textcolor{red}{$\tau = -10$. At $\tau = -10$,} the measured spillover (the first mode of the yellow density) is shifted away from the actual spillover (the blue density), causing both the observed and compensated mean to be lower than the true mean. This may be the case in a low-quality bead experiment. As $\tau$ gets closer to zero, the first mode of the yellow density moves towards the blue density (as may be the case in a higher quality bead experiment), and the compensated signal moves closer to the true mean.
 
 <!--
 ### Model Misspecification (A2)
 -->
 
-In the second experiment (panel B), we mixed target and spillover to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the mixture is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the beads experiment. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct, but for $\tau = 0.5$ the assumption [(A2)](#assumption2) is maximally violated. The true mean decrease with increasing $\tau$. Our compensation is closer to the true mean across the tested range. At $\tau = 0.5$ all three distributions and their means are the same.
+In the second experiment (panel B), we mix target and spillover to explore the robustness of our method with respect to our second assumption [(A2)](#assumption2). One way to think about this is that the mixture is a form of model misspecification. Our mixture model is undercomplete, which means that there are more true mixture components than we observe in the beads experiment. If $\tau = 0$, then assumption [(A2)](#assumption2) is correct, but for $\tau = 0.5$ the assumption [(A2)](#assumption2) is maximally violated. The true mean decreases with increasing $\tau$. 
+\textcolor{red}{\texttt{spillR} compensates well as long as $\tau$ is close to zero, but does not adapt immediately as the spillover distribution gets closer to the target distribution for increasing $\tau$. When the mean of the spillover distribution crosses the mid-way point to that of the target marker distribution at $\tau \approx 0.25$, the mean of counts compensated by \texttt{spillR} flips to the mean of the observed data, until}
+at $\tau = 0.5$ all three distributions and their means are the same.
 
 <!--
 ### Bimodal Spillover
 -->
 
-In the third experiment (panel C), we model spillover with a bimodal distribution. Here $\tau$ is the mixing probability of the two modes. The locations of the two spillover modes are fixed. If $\tau = 0$ or $\tau = 1$, then spillover is unimodal. If $\tau = 0.5$, the first mode of the bimodal beads distribution is left to the signal mode, and the second mode is to the right. The corrected mean is closer to the true mean than the uncorrected mean across the test range.
+In the third experiment (panel C), we model spillover with a bimodal distribution. Here $\tau$ is the mixing probability of the two modes. The locations of the two spillover modes are fixed. If $\tau = 0$ or $\tau = 1$, then spillover is unimodal. If $\tau = 0.5$, the first mode of the bimodal bead distribution is left to the signal mode, and the second mode is to the right. The corrected mean is closer to the true mean than the uncorrected mean across the test range.
 
 ## Real Data
 
-```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+```{r spillr-vignette_code, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE}
 # constants
 bc_key <- c(139, 141:156, 158:176)
-
-# helper functions
-colorscale = scale_fill_gradientn(
-  colors = rev(brewer.pal(9, "YlGnBu")),
-  values = c(0, exp(seq(-5, 0, length.out = 100)))
-  )
 
 # --------- experiment with beads ---------
 
@@ -583,106 +588,104 @@ marker_to_barc <-
   dplyr::select(marker = channel_name, barcode)
 
 # --------- call compensate from compCytof package ---------
-sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
-sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                             fast = TRUE)
-
-# --------- 2d histogram from spillR (for vignette, not for paper) ---------
-# as <- c("counts", "exprs", "compcounts", "compexprs")
-# chs <- c( "Yb171Di", "Yb173Di")
-# ps <- lapply(as, function(a) 
-#     plotScatter(sce_spillr, chs, assay = a))
-# plot_grid(plotlist = ps, nrow = 2)
+sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
+                        impute_value = 0)
+sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
+                             fast = TRUE, impute_value = 0)
 
 # --------- run CATALYST ---------
 sm <- metadata(sce_bead)$spillover_matrix
 sce_catalyst <- CATALYST::compCytof(sce, sm, overwrite = FALSE)
 
 # --------- compare spillR and CATALYST (Figure 3B) ---------
-exprs_spillr <- sce_spillr |> 
+exprs_spillr <- sce_spillr |>
   assay("exprs") |>
   t() |>
   as_tibble() |>
   mutate(method = "uncorrected")
-compexprs_spillr <- sce_spillr |> 
+compexprs_spillr <- sce_spillr |>
   assay("compexprs") |>
   t() |>
   as_tibble() |>
   mutate(method = "spillR")
-compexprs_spillr_fast <- sce_spillr_fast |> 
+compexprs_spillr_fast <- sce_spillr_fast |>
   assay("compexprs") |>
   t() |>
   as_tibble() |>
-  mutate(method = "spillR (fast)")
-compexprs_catalyst <- sce_catalyst |> 
+  mutate(method = "spillR-naive")
+compexprs_catalyst <- sce_catalyst |>
   assay("compexprs") |>
   t() |>
   as_tibble() |>
   mutate(method = "CATALYST")
-combo <- bind_rows(exprs_spillr, compexprs_spillr, 
+combo <- bind_rows(exprs_spillr, compexprs_spillr,
                    compexprs_spillr_fast, compexprs_catalyst)
 combo$method <- factor(
-  combo$method, 
-  levels = c("uncorrected", "spillR", "spillR (fast)", "CATALYST")
-  )
+  combo$method,
+  levels = c("uncorrected", "spillR", "spillR-naive", "CATALYST")
+)
+```
+
+```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+
+# # helper functions
+log_breaks <- c(1, 10, 100, 1000)
+colorscale <- scale_fill_gradientn(
+    colors = c("blue", "green", "yellow", "red"),
+    values = c(0, 2^(seq(-5, 0, length.out = 100))),
+    trans = 'log10',
+    breaks = log_breaks
+)
 
 # row 1
+nbins <- 64
 p1 <- ggplot(combo, aes(x = CD3.2, y = CD8b)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("CD3 (Yb173Di)") + ylab("CD8 (Yb174Di)")
 p2 <- ggplot(combo, aes(x = CD3.2, y = CD8)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("CD3 (Yb173Di)") + ylab("CD8 (La139Di)")
 
 # row 2
 p3 <- ggplot(combo, aes(x = HLA.ABC, y = CD3.2)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("HLA-ABC (Yb172Di)") + ylab("CD3 (Yb173Di)")
 p4 <- ggplot(combo, aes(x = HLA.ABC, y = CD3.1)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("HLA-ABC (Yb172Di)") + ylab("CD3 (Sm147Di)")
 
 # row 3
 p5 <- ggplot(combo, aes(x = HLA.ABC, y = HLA.DR.1)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("HLA-ABC (Yb172Di)") + ylab("HLA-DR (Yb171Di)")
 p6 <- ggplot(combo, aes(x = HLA.ABC, y = HLA.DR.2)) +
-  geom_hex(bins = 32) + colorscale + facet_wrap(~method) +
+  geom_hex(bins = nbins) + colorscale + facet_wrap(~method) +
   xlab("HLA-ABC (Yb172Di)") + ylab("HLA-DR (Lu175Di)")
 
 plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2, 
           labels = c("A", "B", "C", "D", "E", "F"))
 ```
 
-We compare our methods to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset has an experiment with real cells and a corresponding bead experiment. The experiment on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels. They have single stained bead experiments. The number of beads per metal label range from 112 to 241.
+We compare our methods to `CATALYST` on one of the example datasets in the `CATALYST` package. The dataset consists of an experiment with real cells and corresponding single-stained bead experiments. The experiment on real cells has 5,000 peripheral blood mononuclear cells from healthy donors measured on 39 channels. The experiment on beads has 10,000 cells measured on 36 channels with the number of beads per metal label ranging from 112 to 241.
 
-We compare the three methods on the same markers as in the original `CATALYST` paper [@catalyst] in their Figure 3B. In the original experiment, they conjugated three proteins---CD3, CD8, and HLA-DR---with two different metal labels. They conjugated CD8 (first row in Figure \@ref(fig:spillr-vignette)) with Yb174Di (Yb is the metal and 174 is the number of 
-\textcolor{red}{nucleons}
-of the isotope) and La139Di, and similarly for the other rows. On the horizontal axis, we plot the same markers as in the original paper, CD3 and HLA-ABC. We visualize the joint distributions using two-dimensional histograms.
+In Figure \@ref(fig:spillr-vignette), we show the comparison of our methods to `CATALYST` on the same markers as their original paper [@catalyst] in their Figure 3B. In the original experiment, they conjugate the three proteins CD3, CD8, and HLA-DR with two different metal labels. \textcolor{red}{For example, they conjugate CD8 with Yb174Di (Yb is the metal and the number indicates the number of nucleons of the isotope) and La139Di. As in their plot, our columns correspond to the different metal labels. In the first column are isotopes that are close to one another, which can cause spillover. In the second column are isotopes that are far from one another, which should not cause spillover. Each row represents a comparison for a target channel (on the horizontal axis) and the potential spillover channel (on the vertical axis).} We visualize the joint distributions using two-dimensional histograms.
 
-In all six panels (A--F), we observe that `spillR` compensates most strongly in the low counts. In panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di), `CATALYST` can be seen to compensate strongly in the middle range. It removes the spherical pattern that shows correlation between the two markers. `spillR` preserves this correlation structure and only masks out the lower counts of CD3 (Yb173Di). This highlights a key difference between `spillR` and `CATALYST`: `spillR` does not correct all counts by shrinking them, but rather removes some counts, following the idea that the distribution of the remaining counts is close to the true distribution. `CATALYST` follows another strategy by shrinking counts across the entire range. 
-\textcolor{red}{
-\texttt{spillR} (fast) compensates most aggressively, removing everything that is not in the support of the beads distributions.
-}
+\textcolor{red}{In all six panels (A--F), we observe that \texttt{spillR} compensates most strongly in the low counts, whereas \texttt{CATALYST} compensates strongly in the middle range. 
+From the experimental setup, we expect strong spillover in the first column, and little spillover in the second column.
+In the first column, \texttt{spillR} seems to undercompensate in panels A and C, but compensates strongly in panel E, whereas we observe the opposite trend for \texttt{CATALYST}. 
+In the second column, we find that \texttt{CATALYST} compensates substantially in panel B, and \texttt{spillR} compensates substantially in panels D and F, even though we expect little spillover.
+The baseline method \texttt{spillR-naive} can be seen to compensate strongly in all cases.}
 
-\textcolor{red}{
-The panels D and F show no compensation for \texttt{CATALYST}. For the same panels our \texttt{spillR} methods compensates quite strongly. Our diagnostic plots using function \texttt{plotDiagnostics} in \texttt{spillR} give some indication on why our method compensates that strongly. The design of the original experiment is such that we expect no spillover in the channels on the vertical axis. But our diagnostic plots show that the bead distributions from spillover marker---as identified by the spillover matrix in \texttt{CATALYST}---exhibit strong overlap between at least one spillover marker and the first mode in the distribution of real cells. Thus, our strong compensation is consistent with our assumption (A1). The behavior of \texttt{spillR} (fast) corroborate our findings by completely removing all counts in that area. This occurs when there is only spillover and no signal from the target marker.
-} 
+\textcolor{red}{A characteristic pattern can be seen in panel C, CD3 (Yb173Di) against HLA-ABC (Yb172Di). \texttt{CATALYST}  compensates strongly in the middle range and removes the spherical pattern that shows correlation between the two markers. \texttt{spillR} preserves this correlation structure and only compensates the lower counts of CD3 (Yb173Di). This highlights a key difference between \texttt{spillR} and \texttt{CATALYST}: \texttt{spillR} identifies counts that may arise from spillover and replaces them with a user-specified value (e.g. 0, \texttt{NA}, or -1), whereas \texttt{CATALYST} shrinks counts across the entire range to compensate for spillover.}
+
 <!-- [(A1)](#assumption1) -->
 
-The color code of the two-dimensional histograms indicates the absolute number of cells that fall into one hexagon bin. The uncorrected and `spillR` corrected histograms can contain different absolute numbers of cells
-\textcolor{red}{
-even for identical distributions. The reason for that is that \texttt{spillR} rounds counts to integers and converts spillover counts to \texttt{NA} values. We perform a rounding step to convert raw mass cytometry data that is often not count data to the next lower integer. This often happens because proprietary post-processing of the manufacturer perform a randomization step when exporting the data.
-}
-The uncorrected counts do not undergo this pre-processing step. `CATALYST` does not perform this pre-processing step. This also explains the different patterns in panel B. `spillR` has horizontal stripes that correspond to non-integer values not in the support of the distribution for `spillR`.
-\textcolor{red}{
-We leave the decision to apply re-randomization of the count data for downstream analysis up to the user. Our rational is that the user should see the differences in this pre-processing step and how it propagates to the results.
-}
+The color code of the two-dimensional histograms indicates the absolute number of cells that fall into one hexagon bin. The uncorrected and `spillR` corrected histograms can contain different absolute numbers of cells, even for identical distributions. \textcolor{red}{This is due to a rounding step in \texttt{spillR} that converts raw counts to integers. Raw mass cytometry data may not be true count data because the proprietary post-processing of the manufacturer often performs a randomization step when exporting the data.} The uncorrected counts do not undergo this pre-processing step, and `CATALYST` does not perform this pre-processing step either. This also explains the different patterns in panel B. `spillR` has horizontal stripes that correspond to non-integer values not in the support of the distribution for `spillR`. \textcolor{red}{We leave the decision to apply re-randomization of the count data for downstream analysis up to the user. Our rationale is that the user should see the differences in this pre-processing step and how it propagates to the results.}
 
 ```{r computational-resources, echo=FALSE, eval=FALSE}
 mark <- benchmark(
   "spillR" = spillR::compCytof(sce, sce_bead, marker_to_barc, n_cores = 8),
-  "spillR (fast)" = spillR::compCytof(sce, sce_bead, marker_to_barc, 
+  "spillR-naive" = spillR::compCytof(sce, sce_bead, marker_to_barc, 
                                       fast = TRUE, n_cores = 8),
   "CATALYST" = CATALYST::compCytof(sce, sm),
   replications = 100,
@@ -692,12 +695,12 @@ mark$average = mark$elapsed/mark$replications
 ```
 
 \textcolor{red}{
-The average computational time with 100 replications on an Apple M1 with 8 cores and 16 GB of RAM is $10.6$ seconds for \texttt{spillR}, $0.43$ seconds for \texttt{CATALYST}, and $0.45$ seconds for \texttt{spillR} (fast). The computational costs scale linearly in the number of cells and number of spillover markers. This allows for processing of large scale datasets.
+The average computation time for the experiment shown in Figure \ref{fig:spillr-vignette} with 100 replications on an Apple M1 with 8 cores and 16 GB of RAM is $10.6$ seconds for \texttt{spillR}, $0.43$ seconds for \texttt{CATALYST}, and $0.45$ seconds for \texttt{spillR-naive}. The computational costs scale linearly in the number of cells and number of spillover markers. This allows for processing large-scale datasets.
 }
 
 ## Semi-Simulated Data
 
-```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on semi-synthetic data. The vertical dashed line helps to interpret the spillover correction. It indicates the mode of the bead distribution of Yb173Di at 2.725. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+```{r semi-simulated-computations, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE}
 # --------- helper function ---------
 inv_tfm <- function(x) 5*sinh(x)
 
@@ -747,8 +750,7 @@ semi_synthetic_data <- function(shift) {
     mutate(barcode = bc_key) |>
     dplyr::select(marker = channel_name, barcode)
   sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
-  sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                             fast = TRUE)
+  sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, fast = TRUE)
   
   # --------- beads experiment ---------
   tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
@@ -773,7 +775,7 @@ semi_synthetic_data <- function(shift) {
     assay("compexprs") |>
     t() |>
     as_tibble() |>
-    mutate(correction = "spillR (fast)")
+    mutate(correction = "spillR-naive")
   compexprs_catalyst <- sce_catalyst |> 
     assay("compexprs") |>
     t() |>
@@ -784,13 +786,17 @@ semi_synthetic_data <- function(shift) {
   combo <- combo |> select(all_of(c(ch, "correction")))
   combo$correction <- factor(
     combo$correction, 
-    levels = c("none", "spillR", "spillR (fast)", "CATALYST")
+    levels = c("none", "spillR", "spillR-naive", "CATALYST")
     )
   combo <- mutate(combo, shift = shift)
-  
+
   list(tb_bead = tb_bead, combo = combo)
 
 }
+```
+
+```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap='Comparison of compensation methods and uncorrected counts on semi-synthetic data \\textcolor{red}{(\\texttt{spillR} and \\texttt{spillR-naive} are set to impute spillover values with $0$)}. The vertical dashed line helps to interpret the spillover correction. It indicates the \\textcolor{red}{original mode of the bead distribution of Yb172Di at 2.725, before overwriting it with the first peak of the real observations of Yb173Di}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}). The zero percentages are averages over all three experiments.', cache = TRUE}
+# --------- plotting of semi-simulated data ---------
 
 semi_list <- lapply(c(0, 0.47, 0.94), semi_synthetic_data)
 tb_bead <- lapply(semi_list, function(x) x$tb_bead) |> bind_rows()
@@ -802,8 +808,27 @@ p_beads <- tb_bead |>
   xlim(x_lim) +
   xlab(ch_name) +
   ylab("density") + 
-  ggtitle("Beads Experiment") +
+  ggtitle("Semi-Synthetic Beads Experiment") +
   facet_wrap(~shift, labeller = label_both)
+
+# show zero counts for each method in legend
+names <- c("none", "spillR", "spillR-naive", "CATALYST")
+percentages <- as.character(sapply(names, function(name) {
+  
+  n_zeros <- nrow(combo[(as.character(combo$correction) == name) & (combo[[ch]] == 0),])
+  n_cell <- nrow(combo[(as.character(combo$correction) == name),])
+  round(n_zeros / n_cell * 100, 2)
+
+}))
+
+levels(combo$correction)[levels(combo$correction) == "none"] <- 
+  paste0("none                  ", percentages[1], "% zeros")
+levels(combo$correction)[levels(combo$correction) == "spillR"] <- 
+  paste0("spillR               ", percentages[2], "% zeros")
+levels(combo$correction)[levels(combo$correction) == "spillR-naive"] <- 
+  paste0("spillR-naive    ", percentages[3], "% zeros")
+levels(combo$correction)[levels(combo$correction) == "CATALYST"] <- 
+  paste0("CATALYST       ", percentages[4], "% zeros")
 
 p_before_after <- combo |> 
   filter(.data[[ch]] > 0) |>
@@ -811,6 +836,7 @@ p_before_after <- combo |>
   geom_freqpoly(alpha = 1.0, bins = 50, linewidth = 0.8) +
   xlim(x_lim) +
   xlab(ch_name) +
+  ylab("count\n(nonzero values)") + 
   ggtitle("Spillover Compensation on Real Cells") +
   facet_wrap(~shift, labeller = label_both)
 
@@ -827,29 +853,45 @@ plot_grid(
 ```
 
 \textcolor{red}{
-We compare \texttt{spillR} and \texttt{CATALYST} on semi-simulated data. The goal is to elucidate the main differences between \texttt{spillR} and \texttt{CATALYST}, and to evaluate the performance of \texttt{spillR} on more than one spillover marker. We create semi-simulated datasets by overwriting the beads distribution for CD3 (Yb173Di). We take the first mode of the distribution of CD3 (Yb173Di) in real cells by filtering counts that range from $1.44$ to $4.79$ on the transformed scale. We shift these filtered counts by three different values: no shift is $0$, subtracting $0.47$ on the transformed scale, and subtracting $0.94$ on the transformed scale. We further subsample without replacement from this new bead distribution to keep the same number of beads as in the original dataset. Figure \ref{fig:semi-simulated-plot} shows the three different datasets.
+We compare \texttt{spillR} and \texttt{CATALYST} on semi-simulated data in order to elucidate differences between \texttt{spillR} and \texttt{CATALYST}, and to evaluate the performance of \texttt{spillR} when more than one marker spills into the target marker. We create semi-simulated datasets by overwriting the bead distribution for the target marker CD3 (Yb173Di). We take the first mode of the count distribution of CD3 (Yb173Di) observed in real cells (the counts from $1.44$ to $4.79$ on the transformed scale) as a reference range. We overwrite the bead distribution of Yb172Di, which dominates this range, by the observed cell distribution in the same range with three different shift values: no shift is $0$, subtracting $0.47$ on the transformed scale, and subtracting $0.94$ on the transformed scale. We further subsample without replacement from this new bead distribution to keep the same number of beads as in the original dataset. Figure \ref{fig:semi-simulated-plot} shows the three different beads experiment datasets in row A and the resulting compensations in row B.
 }
 
 \textcolor{red}{
-In panel A, all bead distributions are equal to the original dataset from Figure \ref{fig:method-example} except Yb173Di is now perfectly aligned with the first mode of the distribution of real cells (red curve in B). In panel B and C, we shift the bead distribution of Yb173Di by $0.47$ and $0.94$. All three methods correctly compensate the spillover mode when no shift is present. \texttt{CATALYST} and \texttt{spillR} (fast) compensates more aggressively in the medium shift cases, while \texttt{spillR} is more moderate and compensates only the left hand tail of the spillover mode. In the largest shift case of $0.94$, the three methods behave differently. \texttt{CATALYST} shrinks counts towards zero, shifting the entire spillover towards zero, \texttt{spillR} just compensates lightly on the left hand tail, and \texttt{spillR} (fast) compensates aggressively leaving only a small piece on the right hand tail.
+In the first column of Figure \ref{fig:semi-simulated-plot}, the bead distributions are equal to the original dataset from Figure \ref{fig:method-example} except Yb172Di is now perfectly aligned with the first mode of the distribution of real cells (red curve in row B). In the second and third column, we shift the bead distribution of Yb172Di by $0.47$ and $0.94$. All three methods correctly compensate the spillover mode when no shift is present (first column). \texttt{CATALYST} and \texttt{spillR-naive} compensates more aggressively in the medium shift cases (second column), while \texttt{spillR} is more moderate and compensates only the left hand tail of the spillover mode. For a shift of $0.94$ (third column), the three methods differ: \texttt{CATALYST} shrinks counts towards zero, shifting the entire spillover towards zero (resulting in many counts between about 1 and 3), \texttt{spillR} compensates lightly on the left hand tail, and \texttt{spillR-naive} compensates aggressively leaving only a small right hand tail. This experiment illustrates how \texttt{spillR} compensates most strongly for counts that can be attributed to spillover following the distribution observed in the beads experiment.
 }
 
 # Discussion
 
-The experiment for [(A1)](#assumption1) shows that the mean count after `spillR` correction is closer to the true mean over a wide range of bead shifts. This indicates that our method can perform well even if the bead experiments are imperfect. If the difference between distributions of beads and real cells is large, then one option is to rerun the bead experiments to reduce this gap. The experiment for [(A2)](#assumption2) shows that our method is also robust to model misspecification. Additionally, misspecification can be addressed by adding all channels if necessary. The increase in computational cost when adding channels is relatively minor as our method scales linearly in the number of spillover markers. The experiment on bimodal bead distributions shows that the mean count after correction is still closer to the true mean even with bimodal bead distributions, and also if the spillover is actually larger than the true signal.
+\textcolor{red}{The sensitivity analysis in Section \ref{simulated-data} illustrates the performance of \texttt{spillR} under different conditions.}
+The experiment for [(A1)](#assumption1) shows that the mean count after `spillR` correction is closer to the true mean over a wide range of bead shifts. This indicates that our method can perform well even if the bead experiments are imperfect. If the difference between distributions of beads and real cells is large, then one option is to rerun the bead experiments to reduce this gap. The experiment for [(A2)](#assumption2) shows that our method is robust to model misspecification. Additionally, misspecification can be addressed by adding all channels if necessary. The increase in computational cost when adding channels is relatively minor as our method scales linearly in the number of spillover markers. The experiment on bimodal bead distributions shows that the mean count after correction is still closer to the true mean even with bimodal bead distributions and even if the spillover is larger than the true signal.
 
-In our comparison with `CATALYST` on \textcolor{red}{semi-simulated} and real data, we observe the effect of the two different correction strategies. `CATALYST` essentially shrinks counts towards zero by minimizing a non-negative least squares objective. It assumes that spillover is linear up to counts of 5,000. The applied shrinkage is the same for low counts (e.g., below 10) and high counts (e.g., more than 100). By contrast, `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment. In other words, the optimal beads experiment has the same peaks as the real cells experiment.
-
-If counts are in the spillover range (which mostly applies to low counts), they are corrected strongly and set to `NA` values. If counts are not in the spillover range, then they are left unchanged. Despite setting values to `NA`, correlations between markers are preserved. The marker correlation between HLA-ABC (Yb172Di) and CD3 (Yb173Di) illustrates this point. `CATALYST` removes the positive correlation, whereas `spillR` keeps the correlation for the higher counts. Compensation methods should try to remove spillover while keeping the biological meaningful signal for unbiased downstream analyses. Further experiments on the correlation structure between these markers are necessary to resolve the discrepancy between the two methods. This is an important point as discovering correlations between markers can lead to the discovery of new clusters or signaling networks. 
+In our comparison with `CATALYST` on \textcolor{red}{real data (Section \ref{real-data}) and semi-simulated data (Section \ref{semi-simulated-data})}, we observe the effect of the two different correction strategies. `CATALYST` shrinks all counts towards zero by minimizing a non-negative least squares objective. It assumes that spillover is linear up to counts of 5,000. The applied shrinkage is the same for low counts (e.g., below 10) and high counts (e.g., more than 100). By contrast, `spillR` does not require linearity of the spillover, but assumes that the distribution on the beads experiment carries over to the real cells experiment. 
+If counts are in the spillover range (which mostly applies to low counts), they are corrected strongly and set to \textcolor{red}{a user-specified imputation value}. If counts are not in the spillover range, they are left unchanged.
+\textcolor{red}{Among the unchanged counts,} correlations between markers are preserved. The marker correlation between HLA-ABC (Yb172Di) and CD3 (Yb173Di) shown in the first column of Figure \@ref(fig:spillr-vignette) illustrates this point. `CATALYST` removes the positively correlated count concentration, whereas `spillR` keeps it. Compensation methods have to \textcolor{red}{balance between} compensating for spillover while keeping potentially biologically meaningful signals for unbiased downstream analyses. In this example, further experiments on the correlation structure between these markers would be necessary to resolve the discrepancy between the two methods. This is an important point as discovering correlations between markers can lead to the discovery of new clusters or signaling networks. 
 
 \textcolor{red}{
-Our baseline method, \texttt{spillR} (fast), illustrates the behavior of more aggressive compensation by considering only the bead distribution. If our baseline method compensate aggressively in a certain range, then it means that there are only non-target beads observed in that range.
+Our baseline method, \texttt{spillR-naive}, illustrates the behavior of more aggressive compensation by considering only the bead distribution. If our baseline method compensates aggressively in a certain range, this is because most bead counts observed in that range are spillover counts. This approach highlights the allure and pitfalls of overcorrecting. While in Figure \ref{fig:method-example} it may seem that \texttt{spillR-naive} compensates for all spillover by setting the first mode to zero (just like \texttt{CATALYST}), a closer inspection reveals that discrepancies between the bead spillover distribution and the first mode of the real cell distribution are not taken into account by either method, but do reflect in the compensation of \texttt{spillR}. A similar pattern can be seen in panels A, B, and C of Figure \ref{fig:spillr-vignette}. This behavior reflects our assumption (A1) and highlights the role of bead experiments in the compensation process performed by \texttt{spillR}.
 }
 
-One advantage of our method is the diagnostic plot of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares are harder to diagnose as they minimize a cost function with no clear biological interpretation. In our view, one of the biggest strengths of our current method is that it does not assume a specific parametric model for count data. We believe that this is crucial because spillover is just one step that precedes many downstream analysis steps, and avoiding the introduction of bias is thus our top priority.
+\textcolor{red}{
+In the cell and bead data from \texttt{CATALYST}, our assumption (A1) seems to hold in some cases, but is violated in others. In our leading example in Figure \ref{fig:method-example} we can see that the mode of the bead distribution of marker Yb173Di is very close to the mode in the cell data, supporting our assumption. In other cases however, the target marker mode differs more strongly between cell and bead data. We therefore recommend testing our assumptions against the available data and background knowledge. Comparing the target marker mode on cells and beads may serve as a first test for assumption (A1), and background knowledge on the markers may aid in assessing the plausibility of assumption (A2).
+}
+
+\textcolor{red}{To understand and assess its applicability and performance, \texttt{spillR}} offers a diagnostic plot (Figure \@ref(fig:method-example)) of the spillover probability curve. We can judge if the curve makes sense by comparing it to the observed count and bead distributions. Methods based on non-negative least squares \textcolor{red}{such as \texttt{CATALYST}} are harder to diagnose as they minimize a cost function with no clear biological interpretation. In our view, one strength of \texttt{spillR} is that it does not assume a specific parametric model for count data. We believe that this is crucial because spillover compensation precedes many downstream analysis steps, and avoiding the introduction of bias is thus our priority.
 
 \textcolor{red}{
-For future work, we plan to apply our methodology to imaging mass cytometry (Angeloet al., 2014; Giesenet al., 2014; Bodenmiller, 2016). The basic method can be applied as is, but it will be beneficial to incorporate a spatial regularization term that enforces neighboring spillover to be similar to one another.
+In our experiments, we observe that the different methods may over- or undercompensate in different cases.
+The original experiment shown in Figure \ref{fig:spillr-vignette} is designed to produce considerable spillover in the settings of the first column, and little spillover in the second column.
+Nonetheless, we observe weak and strong compensation by both \texttt{spillR} and \texttt{CATALYST} in both columns.
+Our diagnostic plots show overlap between the spillover marker distributions on beads and the first mode of the real cell distribution, thus the compensation by \texttt{spillR} is consistent with assumption (A1). 
+The strong compensation performed by \texttt{spillR-naive} in both columns highlights the difficulty of balancing necessary and excessive compensation.
+\texttt{spillR} is designed to err on the side of preserving potentially meaningful patterns unless the bead distributions clearly suggest spillover.
+Overall, our results indicate that the performance of both \texttt{spillR} and \texttt{CATALYST} rests on the plausibility of their respective assumptions in the individual case. Since \texttt{spillR} relies on a different set of assumptions, it offers a complementary solution. Note that in principle it is also possible to combine the methods, for example by using \texttt{spillR} to identify spillover, and \texttt{CATALYST} to compensate for it.
+}
+
+<!-- [@angelo2014multiplexed; @giesen2014highly; @bodenmiller2016multiplexed] -->
+\textcolor{red}{
+Our basic method can also be applied to imaging mass cytometry (Angelo \textit{et al.}, 2014; Giesen \textit{et al.}, 2014; Bodenmiller, 2016), although it will likely be beneficial to incorporate a spatial regularization term that enforces similarity between neighboring spillover estimates. We consider the design and evaluation of such an extension of our method a promising direction for future work.
 }
 
 # Acknowledgments {-}
