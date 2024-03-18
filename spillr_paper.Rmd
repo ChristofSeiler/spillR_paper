@@ -684,9 +684,11 @@ The color code of the two-dimensional histograms indicates the absolute number o
 
 ```{r computational-resources, echo=FALSE, eval=FALSE}
 mark <- benchmark(
-  "spillR" = spillR::compCytof(sce, sce_bead, marker_to_barc, n_cores = 8),
+  "spillR" = spillR::compCytof(sce, sce_bead, marker_to_barc, n_cores = 8,
+                               impute_value = 0),
   "spillR-naive" = spillR::compCytof(sce, sce_bead, marker_to_barc, 
-                                      fast = TRUE, n_cores = 8),
+                                     fast = TRUE, n_cores = 8, 
+                                     impute_value = 0),
   "CATALYST" = CATALYST::compCytof(sce, sm),
   replications = 100,
   columns = c("test", "replications", "elapsed")
@@ -749,8 +751,10 @@ semi_synthetic_data <- function(shift) {
     dplyr::filter(is_bc == TRUE) |>
     mutate(barcode = bc_key) |>
     dplyr::select(marker = channel_name, barcode)
-  sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE)
-  sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, fast = TRUE)
+  sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                          impute_value = 0)
+  sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                               fast = TRUE, impute_value = 0)
   
   # --------- beads experiment ---------
   tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
