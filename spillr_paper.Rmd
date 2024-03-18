@@ -91,8 +91,8 @@ marker_to_barc <-
 
 sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
                         impute_value = 0)
-sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                             fast = TRUE, impute_value = 0)
+sce_spillr_naive <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                              naive = TRUE, impute_value = 0)
 
 # --------- run CATALYST ---------
 
@@ -142,7 +142,7 @@ compexprs_spillr <- sce_spillr |>
   t() |>
   as_tibble() |>
   mutate(correction = "spillR")
-compexprs_spillr_fast <- sce_spillr_fast |> 
+compexprs_spillr_naive <- sce_spillr_naive |> 
   assay("compexprs") |>
   t() |>
   as_tibble() |>
@@ -153,7 +153,7 @@ compexprs_catalyst <- sce_catalyst |>
   as_tibble() |>
   mutate(correction = "CATALYST")
 combo <- bind_rows(exprs_spillr, compexprs_spillr, 
-                   compexprs_spillr_fast, compexprs_catalyst)
+                   compexprs_spillr_naive, compexprs_catalyst)
 combo <- combo |> select(all_of(c(ch, "correction")))
 combo$correction <- factor(
   combo$correction, 
@@ -590,8 +590,8 @@ marker_to_barc <-
 # --------- call compensate from compCytof package ---------
 sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
                         impute_value = 0)
-sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
-                             fast = TRUE, impute_value = 0)
+sce_spillr_naive <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE,
+                              naive = TRUE, impute_value = 0)
 
 # --------- run CATALYST ---------
 sm <- metadata(sce_bead)$spillover_matrix
@@ -608,7 +608,7 @@ compexprs_spillr <- sce_spillr |>
   t() |>
   as_tibble() |>
   mutate(method = "spillR")
-compexprs_spillr_fast <- sce_spillr_fast |>
+compexprs_spillr_naive <- sce_spillr_naive |>
   assay("compexprs") |>
   t() |>
   as_tibble() |>
@@ -619,7 +619,7 @@ compexprs_catalyst <- sce_catalyst |>
   as_tibble() |>
   mutate(method = "CATALYST")
 combo <- bind_rows(exprs_spillr, compexprs_spillr,
-                   compexprs_spillr_fast, compexprs_catalyst)
+                   compexprs_spillr_naive, compexprs_catalyst)
 combo$method <- factor(
   combo$method,
   levels = c("uncorrected", "spillR", "spillR-naive", "CATALYST")
@@ -687,7 +687,7 @@ mark <- benchmark(
   "spillR" = spillR::compCytof(sce, sce_bead, marker_to_barc, n_cores = 8,
                                impute_value = 0),
   "spillR-naive" = spillR::compCytof(sce, sce_bead, marker_to_barc, 
-                                     fast = TRUE, n_cores = 8, 
+                                     naive = TRUE, n_cores = 8, 
                                      impute_value = 0),
   "CATALYST" = CATALYST::compCytof(sce, sm),
   replications = 100,
@@ -753,8 +753,8 @@ semi_synthetic_data <- function(shift) {
     dplyr::select(marker = channel_name, barcode)
   sce_spillr <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
                           impute_value = 0)
-  sce_spillr_fast <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
-                               fast = TRUE, impute_value = 0)
+  sce_spillr_naive <- compCytof(sce, sce_bead, marker_to_barc, overwrite = FALSE, 
+                                naive = TRUE, impute_value = 0)
   
   # --------- beads experiment ---------
   tb_bead <- metadata(sce_spillr)$beads_distr[[ch_metal]]
@@ -775,7 +775,7 @@ semi_synthetic_data <- function(shift) {
     t() |>
     as_tibble() |>
     mutate(correction = "spillR")
-  compexprs_spillr_fast <- sce_spillr_fast |> 
+  compexprs_spillr_naive <- sce_spillr_naive |> 
     assay("compexprs") |>
     t() |>
     as_tibble() |>
@@ -786,7 +786,7 @@ semi_synthetic_data <- function(shift) {
     as_tibble() |>
     mutate(correction = "CATALYST")
   combo <- bind_rows(exprs_spillr, compexprs_spillr, 
-                   compexprs_spillr_fast, compexprs_catalyst)
+                   compexprs_spillr_naive, compexprs_catalyst)
   combo <- combo |> select(all_of(c(ch, "correction")))
   combo$correction <- factor(
     combo$correction, 
