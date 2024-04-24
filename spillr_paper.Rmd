@@ -249,7 +249,7 @@ We denote the $n \times K$ count matrix as $\mathbf{Y} = (y_{ik})$ with real cel
 $$
 \hat{\pi}_{1} = 0.9 \text{ and } \hat{\pi}_i = 0.1/(K-1) \text{ for all } i > 1.
 $$ 
-The procedure is not sensitive to the choice of the initial mixture probability vector and other initializations are possible but may be slower to converge. Then, we initialize the $k$th mixture component using its probability mass function (PMF) after smoothing and normalizing, $\widehat{P}(Y_i = y \mid Z_i = k)$. We smooth the PMF using kernel density estimation implemented in the R function \texttt{density} with the default option for selecting the bandwith of a Gaussian kernel.
+The procedure is not sensitive to the choice of the initial mixture probability vector and other initializations are possible but may be slower to converge. Then, we initialize the $k$th mixture component using its probability mass function (PMF) after smoothing and normalizing, $\widehat{P}(Y_i = y \mid Z_i = k)$. We smooth the PMF using kernel density estimation implemented in the R function `density` with the default option for selecting the bandwith of a Gaussian kernel.
 
 * E-step: We evaluate the posterior probability of a count $y$ belonging to component $k$ (that is, originating from marker $k$),
 $$
@@ -264,7 +264,7 @@ $$
 \hat{\pi}_k = 
 \frac{1}{n} \sum_{i = 1}^n \widehat{P}\left(Z_i = k \mid Y_i = y \right),
 $$
-and estimate the new target marker distribution by smoothing and normalizing. Here, we use the R function \texttt{density} again, weighing each observation according to its posterior probability $\widehat{P} \left(Z_i = 1 \mid Y_i = y \right)$. We only update the target marker distribution, $\widehat{P}(Y_i = y \mid Z_i = 1)$, and keep the other bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
+and estimate the new target marker distribution by smoothing and normalizing. Here, we use the R function `density` again, weighing each observation according to its posterior probability $\widehat{P} \left(Z_i = 1 \mid Y_i = y \right)$. We only update the target marker distribution, $\widehat{P}(Y_i = y \mid Z_i = 1)$, and keep the other bead distributions, $\widehat{P}(Y_i = y \mid Z_i = k)$ for all $k > 1$, fixed at their initial value.
 
 To refine our estimates, we iterate over the E and M-steps until estimates stabilize. We stop iterating when $\hat{\pi}_1$ changes less than $10^{-5}$ from the previous iteration. The final output is the spillover probability curve with estimates at discrete points in the support of $Y_i$, 
 $$
