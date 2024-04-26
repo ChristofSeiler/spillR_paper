@@ -1,16 +1,77 @@
 ---
-title: "`spillR`: Spillover Compensation in Mass Cytometry Data"
-author: "Marco Guazzini$^{1}$, Alexander G. Reisach$^{2}$, Sebastian Weichwald$^{3}$, and Christof Seiler$^{1,4,5}$"
-date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^3$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n $^4$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n $^5$Center of Experimental Rheumatology, Department of Rheumatology, \\\n University Hospital Zurich, University of Zurich, Switzerland \\\n \\\n `r gsub(' 0', ' ', format(Sys.time(), '%B %d, %Y'))`"
+title_full: "`spillR`: Spillover Compensation in Mass Cytometry Data"
+title_short: "`Spillover Compensation`"
+
+# One of the following below. See https://academic.oup.com/bioinformatics/pages/instructions_for_authors#Types%20of%20Manuscript
+# one of `Original Paper`, `Discovery Note`, `Applications Note`, `Review`, `Letter to the Editor`, `Conference Paper`    
+manuscript_type: Original Paper
+
+# change accordingly
+copyrightyear: '`r format(Sys.Date(), "%Y")`'
+pubyear: '`r format(Sys.Date(), "%Y")`'
+
+# One of the following below. See https://academic.oup.com/bioinformatics/pages/instructions_for_authors#Detailed%20Scope%20Guidelines
+# Genome analysis
+# Sequence analysis
+# Phylogenetics
+# Structural bioinformatics
+# Gene expression
+# Genetic and population analysis
+# Systems biology
+# Data and text mining
+# Databases and ontologies
+# Bioimage informatics
+subject_section:  Systems biology
+
+access_date:
+  - day: DD
+    month: MM
+    year: YY
+      
+author:
+  - name: Marco Guazzini
+    affiliation: "1"
+  - name: Alexander G. Reisach
+    affiliation: "2"
+  - name: Sebastian Weichwald
+    affiliation: "3"
+  - name: Christof Seiler
+    affiliation: "1,4,5"
+      
+address:
+  - code: 1
+    address: Department of Advanced Computing Sciences, Maastricht University, The Netherlands
+  - code: 2
+    address: Université Paris Cité, CNRS, MAP5, F-75006 Paris, France
+  - code: 3
+    address: Department of Mathematical Sciences, University of Copenhagen, Denmark
+  - code: 4
+    address: Mathematics Centre Maastricht, Maastricht University, The Netherlands
+  - code: 5
+    address: Center of Experimental Rheumatology, Department of Rheumatology, University Hospital Zurich, University of Zurich, Switzerland
+  
+# Full email address to be given, preferably an institution email address.  
+corresponding_author_text: "To whom correspondence should be addressed. E-mail: christof.seiler\\@maastrichtuniversity.nl"
+corresponding_author_email: "christof.seiler\\@maastrichtuniversity.nl"
+
+motivation: |
+  Channel interference in mass cytometry can cause spillover and may result in miscounting of protein markers. @catalyst introduce an experimental and computational procedure to estimate and compensate for spillover implemented in their R package `CATALYST`. They assume spillover can be described by a spillover matrix that encodes the ratio between the signal in the unstained spillover receiving and stained spillover emitting channel. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model and use the mixture components to estimate the probability of spillover. Spillover correction is often a pre-processing step followed by downstream analyses, and choosing a flexible model reduces the chance of introducing biases that can propagate downstream. 
+  
+results: |
+  We implement our method in an R package `spillR` using expectation-maximization to fit the mixture model. We test our method on simulated, semi-simulated, and real data from `CATALYST`. We find that our method compensates low counts accurately, does not introduce negative counts, avoids overcompensating high counts, and preserves correlations between markers that may be biologically meaningful.
+  
+availability: |
+  Our new R package `spillR` is on Bioconductor at bioconductor.org/packages/spillR. All experiments and plots can be reproduced by compiling the R markdown file spillR_paper.Rmd at github.com/ChristofSeiler/spillR_paper.
+
+supplementary_info: |
+  Supplementary data are available at Bioinformatics Online.
+
 output:
-  bookdown::pdf_document2: 
-    toc: false
+  rticles::bioinformatics_article:
+    citation_package: natbib
     extra_dependencies: ["euflag"]
-bibliography: spillr_paper.bib
-csl: style.csl
-link-citations: true
-abstract: |
-  Channel interference in mass cytometry can cause spillover and may result in miscounting of protein markers. @catalyst introduce an experimental and computational procedure to estimate and compensate for spillover implemented in their R package `CATALYST`. They assume spillover can be described by a spillover matrix that encodes the ratio between the signal in the unstained spillover receiving and stained spillover emitting channel. They estimate the spillover matrix from experiments with beads. We propose to skip the matrix estimation step and work directly with the full bead distributions. We develop a nonparametric finite mixture model and use the mixture components to estimate the probability of spillover. Spillover correction is often a pre-processing step followed by downstream analyses, and choosing a flexible model reduces the chance of introducing biases that can propagate downstream. We implement our method in an R package `spillR` using expectation-maximization to fit the mixture model. We test our method on simulated, semi-simulated, and real data from `CATALYST`. We find that our method compensates low counts accurately, does not introduce negative counts, avoids overcompensating high counts, and preserves correlations between markers that may be biologically meaningful.
+    
+bibliography: bibliography.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -46,7 +107,7 @@ Mass cytometry makes it possible to count a large number of proteins simultaneou
 
 @catalyst propose a method for addressing spillover by conducting an experiment on beads. This experiment measures spillover by staining each bead with a single type of antibody. The slope of the regression line between target antibodies and non-target antibodies represents the spillover proportion between channels. @miao2021ab attempt to solve spillover by fitting a mixture model. Our contribution combines the solutions of @catalyst and @miao2021ab. We still require a bead experiment, as in @catalyst, but estimate spillover leveraging a statistical model, as in @miao2021ab. Both previous works rely on an estimate for the spillover matrix, which encodes the pairwise spillover proportion between channels. We avoid estimating a spillover matrix and instead model spillover by fitting a mixture model to the counts observed in the bead experiment. Our main new assumption is that the spillover distribution---not just the spillover proportion---from the bead experiment carries over to the biological experiment. In other words, we transfer the spillover distribution to the real experiment instead of just the spillover proportion encoded in the spillover matrix.
 
-In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm, and implemented in our new R package `spillR`^[https://bioconductor.org/packages/spillR]. In Section \@ref(results), we conduct experiments on simulated, semi-simulated, and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) discusses our experiments and relates our findings to `CATALYST`.
+In Section \@ref(methods), we present our mixture model and link it to calculating spillover probabilities for specific count values. Our estimation procedure is based on an EM algorithm, and implemented in our new R package `spillR`. In Section \@ref(results), we conduct experiments on simulated, semi-simulated, and real data obtained from the `CATALYST` R package [@catalyst]. Section \@ref(discussion) discusses our experiments and relates our findings to `CATALYST`.
 
 # Methods
 
@@ -157,7 +218,7 @@ combo$correction <- factor(
   )
 ```
 
-```{r method-example, fig.height=6.8, fig.width=8, out.width="70%", fig.align="center", fig.cap='Panel A shows a density plot of target and spillover markers based on the beads experiment, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation on real cells by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}), zero counts are not shown. As seen in Panel C, our baseline method \\texttt{spillR-naive} performs similarly to \\texttt{CATALYST} and compensates the first peak of the uncorrected data (red) between about 2 and 4 as spillover. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) and the first peak in the real data (Panel C red), and only compensates the part of the red curve as spillover that matches the bead experiment. This figure is an example of the diagnostic plot obtained when using the function \\texttt{plotDiagnostics} in \\texttt{spillR}.', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
+```{r method-example, fig.height=6.8, fig.width=8, out.width="70%", fig.align="center", fig.cap='Panel A shows a density plot of target and spillover markers based on the beads experiment, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation on real cells by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (Bendall \\emph{et al.}, 2011), zero counts are not shown. As seen in Panel C, our baseline method \\texttt{spillR-naive} performs similarly to \\texttt{CATALYST} and compensates the first peak of the uncorrected data (red) between about 2 and 4 as spillover. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) and the first peak in the real data (Panel C red), and only compensates the part of the red curve as spillover that matches the bead experiment. This figure is an example of the diagnostic plot obtained when using the function \\texttt{plotDiagnostics} in \\texttt{spillR}.', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
 # --------- add zero percentage to legend ---------
 
 names <- c("none", "spillR", "spillR-naive", "CATALYST")
@@ -610,7 +671,7 @@ combo$method <- factor(
 )
 ```
 
-```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}).", cache = TRUE}
+```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (Bendall \\emph{et al.}, 2011).", cache = TRUE}
 
 # # helper functions
 log_breaks <- c(1, 10, 100, 1000)
@@ -778,7 +839,7 @@ semi_synthetic_data <- function(shift) {
 }
 ```
 
-```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap='Comparison of compensation methods and uncorrected counts on semi-synthetic data (\\texttt{spillR} and \\texttt{spillR-naive} are set to impute spillover values with $0$). The vertical dashed line helps to interpret the spillover correction. It indicates the original mode of the bead distribution of Yb172Di at $2.7$, before overwriting it with the first peak of the real observations of Yb173Di. Counts are arcsinh transformed with cofactor of five (\\protect\\hyperlink{ref-bendall2011single}{Bendall \\emph{et al.}, 2011}). The zero percentages are averages over all three experiments.', cache = TRUE}
+```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap='Comparison of compensation methods and uncorrected counts on semi-synthetic data (\\texttt{spillR} and \\texttt{spillR-naive} are set to impute spillover values with $0$). The vertical dashed line helps to interpret the spillover correction. It indicates the original mode of the bead distribution of Yb172Di at $2.7$, before overwriting it with the first peak of the real observations of Yb173Di. Counts are arcsinh transformed with cofactor of five (Bendall \\emph{et al.}, 2011). The zero percentages are averages over all three experiments.', cache = TRUE}
 # --------- plotting of semi-simulated data ---------
 
 semi_list <- lapply(c(0, 0.47, 0.94), semi_synthetic_data)
