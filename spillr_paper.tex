@@ -135,16 +135,18 @@ biological experiment. In other words, we transfer the spillover
 distribution to the real experiment instead of just the spillover
 proportion encoded in the spillover matrix.
 
-In Section @ref(methods), we present our mixture model and link it to
+In Section \ref{methods}, we present our mixture model and link it to
 calculating spillover probabilities for specific count values. Our
 estimation procedure is based on an EM algorithm, and implemented in our
-new R package \texttt{spillR}. In Section @ref(results), we conduct
+new R package \texttt{spillR}. In Section \ref{results}, we conduct
 experiments on simulated, semi-simulated, and real data obtained from
 the \texttt{CATALYST} R package \citep{catalyst}. Section
-@ref(discussion) discusses our experiments and relates our findings to
+\ref{discussion} discusses our experiments and relates our findings to
 \texttt{CATALYST}.
 
 \section{Methods}
+
+\label{methods}
 
 In this section we first illustrate our method \texttt{spillR} (as well
 as a simple baseline \texttt{spillR-naive}) by an example, and then
@@ -156,16 +158,16 @@ intensities.
 
 \subsection{Example}
 
-\begin{figure*}
+\begin{figure}
 
 {\centering \includegraphics[width=0.7\linewidth]{spillr_paper_files/figure-latex/method-example-1} 
 
 }
 
 \caption{Panel A shows a density plot of target and spillover markers based on the beads experiment, Panel B shows spillover probability for Yb173Di estimated by \texttt{spillR}, and Panel C compares spillover compensation on real cells by our methods and \texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (Bendall \emph{et al.}, 2011), zero counts are not shown. As seen in Panel C, our baseline method \texttt{spillR-naive} performs similarly to \texttt{CATALYST} and compensates the first peak of the uncorrected data (red) between about 2 and 4 as spillover. By contrast, \texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) and the first peak in the real data (Panel C red), and only compensates the part of the red curve as spillover that matches the bead experiment. This figure is an example of the diagnostic plot obtained when using the function \texttt{plotDiagnostics} in \texttt{spillR}.}\label{fig:method-example}
-\end{figure*}
+\end{figure}
 
-Figure @ref(fig:method-example) illustrates our procedure using a
+Figure \ref{fig:method-example} illustrates our procedure using a
 dataset from the \texttt{CATALYST} package as an example. There are four
 markers, HLA-DR (Yb171Di), HLA-ABC (Yb172Di), CD8 (Yb174Di), and CD45
 (Yb176Di), that spill over into the target marker, CD3 (Yb173Di). The
@@ -261,9 +263,11 @@ the components and mixture probabilities identifiable:
   model. It allows us to calculate the spillover probability for a given
   count \(Y_i = y\) from the posterior probability that it arises
   through spillover from markers \(k > 1\), \[
-  P(\text{spillover} \mid Y_i = y) = P(Z_i > 1 \mid Y_i = y) = 
-  1 - P(Z_i = 1 \mid Y_i = y) = 
-  1 - \frac{\pi_1 \, P(Y_i = y \mid Z_i = 1)}{P(Y_i = y)}.
+  \begin{split}
+  P(\text{spillover} \mid Y_i = y) & = P(Z_i > 1 \mid Y_i = y) \\
+  & = 1 - P(Z_i = 1 \mid Y_i = y) \\
+  & = 1 - \frac{\pi_1 \, P(Y_i = y \mid Z_i = 1)}{P(Y_i = y)}.
+  \end{split}
   \] To parse this calculation, recall that in mixture models the
   \(\pi_1\) is the prior probability, \(P(Y_i = y \mid Z_i = 1)\) is the
   conditional probability given the mixture component, and the
@@ -374,6 +378,8 @@ corresponding bead experiment.
 
 \section{Results}
 
+\label{results}
+
 We first evaluate our new method \texttt{spillR} on simulated datasets.
 We probe our method to experimentally find its shortcomings. Then, we
 compare \texttt{spillR} to the non-negative least squares method
@@ -382,18 +388,20 @@ semi-simulated data from the same package.
 
 \subsection{Simulated Data}
 
-\begin{figure*}
+\label{simulated-data}
+
+\begin{figure}
 
 {\centering \includegraphics[width=0.9\linewidth]{spillr_paper_files/figure-latex/simulated-experiments-plot-1} 
 
 }
 
 \caption{Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups. The mean values for \texttt{spillR} are computed on values not marked as \texttt{NA}, so the mean ignores the counts attributed to spillover. The bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \mid Z = 1$ is the distribution without spillover. $Y \mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \mid Z = 1$) is the average count without spillover. \texttt{spillR} mean($Y$) is the average count after correcting $Y$.}\label{fig:simulated-experiments-plot}
-\end{figure*}
+\end{figure}
 
 We choose three different experiments to test \texttt{spillR} under
 different bead and real cell distributions. We explore a wide range of
-possible parameter settings. Figure @ref(fig:simulated-experiments-plot)
+possible parameter settings. Figure \ref{fig:simulated-experiments-plot}
 has three panels, each representing one experimental setup. The first
 two panels test our assumptions (A1) and (A2). The third panel tests the
 sensitivity of \texttt{spillR} to bimodal bead distributions. For all
@@ -407,7 +415,7 @@ The details of the generative models are given in the supplementary
 data. We repeat each simulation 20 times and report averages over the 20
 replications.
 
-Each panel of Figure @ref(fig:simulated-experiments-plot) has two rows
+Each panel of Figure \ref{fig:simulated-experiments-plot} has two rows
 of plots. The plot in the first row represents the summary of the means
 for each experimental setup as a function of their respective parameter
 \(\tau\). This parameter has a different meaning in each setup. To
@@ -466,14 +474,16 @@ true mean than the uncorrected mean across the test range.
 
 \subsection{Real Data}
 
-\begin{figure*}
+\label{real-data}
+
+\begin{figure}
 
 {\centering \includegraphics[width=0.95\linewidth]{spillr_paper_files/figure-latex/spillr-vignette-1} 
 
 }
 
 \caption{Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (Bendall \emph{et al.}, 2011).}\label{fig:spillr-vignette}
-\end{figure*}
+\end{figure}
 
 We compare our methods to \texttt{CATALYST} on one of the example
 datasets in the \texttt{CATALYST} package. The dataset consists of an
@@ -483,7 +493,7 @@ mononuclear cells from healthy donors measured on 39 channels. The
 experiment on beads has 10,000 cells measured on 36 channels with the
 number of beads per metal label ranging from 112 to 241.
 
-In Figure @ref(fig:spillr-vignette), we show the comparison of our
+In Figure \ref{fig:spillr-vignette}, we show the comparison of our
 methods to \texttt{CATALYST} on the same markers as their original paper
 \citep{catalyst} in their Figure 3B. In the original experiment, they
 conjugate the three proteins CD3, CD8, and HLA-DR with two different
@@ -538,7 +548,7 @@ user. Our rationale is that the user should see the differences in this
 pre-processing step and how it propagates to the results.
 
 The average computation time for the experiment shown in Figure
-@ref(fig:spillr-vignette) with 100 replications on an Apple M1 with 8
+\ref{fig:spillr-vignette} with 100 replications on an Apple M1 with 8
 cores and 16 GB of RAM is \(10.6\) seconds for \texttt{spillR}, \(0.43\)
 seconds for \texttt{CATALYST}, and \(0.45\) seconds for
 \texttt{spillR-naive}. The computational costs scale linearly in the
@@ -547,14 +557,16 @@ processing large-scale datasets.
 
 \subsection{Semi-Simulated Data}
 
-\begin{figure*}
+\label{semi-simulated-data}
+
+\begin{figure}
 
 {\centering \includegraphics[width=1\linewidth]{spillr_paper_files/figure-latex/semi-simulated-plot-1} 
 
 }
 
 \caption{Comparison of compensation methods and uncorrected counts on semi-synthetic data (\texttt{spillR} and \texttt{spillR-naive} are set to impute spillover values with $0$). The vertical dashed line helps to interpret the spillover correction. It indicates the original mode of the bead distribution of Yb172Di at $2.7$, before overwriting it with the first peak of the real observations of Yb173Di. Counts are arcsinh transformed with cofactor of five (Bendall \emph{et al.}, 2011). The zero percentages are averages over all three experiments.}\label{fig:semi-simulated-plot}
-\end{figure*}
+\end{figure}
 
 We compare \texttt{spillR} and \texttt{CATALYST} on semi-simulated data
 in order to elucidate differences between \texttt{spillR} and
@@ -570,12 +582,12 @@ shift values: no shift is \(0\), subtracting \(0.47\) on the transformed
 scale, and subtracting \(0.94\) on the transformed scale. We further
 subsample without replacement from this new bead distribution to keep
 the same number of beads as in the original dataset. Figure
-@ref(fig:semi-simulated-plot) shows the three different beads experiment
+\ref{fig:semi-simulated-plot} shows the three different beads experiment
 datasets in row A and the resulting compensations in row B.
 
-In the first column of Figure @ref(fig:semi-simulated-plot), the bead
+In the first column of Figure \ref{fig:semi-simulated-plot}, the bead
 distributions are equal to the original dataset from Figure
-@ref(fig:method-example) except Yb172Di is now perfectly aligned with
+\ref{fig:method-example} except Yb172Di is now perfectly aligned with
 the first mode of the distribution of real cells (red curve in row B).
 In the second and third column, we shift the bead distribution of
 Yb172Di by \(0.47\) and \(0.94\). All three methods correctly compensate
@@ -594,7 +606,9 @@ following the distribution observed in the beads experiment.
 
 \section{Discussion}
 
-The sensitivity analysis in Section @ref(simulated-data) illustrates the
+\label{discussion}
+
+The sensitivity analysis in Section \ref{simulated-data} illustrates the
 performance of \texttt{spillR} under different conditions. The
 experiment for (A1) shows that the mean count after \texttt{spillR}
 correction is closer to the true mean over a wide range of bead shifts.
@@ -611,8 +625,8 @@ after correction is still closer to the true mean even with bimodal bead
 distributions and even if the spillover is larger than the true signal.
 
 In our comparison with \texttt{CATALYST} on real data (Section
-@ref(real-data)) and semi-simulated data (Section
-@ref(semi-simulated-data)), we observe the effect of the two different
+\ref{real-data}) and semi-simulated data (Section
+\ref{semi-simulated-data}), we observe the effect of the two different
 correction strategies. \texttt{CATALYST} shrinks all counts towards zero
 by minimizing a non-negative least squares objective. It assumes that
 spillover is linear up to counts of 5,000. The applied shrinkage is the
@@ -625,7 +639,7 @@ strongly and set to a user-specified imputation value. If counts are not
 in the spillover range, they are left unchanged. Among the unchanged
 counts, correlations between markers are preserved. The marker
 correlation between HLA-ABC (Yb172Di) and CD3 (Yb173Di) shown in the
-first column of Figure @ref(fig:spillr-vignette) illustrates this point.
+first column of Figure \ref{fig:spillr-vignette} illustrates this point.
 \texttt{CATALYST} removes the positively correlated count concentration,
 whereas \texttt{spillR} keeps it. Compensation methods have to balance
 between compensating for spillover while keeping potentially
@@ -641,20 +655,20 @@ more aggressive compensation by considering only the bead distribution.
 If our baseline method compensates aggressively in a certain range, this
 is because most bead counts observed in that range are spillover counts.
 This approach highlights the allure and pitfalls of overcorrecting.
-While in Figure @ref(fig:method-example) it may seem that
+While in Figure \ref{fig:method-example} it may seem that
 \texttt{spillR-naive} compensates for all spillover by setting the first
 mode to zero (just like \texttt{CATALYST}), a closer inspection reveals
 that discrepancies between the bead spillover distribution and the first
 mode of the real cell distribution are not taken into account by either
 method, but do reflect in the compensation of \texttt{spillR}. A similar
 pattern can be seen in panels A, B, and C of Figure
-@ref(fig:spillr-vignette). This behavior reflects our assumption (A1)
+\ref{fig:spillr-vignette}. This behavior reflects our assumption (A1)
 and highlights the role of bead experiments in the compensation process
 performed by \texttt{spillR}.
 
 In the cell and bead data from \texttt{CATALYST}, our assumption (A1)
 seems to hold in some cases, but is violated in others. In our leading
-example in Figure @ref(fig:method-example) we can see that the mode of
+example in Figure \ref{fig:method-example} we can see that the mode of
 the bead distribution of marker Yb173Di is very close to the mode in the
 cell data, supporting our assumption. In other cases however, the target
 marker mode differs more strongly between cell and bead data. We
@@ -666,7 +680,7 @@ assumption (A2).
 
 To understand and assess its applicability and performance,
 \texttt{spillR} offers a diagnostic plot (Figure
-@ref(fig:method-example)) of the spillover probability curve. We can
+\ref{fig:method-example}) of the spillover probability curve. We can
 judge if the curve makes sense by comparing it to the observed count and
 bead distributions. Methods based on non-negative least squares such as
 \texttt{CATALYST} are harder to diagnose as they minimize a cost
@@ -678,7 +692,7 @@ avoiding the introduction of bias is thus our priority.
 
 In our experiments, we observe that the different methods may over- or
 undercompensate in different cases. The original experiment shown in
-Figure @ref(fig:spillr-vignette) is designed to produce considerable
+Figure \ref{fig:spillr-vignette} is designed to produce considerable
 spillover in the settings of the first column, and little spillover in
 the second column. Nonetheless, we observe weak and strong compensation
 by both \texttt{spillR} and \texttt{CATALYST} in both columns. Our
