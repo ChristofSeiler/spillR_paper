@@ -220,7 +220,7 @@ combo$correction <- factor(
   )
 ```
 
-```{r method-example, fig.height=6.8, fig.width=8, out.width="70%", fig.align="center", fig.cap='Panel A shows a density plot of target and spillover markers based on the beads experiment, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation on real cells by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five (Bendall \\emph{et al.}, 2011), zero counts are not shown. As seen in Panel C, our baseline method \\texttt{spillR-naive} performs similarly to \\texttt{CATALYST} and compensates the first peak of the uncorrected data (red) between about 2 and 4 as spillover. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) and the first peak in the real data (Panel C red), and only compensates the part of the red curve as spillover that matches the bead experiment. This figure is an example of the diagnostic plot obtained when using the function \\texttt{plotDiagnostics} in \\texttt{spillR}.', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
+```{r method-example, fig.height=6.8, fig.width=8, out.width="70%", fig.align="center", fig.cap='Panel A shows a density plot of target and spillover markers based on the beads experiment, Panel B shows spillover probability for Yb173Di estimated by \\texttt{spillR}, and Panel C compares spillover compensation on real cells by our methods and \\texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five \\citep{bendall2011single}, zero counts are not shown. As seen in Panel C, our baseline method \\texttt{spillR-naive} performs similarly to \\texttt{CATALYST} and compensates the first peak of the uncorrected data (red) between about 2 and 4 as spillover. By contrast, \\texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) and the first peak in the real data (Panel C red), and only compensates the part of the red curve as spillover that matches the bead experiment. This figure is an example of the diagnostic plot obtained when using the function \\texttt{plotDiagnostics} in \\texttt{spillR}.', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE}
 # --------- add zero percentage to legend ---------
 
 names <- c("none", "spillR", "spillR-naive", "CATALYST")
@@ -681,7 +681,7 @@ combo$method <- factor(
 )
 ```
 
-```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five (Bendall \\emph{et al.}, 2011).", cache = TRUE}
+```{r spillr-vignette, fig.height = 12, fig.width = 10, out.width = "95%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five \\citep{bendall2011single}.", cache = TRUE}
 
 # # helper functions
 log_breaks <- c(1, 10, 100, 1000)
@@ -851,7 +851,7 @@ semi_synthetic_data <- function(shift) {
 }
 ```
 
-```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap='Comparison of compensation methods and uncorrected counts on semi-synthetic data (\\texttt{spillR} and \\texttt{spillR-naive} are set to impute spillover values with $0$). The vertical dashed line helps to interpret the spillover correction. It indicates the original mode of the bead distribution of Yb172Di at $2.7$, before overwriting it with the first peak of the real observations of Yb173Di. Counts are arcsinh transformed with cofactor of five (Bendall \\emph{et al.}, 2011). The zero percentages are averages over all three experiments.', cache = TRUE}
+```{r semi-simulated-plot, fig.height = 5, fig.width = 10, out.width = "100%", fig.align = "center", echo = FALSE, warning = FALSE, message = FALSE, fig.cap='Comparison of compensation methods and uncorrected counts on semi-synthetic data (\\texttt{spillR} and \\texttt{spillR-naive} are set to impute spillover values with $0$). The vertical dashed line helps to interpret the spillover correction. It indicates the original mode of the bead distribution of Yb172Di at $2.7$, before overwriting it with the first peak of the real observations of Yb173Di. Counts are arcsinh transformed with cofactor of five \\citep{bendall2011single}. The zero percentages are averages over all three experiments.', cache = TRUE}
 # --------- plotting of semi-simulated data ---------
 
 semi_list <- lapply(c(0, 0.47, 0.94), semi_synthetic_data)
