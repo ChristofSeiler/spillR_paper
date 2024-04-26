@@ -70,7 +70,6 @@ output:
   rticles::bioinformatics_article:
     citation_package: natbib
     extra_dependencies: ["euflag"]
-    keep_tex: TRUE
     
 bibliography: bibliography.bib
 ---
