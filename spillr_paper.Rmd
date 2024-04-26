@@ -61,7 +61,7 @@ results: |
   We implement our method in an R package `spillR` using expectation-maximization to fit the mixture model. We test our method on simulated, semi-simulated, and real data from `CATALYST`. We find that our method compensates low counts accurately, does not introduce negative counts, avoids overcompensating high counts, and preserves correlations between markers that may be biologically meaningful.
   
 availability: |
-  Our new R package `spillR` is on Bioconductor at bioconductor.org/packages/spillR. All experiments and plots can be reproduced by compiling the R markdown file spillR_paper.Rmd at github.com/ChristofSeiler/spillR_paper.
+  Our new R package `spillR` is on Bioconductor at bioconductor.org/packages/spillR. All experiments and plots can be reproduced by compiling the R markdown file `spillR_paper.Rmd` at github.com/ChristofSeiler/spillR_paper.
 
 supplementary_info: |
   Supplementary data are available at Bioinformatics Online.
@@ -70,6 +70,7 @@ output:
   rticles::bioinformatics_article:
     citation_package: natbib
     extra_dependencies: ["euflag"]
+    keep_tex: TRUE
     
 bibliography: bibliography.bib
 ---
@@ -919,7 +920,11 @@ Our basic method can also be applied to imaging mass cytometry [@angelo2014multi
 
 # Acknowledgments {-}
 
-We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved the paper. Alexander G. Reisach received funding from the European Union's Horizon 2020 research and innovation program under the Marie Sk\l{}odowska-Curie grant agreement No 945332 \euflag.
+We thank EuroBioC2022 for awarding Marco Guazzini a travel award to present a preliminary version of `spillR` in Heidelberg. We thank Antoine Chambaz for his feedback on an earlier draft that substantially improved the paper.
+
+# Funding {-}
+
+This work was supported by the European Union's Horizon 2020 research and innovation program under a Marie Sk\l{}odowska-Curie grant [945332 to A.G.R.] \euflag.
 
 # References {-}
 
