@@ -158,14 +158,14 @@ intensities.
 
 \subsection{Example}
 
-\begin{figure}
+\begin{figure*}
 
 {\centering \includegraphics[width=0.7\linewidth]{spillr_paper_files/figure-latex/method-example-1} 
 
 }
 
 \caption{Panel A shows a density plot of target and spillover markers based on the beads experiment, Panel B shows spillover probability for Yb173Di estimated by \texttt{spillR}, and Panel C compares spillover compensation on real cells by our methods and \texttt{CATALYST}. Counts are arcsinh transformed with cofactor of five \citep{bendall2011single}, zero counts are not shown. As seen in Panel C, our baseline method \texttt{spillR-naive} performs similarly to \texttt{CATALYST} and compensates the first peak of the uncorrected data (red) between about 2 and 4 as spillover. By contrast, \texttt{spillR} is sensitive to the difference in shape between the peaks in the bead data (Panel A) and the first peak in the real data (Panel C red), and only compensates the part of the red curve as spillover that matches the bead experiment. This figure is an example of the diagnostic plot obtained when using the function \texttt{plotDiagnostics} in \texttt{spillR}.}\label{fig:method-example}
-\end{figure}
+\end{figure*}
 
 Figure \ref{fig:method-example} illustrates our procedure using a
 dataset from the \texttt{CATALYST} package as an example. There are four
@@ -390,14 +390,14 @@ semi-simulated data from the same package.
 
 \label{simulated-data}
 
-\begin{figure}
+\begin{figure*}
 
 {\centering \includegraphics[width=0.9\linewidth]{spillr_paper_files/figure-latex/simulated-experiments-plot-1} 
 
 }
 
 \caption{Three experiments testing our assumptions and sensitivity to bimodal bead distribution. For each experiment the top row are mean values over the entire range of the experimental setups. The mean values for \texttt{spillR} are computed on values not marked as \texttt{NA}, so the mean ignores the counts attributed to spillover. The bottom row are density plots for three parameter settings to illustrate the generated distributions. $Y$ is the distribution with spillover. $Y \mid Z = 1$ is the distribution without spillover. $Y \mid Z = 2$ is the spillover. mean($Y$) is the average of the distribution with spillover. mean($Y \mid Z = 1$) is the average count without spillover. \texttt{spillR} mean($Y$) is the average count after correcting $Y$.}\label{fig:simulated-experiments-plot}
-\end{figure}
+\end{figure*}
 
 We choose three different experiments to test \texttt{spillR} under
 different bead and real cell distributions. We explore a wide range of
@@ -476,14 +476,14 @@ true mean than the uncorrected mean across the test range.
 
 \label{real-data}
 
-\begin{figure}
+\begin{figure*}
 
 {\centering \includegraphics[width=0.95\linewidth]{spillr_paper_files/figure-latex/spillr-vignette-1} 
 
 }
 
 \caption{Comparison of compensation methods and uncorrected counts on real data. Counts are arcsinh transformed with cofactor of five \citep{bendall2011single}.}\label{fig:spillr-vignette}
-\end{figure}
+\end{figure*}
 
 We compare our methods to \texttt{CATALYST} on one of the example
 datasets in the \texttt{CATALYST} package. The dataset consists of an
@@ -559,14 +559,14 @@ processing large-scale datasets.
 
 \label{semi-simulated-data}
 
-\begin{figure}
+\begin{figure*}
 
 {\centering \includegraphics[width=1\linewidth]{spillr_paper_files/figure-latex/semi-simulated-plot-1} 
 
 }
 
 \caption{Comparison of compensation methods and uncorrected counts on semi-synthetic data (\texttt{spillR} and \texttt{spillR-naive} are set to impute spillover values with $0$). The vertical dashed line helps to interpret the spillover correction. It indicates the original mode of the bead distribution of Yb172Di at $2.7$, before overwriting it with the first peak of the real observations of Yb173Di. Counts are arcsinh transformed with cofactor of five \citep{bendall2011single}. The zero percentages are averages over all three experiments.}\label{fig:semi-simulated-plot}
-\end{figure}
+\end{figure*}
 
 We compare \texttt{spillR} and \texttt{CATALYST} on semi-simulated data
 in order to elucidate differences between \texttt{spillR} and
