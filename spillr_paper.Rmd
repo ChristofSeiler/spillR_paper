@@ -1,6 +1,6 @@
 ---
 title_full: "`spillR`: Spillover Compensation in Mass Cytometry Data"
-title_short: "`Spillover Compensation`"
+title_short: "Spillover Compensation"
 
 # One of the following below. See https://academic.oup.com/bioinformatics/pages/instructions_for_authors#Types%20of%20Manuscript
 # one of `Original Paper`, `Discovery Note`, `Applications Note`, `Review`, `Letter to the Editor`, `Conference Paper`    
