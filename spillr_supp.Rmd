@@ -1,6 +1,6 @@
 ---
 title: "`spillR`: Spillover Compensation in Mass Cytometry Data"
-subtitle: "Supplementary Information"
+subtitle: "Supplementary Material"
 author: "Marco Guazzini$^{1}$, Alexander G. Reisach$^{2}$, Sebastian Weichwald$^{3}$, and Christof Seiler$^{1,4,5}$"
 date: "$^1$Department of Advanced Computing Sciences, Maastricht University, The Netherlands \\\n $^2$Université Paris Cité, CNRS, MAP5, F-75006 Paris, France \\\n $^3$Department of Mathematical Sciences, University of Copenhagen, Denmark \\\n $^4$Mathematics Centre Maastricht, Maastricht University, The Netherlands \\\n $^5$Center of Experimental Rheumatology, Department of Rheumatology, \\\n University Hospital Zurich, University of Zurich, Switzerland \\\n \\\n `r gsub(' 0', ' ', format(Sys.time(), '%B %d, %Y'))`"
 output:

@@ -78,27 +78,26 @@ to estimate and compensate for spillover implemented in their R package
 \texttt{CATALYST}. They assume spillover can be described by a spillover
 matrix that encodes the ratio between the signal in the unstained
 spillover receiving and stained spillover emitting channel. They
-estimate the spillover matrix from experiments with beads. We propose to
-skip the matrix estimation step and work directly with the full bead
-distributions. We develop a nonparametric finite mixture model and use
-the mixture components to estimate the probability of spillover.
-Spillover correction is often a pre-processing step followed by
-downstream analyses, and choosing a flexible model reduces the chance of
-introducing biases that can propagate downstream.\\
-\textbf{Results:} We implement our method in an R package
-\texttt{spillR} using expectation-maximization to fit the mixture model.
-We test our method on simulated, semi-simulated, and real data from
-\texttt{CATALYST}. We find that our method compensates low counts
-accurately, does not introduce negative counts, avoids overcompensating
-high counts, and preserves correlations between markers that may be
-biologically meaningful.\\
+estimate the spillover matrix from experiments with beads.\\
+\textbf{Results:} We propose to skip the matrix estimation step and work
+directly with the full bead distributions. We develop a nonparametric
+finite mixture model and use the mixture components to estimate the
+probability of spillover. Spillover correction is often a pre-processing
+step followed by downstream analyses, and choosing a flexible model
+reduces the chance of introducing biases that can propagate downstream.
+We implement our method in an R package \texttt{spillR} using
+expectation-maximization to fit the mixture model. We test our method on
+simulated, semi-simulated, and real data from \texttt{CATALYST}. We find
+that our method compensates low counts accurately, does not introduce
+negative counts, avoids overcompensating high counts, and preserves
+correlations between markers that may be biologically meaningful.\\
 \textbf{Availability:} Our new R package \texttt{spillR} is on
 Bioconductor at bioconductor.org/packages/spillR. All experiments and
 plots can be reproduced by compiling the R markdown file
 \texttt{spillR\_paper.Rmd} at github.com/ChristofSeiler/spillR\_paper.\\
 \textbf{Contact:}christof.seiler@maastrichtuniversity.nl\\
-\textbf{Supplementary information:} Supplementary data are available at
-Bioinformatics Online.}
+\textbf{Supplementary information:} Supplementary material is available
+at Bioinformatics Online.}
 
 \maketitle
 
@@ -345,7 +344,7 @@ support of \(Y_i\), \[
 We rely on assumption (A1) to justify updating only the distribution of
 the target marker. We rely on assumption (A2) to justify calculating the
 spillover probability from the mixture model. We refer to the
-supplementary data for a step-by-step example of our EM algorithm.
+supplementary material for a step-by-step example of our EM algorithm.
 
 \subsubsection{Spillover Decision}
 
@@ -412,8 +411,8 @@ spillover probability of \(0.5\). Unless otherwise specified, the bead
 data are drawn from the true spillover distribution. The other
 parameters and statistical dependencies are specific to each experiment.
 The details of the generative models are given in the supplementary
-data. We repeat each simulation 20 times and report averages over the 20
-replications.
+material. We repeat each simulation 20 times and report averages over
+the 20 replications.
 
 Each panel of Figure \ref{fig:simulated-experiments-plot} has two rows
 of plots. The plot in the first row represents the summary of the means
@@ -428,8 +427,8 @@ yellow density curve shows the observed counts \(Y\). The black density
 curve shows the distribution of target cell counts. The blue density
 curve shows the distribution of spillover counts. The yellow density
 curve represents the data \(Y\) we would observe in practice. We
-simulate this data using the models in the supplementary data. The goal
-of the experiment is to estimate the mean of the true counts (black
+simulate this data using the models in the supplementary material. The
+goal of the experiment is to estimate the mean of the true counts (black
 density curve) as accurately as possible from the observed counts
 (yellow density curve). Using \texttt{NA} imputation for spillover
 counts, the average of the compensated observed counts when ignoring
