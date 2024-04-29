@@ -78,19 +78,20 @@ to estimate and compensate for spillover implemented in their R package
 \texttt{CATALYST}. They assume spillover can be described by a spillover
 matrix that encodes the ratio between the signal in the unstained
 spillover receiving and stained spillover emitting channel. They
-estimate the spillover matrix from experiments with beads.\\
-\textbf{Results:} We propose to skip the matrix estimation step and work
-directly with the full bead distributions. We develop a nonparametric
-finite mixture model and use the mixture components to estimate the
-probability of spillover. Spillover correction is often a pre-processing
-step followed by downstream analyses, and choosing a flexible model
-reduces the chance of introducing biases that can propagate downstream.
-We implement our method in an R package \texttt{spillR} using
-expectation-maximization to fit the mixture model. We test our method on
-simulated, semi-simulated, and real data from \texttt{CATALYST}. We find
-that our method compensates low counts accurately, does not introduce
-negative counts, avoids overcompensating high counts, and preserves
-correlations between markers that may be biologically meaningful.\\
+estimate the spillover matrix from experiments with beads. We propose to
+skip the matrix estimation step and work directly with the full bead
+distributions. We develop a nonparametric finite mixture model and use
+the mixture components to estimate the probability of spillover.
+Spillover correction is often a pre-processing step followed by
+downstream analyses, and choosing a flexible model reduces the chance of
+introducing biases that can propagate downstream.\\
+\textbf{Results:} We implement our method in an R package
+\texttt{spillR} using expectation-maximization to fit the mixture model.
+We test our method on simulated, semi-simulated, and real data from
+\texttt{CATALYST}. We find that our method compensates low counts
+accurately, does not introduce negative counts, avoids overcompensating
+high counts, and preserves correlations between markers that may be
+biologically meaningful.\\
 \textbf{Availability:} Our new R package \texttt{spillR} is on
 Bioconductor at bioconductor.org/packages/spillR. All experiments and
 plots can be reproduced by compiling the R markdown file
